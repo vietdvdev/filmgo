@@ -1,12 +1,30 @@
 <?php
 
-use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\Admin\AuthController;
 use App\Http\Controllers\Admin\DashboardController;
+use Illuminate\Support\Facades\Route;
 
+/*
+|--------------------------------------------------------------------------
+| Web Routes
+|--------------------------------------------------------------------------
+*/
+
+// Mặc định chạy link gốc sẽ đá về trang login của admin luôn cho tiện làm việc
 Route::get('/', function () {
-    return view('welcome');
+    return redirect()->route('admin.login');
 });
 
-Route::prefix('admin')->name('admin.')->group(function () {
-    Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
+// Toàn bộ các đường dẫn thuộc hệ thống Admin
+Route::prefix('admin')->group(function () {
+
+    // 1. Nhóm các đường dẫn xác thực (Đăng nhập)
+    Route::get('/login', [AuthController::class, 'showLogin'])->name('admin.login');
+    Route::post('/login', [AuthController::class, 'login']);
+
+    // 2. Đường dẫn xử lý Đăng xuất (Bắt buộc dùng POST để bảo mật)
+    Route::post('/logout', [AuthController::class, 'logout'])->name('admin.logout');
+
+    // 3. Đường dẫn vào trang quản trị Dashboard chính
+    Route::get('/dashboard', [DashboardController::class, 'index'])->name('admin.dashboard');
 });

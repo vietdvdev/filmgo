@@ -1,254 +1,485 @@
-@extends('layouts.admin')
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hệ thống Quản trị - FilmGo</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
 
-@section('title', 'Tổng Quan Hệ Thống - FilmGo')
+        body {
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            min-height: 100vh;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-attachment: fixed;
+        }
 
-@section('content')
-<main class="flex-1 overflow-y-auto pt-16 bg-background">
-    <div class="p-margin-page max-w-container-max mx-auto space-y-stack-lg">
-        <!-- Page Header -->
-        <div>
-            <h2 class="font-headline-lg text-headline-lg text-on-surface">Tổng Quan Hệ Thống</h2>
-            <p class="font-body-md text-body-md text-on-surface-variant mt-1">Dữ liệu tổng hợp hoạt động kinh doanh hôm nay.</p>
+        .sidebar {
+            min-height: 100vh;
+            background: linear-gradient(180deg, #0f172a 0%, #1e293b 50%, #334155 100%);
+            color: #fff;
+            width: 280px;
+            position: fixed;
+            left: 0;
+            top: 0;
+            border-right: 1px solid rgba(255, 255, 255, 0.1);
+            box-shadow: 2px 0 10px rgba(0, 0, 0, 0.3);
+            overflow-y: auto;
+        }
+
+        .sidebar-header {
+            padding: 30px 20px;
+            border-bottom: 2px solid rgba(255, 255, 255, 0.1);
+            text-align: center;
+        }
+
+        .sidebar-header .brand {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            margin-bottom: 5px;
+        }
+
+        .sidebar-header .brand-icon {
+            font-size: 32px;
+            color: #667eea;
+        }
+
+        .sidebar-header h4 {
+            font-size: 24px;
+            font-weight: 700;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin: 0;
+        }
+
+        .sidebar-header p {
+            font-size: 12px;
+            color: #cbd5e1;
+            margin: 5px 0 0 0;
+        }
+
+        .sidebar-menu {
+            padding: 25px 0;
+            flex: 1;
+        }
+
+        .nav-link {
+            color: #cbd5e1;
+            font-weight: 500;
+            padding: 14px 20px;
+            margin: 5px 10px;
+            border-radius: 10px;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            position: relative;
+        }
+
+        .nav-link:hover {
+            background-color: rgba(102, 126, 234, 0.15);
+            color: #fff;
+            transform: translateX(5px);
+        }
+
+        .nav-link.active {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: #fff;
+            font-weight: 600;
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        .nav-link i {
+            font-size: 18px;
+            width: 20px;
+        }
+
+        .main-content {
+            margin-left: 280px;
+            padding: 40px 30px;
+            min-height: 100vh;
+        }
+
+        .top-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 40px;
+        }
+
+        .top-bar h1 {
+            font-size: 32px;
+            font-weight: 700;
+            color: #0f172a;
+            margin: 0;
+        }
+
+        .user-greeting {
+            background: white;
+            padding: 12px 24px;
+            border-radius: 12px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-weight: 500;
+            color: #333;
+        }
+
+        .user-greeting i {
+            font-size: 24px;
+            color: #667eea;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 25px;
+            margin-bottom: 40px;
+        }
+
+        .stat-card {
+            background: white;
+            border-radius: 15px;
+            padding: 30px;
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.08);
+            transition: all 0.3s ease;
+            border: none;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .stat-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 5px;
+            background: linear-gradient(90deg, var(--card-gradient-1), var(--card-gradient-2));
+        }
+
+        .stat-card.blue {
+            --card-gradient-1: #667eea;
+            --card-gradient-2: #764ba2;
+        }
+
+        .stat-card.green {
+            --card-gradient-1: #10b981;
+            --card-gradient-2: #059669;
+        }
+
+        .stat-card.orange {
+            --card-gradient-1: #f59e0b;
+            --card-gradient-2: #d97706;
+        }
+
+        .stat-card:hover {
+            transform: translateY(-8px);
+            box-shadow: 0 12px 35px rgba(0, 0, 0, 0.15);
+        }
+
+        .stat-content {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+        }
+
+        .stat-info h6 {
+            color: #999;
+            font-size: 13px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 12px;
+        }
+
+        .stat-info h3 {
+            font-size: 32px;
+            font-weight: 700;
+            color: #0f172a;
+            margin: 0;
+        }
+
+        .stat-icon {
+            font-size: 48px;
+            opacity: 0.2;
+        }
+
+        .stat-card.blue .stat-icon {
+            color: #667eea;
+        }
+
+        .stat-card.green .stat-icon {
+            color: #10b981;
+        }
+
+        .stat-card.orange .stat-icon {
+            color: #f59e0b;
+        }
+
+        .recent-bookings {
+            background: white;
+            border-radius: 15px;
+            padding: 30px;
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.08);
+        }
+
+        .recent-bookings h5 {
+            font-size: 20px;
+            font-weight: 700;
+            color: #0f172a;
+            margin-bottom: 25px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .recent-bookings h5 i {
+            color: #667eea;
+        }
+
+        .table {
+            margin-bottom: 0;
+        }
+
+        .table thead th {
+            background: #f8f9fa;
+            color: #666;
+            font-weight: 600;
+            border: none;
+            padding: 16px;
+            font-size: 13px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .table tbody td {
+            padding: 16px;
+            border-bottom: 1px solid #f0f0f0;
+            color: #333;
+            font-weight: 500;
+        }
+
+        .table tbody tr:hover {
+            background-color: #f8f9ff;
+        }
+
+        .badge {
+            padding: 8px 12px;
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .badge-success {
+            background: #d1fae5;
+            color: #065f46;
+        }
+
+        .badge-pending {
+            background: #fef3c7;
+            color: #92400e;
+        }
+
+        .ticket-id {
+            color: #667eea;
+            font-weight: 700;
+        }
+
+        @media (max-width: 768px) {
+            .sidebar {
+                width: 200px;
+            }
+
+            .main-content {
+                margin-left: 200px;
+                padding: 20px;
+            }
+
+            .top-bar {
+                flex-direction: column;
+                gap: 15px;
+                align-items: flex-start;
+            }
+
+            .user-greeting {
+                width: 100%;
+                justify-content: flex-start;
+            }
+
+            .stats-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+
+<div class="d-flex">
+    <div class="sidebar d-flex flex-column">
+        <div class="sidebar-header">
+            <div class="brand">
+                <i class="bi bi-film brand-icon"></i>
+            </div>
+            <h4>FILMGO</h4>
+            <p>Quản Trị Admin</p>
         </div>
-        <!-- 4 Stat Cards Grid -->
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-gutter">
-            <!-- Card 1 -->
-            <div class="bg-surface-container-lowest rounded-lg p-stack-lg border border-outline-variant shadow-ambient-sm relative overflow-hidden group hover:-translate-y-1 transition-transform duration-300">
-                <div class="flex justify-between items-start mb-4">
-                    <div>
-                        <p class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider mb-1">Doanh Thu Hôm Nay</p>
-                        <h3 class="font-headline-md text-headline-md text-on-surface">124.5M ₫</h3>
-                    </div>
-                    <div class="w-10 h-10 rounded-lg bg-primary-fixed flex items-center justify-center">
-                        <span class="material-symbols-outlined text-primary" style="font-variation-settings: 'FILL' 1;">payments</span>
-                    </div>
+
+        <div class="sidebar-menu">
+            <ul class="nav nav-pills flex-column gap-2 ps-0">
+                <li class="nav-item">
+                    <a href="{{ route('admin.dashboard') }}" class="nav-link active">
+                        <i class="bi bi-speedometer2"></i>
+                        <span>Dashboard</span>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="#" class="nav-link">
+                        <i class="bi bi-film"></i>
+                        <span>Quản lý phim</span>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="#" class="nav-link">
+                        <i class="bi bi-tags"></i>
+                        <span>Quản lý danh mục</span>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="#" class="nav-link">
+                        <i class="bi bi-ticket-perforated"></i>
+                        <span>Quản lý vé đặt</span>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="#" class="nav-link">
+                        <i class="bi bi-people"></i>
+                        <span>Quản lý thành viên</span>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="#" class="nav-link">
+                        <i class="bi bi-building"></i>
+                        <span>Quản lý rạp</span>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="#" class="nav-link">
+                        <i class="bi bi-bar-chart"></i>
+                        <span>Báo cáo thống kê</span>
+                    </a>
+                </li>
+            </ul>
+        </div>
+
+        </div>
+
+    <div class="main-content flex-grow-1">
+        <div class="top-bar">
+            <h1>Tổng Quan Hệ Thống</h1>
+            <div style="display: flex; gap: 15px; align-items: center;">
+                <div class="user-greeting">
+                    <i class="bi bi-person-circle"></i>
+                    <span>Xin chào, Admin!</span>
                 </div>
-                <div class="flex items-center gap-2">
-                    <span class="flex items-center text-primary font-label-sm text-label-sm">
-                        <span class="material-symbols-outlined" style="font-size: 16px;">trending_up</span> +12.5%
-                    </span>
-                    <span class="font-body-md text-body-md text-on-surface-variant text-xs">so với hôm qua</span>
-                </div>
-                <!-- Sparkline -->
-                <div class="absolute bottom-0 left-0 w-full h-12 opacity-30">
-                    <svg class="w-full h-full stroke-primary fill-none" preserveAspectRatio="none" stroke-width="2" viewBox="0 0 100 30">
-                        <path d="M0,25 L10,20 L20,28 L30,15 L40,18 L50,8 L60,12 L70,5 L80,10 L90,2 L100,5"></path>
-                    </svg>
+                <form action="{{ route('admin.logout') }}" method="POST" style="margin: 0;">
+                    @csrf
+                    <button type="submit" style="background: linear-gradient(135deg, #f43f5e 0%, #e11d48 100%); border: none; color: white; padding: 10px 20px; border-radius: 10px; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 8px; box-shadow: 0 4px 15px rgba(244, 63, 94, 0.3); transition: all 0.3s ease;">
+                        <i class="bi bi-box-arrow-right"></i>
+                        Đăng Xuất
+                    </button>
+                </form>
+            </div>
+        </div>
+
+        <div class="stats-grid">
+            <div class="stat-card blue">
+                <div class="stat-content">
+                    <div class="stat-info">
+                        <h6>Tổng Số Phim</h6>
+                        <h3>124</h3>
+                    </div>
+                    <i class="bi bi-film stat-icon"></i>
                 </div>
             </div>
-            <!-- Card 2 -->
-            <div class="bg-surface-container-lowest rounded-lg p-stack-lg border border-outline-variant shadow-ambient-sm relative overflow-hidden group hover:-translate-y-1 transition-transform duration-300">
-                <div class="flex justify-between items-start mb-4">
-                    <div>
-                        <p class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider mb-1">Vé Đã Bán</p>
-                        <h3 class="font-headline-md text-headline-md text-on-surface">1,432</h3>
+
+            <div class="stat-card green">
+                <div class="stat-content">
+                    <div class="stat-info">
+                        <h6>Vé Đã Bán</h6>
+                        <h3>1,245</h3>
                     </div>
-                    <div class="w-10 h-10 rounded-lg bg-primary-fixed flex items-center justify-center">
-                        <span class="material-symbols-outlined text-primary" style="font-variation-settings: 'FILL' 1;">local_activity</span>
-                    </div>
-                </div>
-                <div class="flex items-center gap-2">
-                    <span class="flex items-center text-primary font-label-sm text-label-sm">
-                        <span class="material-symbols-outlined" style="font-size: 16px;">trending_up</span> +8.2%
-                    </span>
-                    <span class="font-body-md text-body-md text-on-surface-variant text-xs">so với hôm qua</span>
-                </div>
-                <!-- Sparkline -->
-                <div class="absolute bottom-0 left-0 w-full h-12 opacity-30">
-                    <svg class="w-full h-full stroke-primary fill-none" preserveAspectRatio="none" stroke-width="2" viewBox="0 0 100 30">
-                        <path d="M0,20 L15,22 L30,15 L45,18 L60,10 L75,12 L90,5 L100,8"></path>
-                    </svg>
+                    <i class="bi bi-ticket-perforated stat-icon"></i>
                 </div>
             </div>
-            <!-- Card 3 -->
-            <div class="bg-surface-container-lowest rounded-lg p-stack-lg border border-outline-variant shadow-ambient-sm relative overflow-hidden group hover:-translate-y-1 transition-transform duration-300">
-                <div class="flex justify-between items-start mb-4">
-                    <div>
-                        <p class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider mb-1">Phim Đang Chiếu</p>
-                        <h3 class="font-headline-md text-headline-md text-on-surface">24</h3>
+
+            <div class="stat-card orange">
+                <div class="stat-content">
+                    <div class="stat-info">
+                        <h6>Doanh Thu Tháng</h6>
+                        <h3>84.5M đ</h3>
                     </div>
-                    <div class="w-10 h-10 rounded-lg bg-primary-fixed flex items-center justify-center">
-                        <span class="material-symbols-outlined text-primary" style="font-variation-settings: 'FILL' 1;">movie_creation</span>
-                    </div>
-                </div>
-                <div class="flex items-center gap-2">
-                    <span class="flex items-center text-secondary font-label-sm text-label-sm">
-                        <span class="material-symbols-outlined" style="font-size: 16px;">trending_flat</span> 0%
-                    </span>
-                    <span class="font-body-md text-body-md text-on-surface-variant text-xs">trong tuần này</span>
-                </div>
-                <!-- Sparkline -->
-                <div class="absolute bottom-0 left-0 w-full h-12 opacity-20">
-                    <svg class="w-full h-full stroke-secondary fill-none" preserveAspectRatio="none" stroke-width="2" viewBox="0 0 100 30">
-                        <path d="M0,15 L20,15 L40,15 L60,15 L80,15 L100,15"></path>
-                    </svg>
-                </div>
-            </div>
-            <!-- Card 4 -->
-            <div class="bg-surface-container-lowest rounded-lg p-stack-lg border border-outline-variant shadow-ambient-sm relative overflow-hidden group hover:-translate-y-1 transition-transform duration-300">
-                <div class="flex justify-between items-start mb-4">
-                    <div>
-                        <p class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider mb-1">Người Dùng Mới</p>
-                        <h3 class="font-headline-md text-headline-md text-on-surface">386</h3>
-                    </div>
-                    <div class="w-10 h-10 rounded-lg bg-primary-fixed flex items-center justify-center">
-                        <span class="material-symbols-outlined text-primary" style="font-variation-settings: 'FILL' 1;">person_add</span>
-                    </div>
-                </div>
-                <div class="flex items-center gap-2">
-                    <span class="flex items-center text-primary font-label-sm text-label-sm">
-                        <span class="material-symbols-outlined" style="font-size: 16px;">trending_up</span> +24.1%
-                    </span>
-                    <span class="font-body-md text-body-md text-on-surface-variant text-xs">so với tuần trước</span>
-                </div>
-                <!-- Sparkline -->
-                <div class="absolute bottom-0 left-0 w-full h-12 opacity-30">
-                    <svg class="w-full h-full stroke-primary fill-none" preserveAspectRatio="none" stroke-width="2" viewBox="0 0 100 30">
-                        <path d="M0,28 L15,25 L30,20 L45,15 L60,18 L75,8 L90,10 L100,2"></path>
-                    </svg>
+                    <i class="bi bi-currency-dollar stat-icon"></i>
                 </div>
             </div>
         </div>
-        <!-- Main Content Layout (Grid) -->
-        <div class="grid grid-cols-1 xl:grid-cols-3 gap-gutter">
-            <!-- Main Chart Area (Spans 2 columns) -->
-            <div class="xl:col-span-2 bg-surface-container-lowest rounded-lg border border-outline-variant shadow-ambient-sm p-stack-lg flex flex-col">
-                <div class="flex justify-between items-center mb-6">
-                    <h3 class="font-headline-sm text-headline-sm text-on-surface">Xu Hướng Doanh Thu</h3>
-                    <select class="bg-surface border border-outline-variant text-on-surface text-label-sm font-label-sm rounded-md px-3 py-1.5 focus:ring-primary focus:border-primary">
-                        <option>7 ngày qua</option>
-                        <option>30 ngày qua</option>
-                        <option>Năm nay</option>
-                    </select>
-                </div>
-                <!-- Simulated Area Chart -->
-                <div class="flex-1 min-h-[300px] relative w-full mt-4">
-                    <!-- Y-Axis Labels -->
-                    <div class="absolute left-0 top-0 bottom-8 w-12 flex flex-col justify-between text-label-sm text-on-surface-variant text-right pr-2">
-                        <span class="">150M</span>
-                        <span class="">100M</span>
-                        <span class="">50M</span>
-                        <span class="">0</span>
-                    </div>
-                    <!-- Chart Area -->
-                    <div class="absolute left-12 right-0 top-0 bottom-8 border-b border-l border-outline-variant">
-                        <!-- Grid Lines -->
-                        <div class="absolute w-full h-full flex flex-col justify-between">
-                            <div class="w-full border-t border-outline-variant opacity-30"></div>
-                            <div class="w-full border-t border-outline-variant opacity-30"></div>
-                            <div class="w-full border-t border-outline-variant opacity-30"></div>
-                            <div></div> <!-- Bottom line handled by container border -->
-                        </div>
-                        <!-- SVG Chart -->
-                        <svg class="w-full h-full" preserveAspectRatio="none" viewBox="0 0 1000 300">
-                            <defs>
-                                <linearGradient id="chartGrad" x1="0" x2="0" y1="0" y2="1">
-                                    <stop offset="0%" stop-color="#3366ff" stop-opacity="0.2"></stop>
-                                    <stop offset="100%" stop-color="#3366ff" stop-opacity="0"></stop>
-                                </linearGradient>
-                            </defs>
-                            <!-- Area Fill -->
-                            <path class="chart-gradient" d="M0,250 L100,220 L200,240 L300,180 L400,150 L500,190 L600,120 L700,140 L800,80 L900,100 L1000,40 L1000,300 L0,300 Z"></path>
-                            <!-- Line -->
-                            <path d="M0,250 L100,220 L200,240 L300,180 L400,150 L500,190 L600,120 L700,140 L800,80 L900,100 L1000,40" fill="none" stroke="#3366ff" stroke-linecap="round" stroke-linejoin="round" stroke-width="3"></path>
-                            <!-- Data Points -->
-                            <circle cx="600" cy="120" fill="#ffffff" r="4" stroke="#3366ff" stroke-width="2"></circle>
-                            <circle cx="800" cy="80" fill="#ffffff" r="4" stroke="#3366ff" stroke-width="2"></circle>
-                            <circle cx="1000" cy="40" fill="#ffffff" r="4" stroke="#3366ff" stroke-width="2"></circle>
-                        </svg>
-                    </div>
-                    <!-- X-Axis Labels -->
-                    <div class="absolute left-12 right-0 bottom-0 h-8 flex justify-between items-end text-label-sm text-on-surface-variant px-2">
-                        <span class="">T2</span>
-                        <span class="">T3</span>
-                        <span class="">T4</span>
-                        <span class="">T5</span>
-                        <span class="">T6</span>
-                        <span class="">T7</span>
-                        <span class="">CN</span>
-                    </div>
-                </div>
-            </div>
-        </div>
-        <!-- Recent Orders Table -->
-        <div class="bg-surface-container-lowest rounded-lg border border-outline-variant shadow-ambient-sm overflow-hidden">
-            <div class="p-stack-lg border-b border-outline-variant flex justify-between items-center bg-surface-container-lowest">
-                <h3 class="font-headline-sm text-headline-sm text-on-surface">Vé Đặt Gần Đây</h3>
-                <button class="text-primary font-label-md text-label-md hover:underline flex items-center gap-1">
-                    Xem tất cả <span class="material-symbols-outlined" style="font-size: 16px;">arrow_forward</span>
-                </button>
-            </div>
-            <div class="overflow-x-auto">
-                <table class="w-full text-left border-collapse">
+
+        <div class="recent-bookings">
+            <h5>
+                <i class="bi bi-clock-history"></i>
+                Lịch sử đặt vé gần đây
+            </h5>
+            <div class="table-responsive">
+                <table class="table table-hover align-middle">
                     <thead>
-                        <tr class="bg-surface-container font-label-md text-label-md text-on-surface-variant">
-                            <th class="py-3 px-6 font-medium whitespace-nowrap">Mã Đơn</th>
-                            <th class="py-3 px-6 font-medium whitespace-nowrap">Khách Hàng</th>
-                            <th class="py-3 px-6 font-medium">Tên Phim</th>
-                            <th class="py-3 px-6 font-medium whitespace-nowrap">Suất Chiếu</th>
-                            <th class="py-3 px-6 font-medium whitespace-nowrap text-right">Trạng Thái</th>
+                        <tr>
+                            <th>Mã Vé</th>
+                            <th>Khách Hàng</th>
+                            <th>Tên Phim</th>
+                            <th>Thời Gian</th>
+                            <th>Trạng Thái</th>
                         </tr>
                     </thead>
-                    <tbody class="font-body-md text-body-md text-on-surface divide-y divide-outline-variant">
-                        <tr class="hover:bg-surface-container-low transition-colors duration-150">
-                            <td class="py-4 px-6 font-medium text-primary">#ORD-8923</td>
-                            <td class="py-4 px-6">Nguyễn Văn An</td>
-                            <td class="py-4 px-6 truncate max-w-[200px]">Dune: Hành Tinh Cát - Phần 2</td>
-                            <td class="py-4 px-6 text-on-surface-variant">19:30 - Rạp 1</td>
-                            <td class="py-4 px-6 text-right">
-                                <span class="inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-semibold tracking-wide bg-primary-container text-primary-fixed-dim border border-primary-fixed-dim/20">
-                                    Đã thanh toán
-                                </span>
-                            </td>
+                    <tbody>
+                        <tr>
+                            <td><span class="ticket-id">#FG-8594</span></td>
+                            <td>Nguyễn Văn A</td>
+                            <td>Avatar: Dòng Chảy Của Nước</td>
+                            <td>14:20 - Hôm nay</td>
+                            <td><span class="badge badge-success">Thành công</span></td>
                         </tr>
-                        <tr class="hover:bg-surface-container-low transition-colors duration-150">
-                            <td class="py-4 px-6 font-medium text-primary">#ORD-8924</td>
-                            <td class="py-4 px-6">Trần Thị Bích</td>
-                            <td class="py-4 px-6 truncate max-w-[200px]">Kung Fu Panda 4</td>
-                            <td class="py-4 px-6 text-on-surface-variant">20:15 - Rạp 3</td>
-                            <td class="py-4 px-6 text-right">
-                                <span class="inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-semibold tracking-wide bg-surface-variant text-on-surface-variant border border-outline-variant">
-                                    Chờ
-                                </span>
-                            </td>
+                        <tr>
+                            <td><span class="ticket-id">#FG-8593</span></td>
+                            <td>Trần Thị B</td>
+                            <td>Conan: Tàu Ngầm Sắt Màu Đen</td>
+                            <td>12:05 - Hôm nay</td>
+                            <td><span class="badge badge-success">Thành công</span></td>
                         </tr>
-                        <tr class="hover:bg-surface-container-low transition-colors duration-150">
-                            <td class="py-4 px-6 font-medium text-primary">#ORD-8925</td>
-                            <td class="py-4 px-6">Lê Hoàng Nam</td>
-                            <td class="py-4 px-6 truncate max-w-[200px]">Mai</td>
-                            <td class="py-4 px-6 text-on-surface-variant">18:00 - Rạp 2</td>
-                            <td class="py-4 px-6 text-right">
-                                <span class="inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-semibold tracking-wide bg-primary-container text-primary-fixed-dim border border-primary-fixed-dim/20">
-                                    Đã thanh toán
-                                </span>
-                            </td>
-                        </tr>
-                        <tr class="hover:bg-surface-container-low transition-colors duration-150">
-                            <td class="py-4 px-6 font-medium text-primary">#ORD-8926</td>
-                            <td class="py-4 px-6">Phạm Tuấn Anh</td>
-                            <td class="py-4 px-6 truncate max-w-[200px]">Godzilla x Kong: Đế Chế Mới</td>
-                            <td class="py-4 px-6 text-on-surface-variant">21:00 - Rạp 1</td>
-                            <td class="py-4 px-6 text-right">
-                                <span class="inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-semibold tracking-wide bg-primary-container text-primary-fixed-dim border border-primary-fixed-dim/20">
-                                    Đã thanh toán
-                                </span>
-                            </td>
-                        </tr>
-                        <tr class="hover:bg-surface-container-low transition-colors duration-150">
-                            <td class="py-4 px-6 font-medium text-primary">#ORD-8927</td>
-                            <td class="py-4 px-6">Vũ Minh Tâm</td>
-                            <td class="py-4 px-6 truncate max-w-[200px]">Dune: Hành Tinh Cát - Phần 2</td>
-                            <td class="py-4 px-6 text-on-surface-variant">22:15 - Rạp 4</td>
-                            <td class="py-4 px-6 text-right">
-                                <span class="inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-semibold tracking-wide bg-surface-variant text-on-surface-variant border border-outline-variant">
-                                    Chờ
-                                </span>
-                            </td>
+                        <tr>
+                            <td><span class="ticket-id">#FG-8592</span></td>
+                            <td>Lê Văn C</td>
+                            <td>Oppenheimer</td>
+                            <td>09:15 - Hôm nay</td>
+                            <td><span class="badge badge-pending">Chờ thanh toán</span></td>
                         </tr>
                     </tbody>
                 </table>
             </div>
         </div>
     </div>
-</main>
-@endsection
+</div>
+
+</body>
+</html>
