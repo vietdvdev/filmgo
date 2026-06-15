@@ -2,18 +2,15 @@
 
 namespace App\Http\Controllers\Admin;
 
-use App\Http\Controllers\Controller;
-use Illuminate\Contracts\View\View;
+// Kế thừa trực tiếp từ Class Routing gốc của Laravel để tránh lỗi thiếu file Controller.php
+use Illuminate\Routing\Controller as BaseController;
+use Illuminate\Http\Request;
 
-class DashboardController extends Controller
+class DashboardController extends BaseController
 {
-    /**
-     * Display the admin dashboard.
-     *
-     * @return View
-     */
-    public function index(): View
+    public function index()
     {
+        // Trả về giao diện trang chủ Admin của nhóm
         return view('admin.dashboard');
     }
 }
