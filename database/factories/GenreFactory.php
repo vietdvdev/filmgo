@@ -1,0 +1,25 @@
+<?php
+
+namespace Database\Factories;
+
+use App\Models\Genre;
+use Illuminate\Database\Eloquent\Factories\Factory;
+
+/**
+ * @extends Factory<Genre>
+ */
+class GenreFactory extends Factory
+{
+    /**
+     * Define the model's default state.
+     *
+     * @return array<string, mixed>
+     */
+    public function definition(): array
+    {
+        return [
+            'name' => fake()->unique()->randomElement(['Hành động', 'Kinh dị', 'Tình cảm', 'Hài hước', 'Viễn tưởng', 'Hoạt hình', 'Tâm lý', 'Phiêu lưu']),
+            'description' => fake()->sentence(),
+        ];
+    }
+}

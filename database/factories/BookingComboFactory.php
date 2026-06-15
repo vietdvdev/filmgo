@@ -1,0 +1,29 @@
+<?php
+
+namespace Database\Factories;
+
+use App\Models\Booking;
+use App\Models\BookingCombo;
+use App\Models\Combo;
+use Illuminate\Database\Eloquent\Factories\Factory;
+
+/**
+ * @extends Factory<BookingCombo>
+ */
+class BookingComboFactory extends Factory
+{
+    /**
+     * Define the model's default state.
+     *
+     * @return array<string, mixed>
+     */
+    public function definition(): array
+    {
+        return [
+            'booking_id' => Booking::factory(),
+            'combo_id' => Combo::factory(),
+            'quantity' => 1,
+            'subtotal' => 75000,
+        ];
+    }
+}
