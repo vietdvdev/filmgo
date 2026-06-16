@@ -112,11 +112,11 @@
                             </div>
                              <div class="flex flex-wrap gap-2">
                                 @foreach($genres as $genre)
-                                    <label class="cursor-pointer inline-flex items-center gap-1.5 px-4.5 py-2 border border-outline-variant rounded-full text-body-md text-on-surface-variant hover:bg-surface-container-low has-[:checked]:border-primary has-[:checked]:bg-primary-container/20 has-[:checked]:text-primary transition-all duration-200 select-none">
-                                        <input type="checkbox" name="genres[]" value="{{ $genre->id }}" class="sr-only peer"
+                                    <label class="cursor-pointer inline-flex items-center gap-2 px-3.5 py-2 border border-outline-variant rounded-full text-body-md text-on-surface-variant hover:bg-surface-container-low has-[:checked]:border-primary has-[:checked]:bg-primary-container/10 has-[:checked]:text-primary transition-all duration-200 select-none">
+                                        <input type="checkbox" name="genres[]" value="{{ $genre->id }}" 
+                                            class="w-4 h-4 rounded text-primary focus:ring-primary border-outline-variant"
                                             {{ in_array($genre->id, old('genres', [])) ? 'checked' : '' }}>
-                                        <span class="material-symbols-outlined text-sm peer-checked:inline hidden">done</span>
-                                        {{ $genre->name }}
+                                        <span>{{ $genre->name }}</span>
                                     </label>
                                 @endforeach
                             </div>
