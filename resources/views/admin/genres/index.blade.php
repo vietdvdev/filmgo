@@ -88,13 +88,11 @@
                                             <a href="{{ route('admin.genres.edit', $genre) }}" class="inline-flex items-center gap-1.5 text-xs font-bold px-3 py-2 rounded-lg bg-blue-50 text-blue-600 hover:bg-blue-600 hover:text-white hover:shadow-sm transition-all duration-200 whitespace-nowrap">
                                                 <span class="material-symbols-outlined" style="font-size: 15px;">edit</span> Sửa
                                             </a>
-                                            <form action="{{ route('admin.genres.destroy', $genre) }}" method="POST" class="inline-block align-middle"
-                                                  onsubmit="return confirm('Bạn có chắc muốn xóa thể loại «{{ $genre->name }}»?')">
-                                                @csrf @method('DELETE')
-                                                <button type="submit" class="inline-flex items-center gap-1.5 text-xs font-bold px-3 py-2 rounded-lg bg-red-50 text-red-600 hover:bg-red-600 hover:text-white hover:shadow-sm transition-all duration-200 whitespace-nowrap">
-                                                    <span class="material-symbols-outlined" style="font-size: 15px;">delete</span> Xóa
-                                                </button>
-                                            </form>
+                                            <button type="button" 
+                                                    onclick="openDeleteModal('{{ route('admin.genres.destroy', $genre) }}', '{{ addslashes($genre->name) }}')"
+                                                    class="inline-flex items-center gap-1.5 text-xs font-bold px-3 py-2 rounded-lg bg-red-50 text-red-600 hover:bg-red-600 hover:text-white hover:shadow-sm transition-all duration-200 whitespace-nowrap">
+                                                <span class="material-symbols-outlined" style="font-size: 15px;">delete</span> Xóa
+                                            </button>
                                         </div>
                                     </td>
                                 </tr>
@@ -116,4 +114,75 @@
         </div>
     </div>
 </main>
+
+<!-- Custom Delete Confirmation Modal -->
+<div id="delete-confirm-modal" class="fixed inset-0 z-50 flex items-center justify-center hidden">
+    <!-- Backdrop -->
+    <div class="absolute inset-0 bg-black/60 backdrop-blur-sm transition-opacity duration-300"></div>
+    
+    <!-- Modal Content -->
+    <div class="relative bg-surface-container-lowest border border-outline-variant rounded-xl shadow-ambient-lg max-w-md w-full mx-4 p-6 transform scale-95 opacity-0 transition-all duration-300 ease-out" id="delete-modal-content">
+        <div class="flex flex-col items-center text-center space-y-4">
+            <!-- Icon -->
+            <div class="w-16 h-16 rounded-full bg-red-50 flex items-center justify-center border border-red-200 text-red-600">
+                <span class="material-symbols-outlined text-4xl">warning</span>
+            </div>
+            
+            <!-- Title & Description -->
+            <div>
+                <h3 class="font-headline-sm text-headline-sm text-on-surface font-bold">Xác Nhận Xóa Thể Loại</h3>
+                <p class="font-body-md text-body-md text-on-surface-variant mt-2 leading-relaxed">
+                    Bạn có chắc chắn muốn xóa thể loại <strong id="delete-genre-name" class="text-red-600 font-semibold"></strong>?
+                </p>
+                <p class="text-xs text-red-500/80 mt-2 italic bg-red-50/50 p-2 rounded border border-red-100">
+                    Lưu ý: Hành động này có thể ảnh hưởng đến việc phân loại các phim đang sử dụng thể loại này.
+                </p>
+            </div>
+            
+            <!-- Actions -->
+            <div class="flex gap-3 w-full mt-4">
+                <button type="button" onclick="closeDeleteModal()" class="flex-1 px-4 py-2.5 bg-surface-container-high text-on-surface font-label-md text-label-md rounded-lg hover:bg-surface-container-highest transition-colors">
+                    Hủy bỏ
+                </button>
+                <form id="delete-confirm-form" method="POST" class="flex-1">
+                    @csrf
+                    @method('DELETE')
+                    <button type="submit" class="w-full px-4 py-2.5 bg-red-600 text-white font-label-md text-label-md rounded-lg hover:bg-red-700 shadow-sm hover:shadow-md transition-all duration-200">
+                        Xác nhận xóa
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    function openDeleteModal(actionUrl, genreName) {
+        const modal = document.getElementById('delete-confirm-modal');
+        const content = document.getElementById('delete-modal-content');
+        const form = document.getElementById('delete-confirm-form');
+        const nameSpan = document.getElementById('delete-genre-name');
+        
+        form.action = actionUrl;
+        nameSpan.textContent = `«${genreName}»`;
+        
+        modal.classList.remove('hidden');
+        setTimeout(() => {
+            content.classList.remove('scale-95', 'opacity-0');
+            content.classList.add('scale-100', 'opacity-100');
+        }, 10);
+    }
+
+    function closeDeleteModal() {
+        const modal = document.getElementById('delete-confirm-modal');
+        const content = document.getElementById('delete-modal-content');
+        
+        content.classList.remove('scale-100', 'opacity-100');
+        content.classList.add('scale-95', 'opacity-0');
+        
+        setTimeout(() => {
+            modal.classList.add('hidden');
+        }, 300);
+    }
+</script>
 @endsection

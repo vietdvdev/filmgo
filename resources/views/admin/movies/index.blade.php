@@ -31,21 +31,42 @@
         @endif
 
         <div class="bg-surface-container-lowest rounded-lg border border-outline-variant shadow-ambient-sm overflow-hidden p-stack-lg space-y-4">
+            <!-- Navigation Tabs -->
+            <div class="flex border-b border-outline-variant/30">
+                <a href="{{ route('admin.movies.index', array_merge(request()->query(), ['tab' => 'active', 'page' => 1])) }}" 
+                   class="px-5 py-3 border-b-2 font-label-md text-label-md transition-all duration-200 flex items-center gap-2 {{ $tabFilter === 'active' ? 'border-primary text-primary font-semibold' : 'border-transparent text-on-surface-variant hover:text-on-surface' }}">
+                    <span class="material-symbols-outlined" style="font-size: 18px;">movie</span>
+                    Đang Hoạt Động
+                    <span class="ml-1 px-2 py-0.5 text-xs rounded-full {{ $tabFilter === 'active' ? 'bg-primary/10 text-primary' : 'bg-surface-container-high text-on-surface-variant' }}">
+                        {{ $activeCount }}
+                    </span>
+                </a>
+                <a href="{{ route('admin.movies.index', array_merge(request()->query(), ['tab' => 'trash', 'page' => 1])) }}" 
+                   class="px-5 py-3 border-b-2 font-label-md text-label-md transition-all duration-200 flex items-center gap-2 {{ $tabFilter === 'trash' ? 'border-primary text-primary font-semibold' : 'border-transparent text-on-surface-variant hover:text-on-surface' }}">
+                    <span class="material-symbols-outlined" style="font-size: 18px;">delete</span>
+                    Thùng Rác
+                    <span class="ml-1 px-2 py-0.5 text-xs rounded-full {{ $tabFilter === 'trash' ? 'bg-primary/10 text-primary' : 'bg-surface-container-high text-on-surface-variant' }}">
+                        {{ $trashCount }}
+                    </span>
+                </a>
+            </div>
+
             <!-- Filter Bar -->
-            <form method="GET" action="{{ route('admin.movies.index') }}" class="flex flex-wrap gap-3 items-center">
+            <form method="GET" action="{{ route('admin.movies.index') }}" class="flex flex-wrap gap-3 items-center pt-2">
+                <input type="hidden" name="tab" value="{{ $tabFilter }}">
                 <div class="relative w-64">
                     <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant" style="font-size: 20px;">search</span>
                     <input class="w-full pl-10 pr-4 py-2 bg-surface-container-lowest border border-outline-variant rounded-lg font-body-md text-body-md text-on-surface focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-colors" type="text" name="search" value="{{ request('search') }}" placeholder="Tìm tên phim...">
                 </div>
 
-                <select name="status" class="bg-surface border border-outline-variant text-on-surface text-label-sm font-label-sm rounded-lg px-3 py-2 focus:ring-primary focus:border-primary">
+                <select name="status" class="w-48 pr-8 bg-surface border border-outline-variant text-on-surface text-label-sm font-label-sm rounded-lg px-3 py-2 focus:ring-primary focus:border-primary">
                     <option value="">Tất cả trạng thái</option>
                     <option value="showing"  {{ request('status') == 'showing'  ? 'selected' : '' }}>Đang chiếu</option>
                     <option value="upcoming" {{ request('status') == 'upcoming' ? 'selected' : '' }}>Sắp chiếu</option>
                     <option value="stopped"  {{ request('status') == 'stopped'  ? 'selected' : '' }}>Ngừng chiếu</option>
                 </select>
 
-                <select name="genre" class="bg-surface border border-outline-variant text-on-surface text-label-sm font-label-sm rounded-lg px-3 py-2 focus:ring-primary focus:border-primary">
+                <select name="genre" class="w-48 pr-8 bg-surface border border-outline-variant text-on-surface text-label-sm font-label-sm rounded-lg px-3 py-2 focus:ring-primary focus:border-primary">
                     <option value="">Tất cả thể loại</option>
                     @foreach($genres as $g)
                         <option value="{{ $g->id }}" {{ request('genre') == $g->id ? 'selected' : '' }}>{{ $g->name }}</option>
@@ -57,7 +78,7 @@
                 </button>
 
                 @if(request()->hasAny(['search','status','genre']))
-                    <a href="{{ route('admin.movies.index') }}" class="bg-surface-container-high text-on-surface font-label-md text-label-md px-4 py-2 rounded-lg hover:bg-surface-container-highest transition-colors flex items-center justify-center">
+                    <a href="{{ route('admin.movies.index', ['tab' => $tabFilter]) }}" class="bg-surface-container-high text-on-surface font-label-md text-label-md px-4 py-2 rounded-lg hover:bg-surface-container-highest transition-colors flex items-center justify-center">
                         Xóa lọc
                     </a>
                 @endif
@@ -166,13 +187,11 @@
                                                 <a href="{{ route('admin.movies.edit', $movie) }}" class="inline-flex items-center gap-1.5 text-xs font-bold px-3 py-2 rounded-lg bg-blue-50 text-blue-600 hover:bg-blue-600 hover:text-white hover:shadow-sm transition-all duration-200 whitespace-nowrap">
                                                     <span class="material-symbols-outlined" style="font-size: 15px;">edit</span> Sửa
                                                 </a>
-                                                <form action="{{ route('admin.movies.destroy', $movie) }}" method="POST" class="inline-block align-middle"
-                                                      onsubmit="return confirm('Xóa phim «{{ addslashes($movie->title) }}»?')">
-                                                    @csrf @method('DELETE')
-                                                    <button type="submit" class="inline-flex items-center gap-1.5 text-xs font-bold px-3 py-2 rounded-lg bg-red-50 text-red-600 hover:bg-red-600 hover:text-white hover:shadow-sm transition-all duration-200 whitespace-nowrap">
-                                                        <span class="material-symbols-outlined" style="font-size: 15px;">delete</span> Xóa
-                                                    </button>
-                                                </form>
+                                                <button type="button" 
+                                                        onclick="openDeleteModal('{{ route('admin.movies.destroy', $movie) }}', '{{ addslashes($movie->title) }}')"
+                                                        class="inline-flex items-center gap-1.5 text-xs font-bold px-3 py-2 rounded-lg bg-red-50 text-red-600 hover:bg-red-600 hover:text-white hover:shadow-sm transition-all duration-200 whitespace-nowrap">
+                                                    <span class="material-symbols-outlined" style="font-size: 15px;">delete</span> Xóa
+                                                </button>
                                             @endif
                                         </div>
                                     </td>
@@ -192,4 +211,75 @@
         </div>
     </div>
 </main>
+
+<!-- Custom Delete Confirmation Modal -->
+<div id="delete-confirm-modal" class="fixed inset-0 z-50 flex items-center justify-center hidden">
+    <!-- Backdrop -->
+    <div class="absolute inset-0 bg-black/60 backdrop-blur-sm transition-opacity duration-300"></div>
+    
+    <!-- Modal Content -->
+    <div class="relative bg-surface-container-lowest border border-outline-variant rounded-xl shadow-ambient-lg max-w-md w-full mx-4 p-6 transform scale-95 opacity-0 transition-all duration-300 ease-out" id="delete-modal-content">
+        <div class="flex flex-col items-center text-center space-y-4">
+            <!-- Icon -->
+            <div class="w-16 h-16 rounded-full bg-red-50 flex items-center justify-center border border-red-200 text-red-600">
+                <span class="material-symbols-outlined text-4xl">warning</span>
+            </div>
+            
+            <!-- Title & Description -->
+            <div>
+                <h3 class="font-headline-sm text-headline-sm text-on-surface font-bold">Xác Nhận Xóa Phim</h3>
+                <p class="font-body-md text-body-md text-on-surface-variant mt-2 leading-relaxed">
+                    Bạn có chắc chắn muốn xóa bộ phim <strong id="delete-movie-title" class="text-red-600 font-semibold"></strong>?
+                </p>
+                <p class="text-xs text-red-500/80 mt-2 italic bg-red-50/50 p-2 rounded border border-red-100">
+                    Lưu ý: Phim sẽ được chuyển vào Thùng rác. Bạn có thể khôi phục lại sau.
+                </p>
+            </div>
+            
+            <!-- Actions -->
+            <div class="flex gap-3 w-full mt-4">
+                <button type="button" onclick="closeDeleteModal()" class="flex-1 px-4 py-2.5 bg-surface-container-high text-on-surface font-label-md text-label-md rounded-lg hover:bg-surface-container-highest transition-colors">
+                    Hủy bỏ
+                </button>
+                <form id="delete-confirm-form" method="POST" class="flex-1">
+                    @csrf
+                    @method('DELETE')
+                    <button type="submit" class="w-full px-4 py-2.5 bg-red-600 text-white font-label-md text-label-md rounded-lg hover:bg-red-700 shadow-sm hover:shadow-md transition-all duration-200">
+                        Xác nhận xóa
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    function openDeleteModal(actionUrl, movieTitle) {
+        const modal = document.getElementById('delete-confirm-modal');
+        const content = document.getElementById('delete-modal-content');
+        const form = document.getElementById('delete-confirm-form');
+        const titleSpan = document.getElementById('delete-movie-title');
+        
+        form.action = actionUrl;
+        titleSpan.textContent = `«${movieTitle}»`;
+        
+        modal.classList.remove('hidden');
+        setTimeout(() => {
+            content.classList.remove('scale-95', 'opacity-0');
+            content.classList.add('scale-100', 'opacity-100');
+        }, 10);
+    }
+
+    function closeDeleteModal() {
+        const modal = document.getElementById('delete-confirm-modal');
+        const content = document.getElementById('delete-modal-content');
+        
+        content.classList.remove('scale-100', 'opacity-100');
+        content.classList.add('scale-95', 'opacity-0');
+        
+        setTimeout(() => {
+            modal.classList.add('hidden');
+        }, 300);
+    }
+</script>
 @endsection
