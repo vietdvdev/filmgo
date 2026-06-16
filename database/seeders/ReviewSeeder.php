@@ -32,11 +32,12 @@ class ReviewSeeder extends Seeder
 
         // Mỗi bộ phim có từ 2 đến 5 lượt đánh giá từ các người dùng ngẫu nhiên
         foreach ($movies as $movie) {
-            $reviewCount = rand(2, 5);
-            $randomUsers = $users->random($reviewCount);
+            $reviewCount = min(rand(2, 5), $users->count());
+            if ($reviewCount > 0) {
+                $randomUsers = $users->random($reviewCount);
 
-            foreach ($randomUsers as $user) {
-                // Sử dụng firstOrCreate để tránh trùng lặp UNIQUE (user_id, movie_id)
+                foreach ($randomUsers as $user) {
+                    // Sử dụng firstOrCreate để tránh trùng lặp UNIQUE (user_id, movie_id)
                 Review::firstOrCreate([
                     'user_id' => $user->id,
                     'movie_id' => $movie->id,
@@ -46,6 +47,7 @@ class ReviewSeeder extends Seeder
                     'status' => 'approved',
                     'created_at' => fake()->dateTimeBetween('-1 month', 'now'),
                 ]);
+            }
             }
         }
     }

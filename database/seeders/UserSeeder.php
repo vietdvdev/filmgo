@@ -25,5 +25,13 @@ class UserSeeder extends Seeder
         if ($adminRole && !$admin->roles()->where('role_id', $adminRole->id)->exists()) {
             $admin->roles()->attach($adminRole->id);
         }
+
+        // Tạo thêm 15 người dùng (khách hàng) để đảm bảo có đủ dữ liệu cho các tính năng khác (đánh giá, vé đặt...)
+        User::factory()->count(15)->create()->each(function ($user) {
+            $customerRole = Role::where('name', 'customer')->first();
+            if ($customerRole) {
+                $user->roles()->attach($customerRole->id);
+            }
+        });
     }
 }
