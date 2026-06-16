@@ -10,16 +10,22 @@
     </div>
     <!-- Navigation Tabs -->
     <nav class="flex-1 overflow-y-auto px-stack-sm flex flex-col gap-1">
-        <!-- Active Tab -->
-        <a class="flex items-center gap-3 px-4 py-3 rounded-lg bg-surface-container-low text-primary font-bold transition-colors duration-200" href="#">
-            <span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">dashboard</span>
+        <!-- Tổng Quan -->
+        <a class="flex items-center gap-3 px-4 py-3 rounded-lg transition-colors duration-200 {{ request()->routeIs('admin.dashboard') ? 'bg-surface-container-low text-primary font-bold' : 'text-on-surface-variant hover:bg-surface-container-low' }}" href="{{ route('admin.dashboard') }}">
+            <span class="material-symbols-outlined" style="font-variation-settings: 'FILL' {{ request()->routeIs('admin.dashboard') ? 1 : 0 }};">dashboard</span>
             <span class="font-label-md text-label-md">Tổng Quan</span>
         </a>
-        <!-- Inactive Tabs -->
-        <a class="flex items-center gap-3 px-4 py-3 rounded-lg text-on-surface-variant hover:bg-surface-container-low transition-colors duration-200" href="#">
-            <span class="material-symbols-outlined">movie</span>
+        <!-- Quản Lý Phim -->
+        <a class="flex items-center gap-3 px-4 py-3 rounded-lg transition-colors duration-200 {{ request()->routeIs('admin.movies.*') ? 'bg-surface-container-low text-primary font-bold' : 'text-on-surface-variant hover:bg-surface-container-low' }}" href="{{ route('admin.movies.index') }}">
+            <span class="material-symbols-outlined" style="font-variation-settings: 'FILL' {{ request()->routeIs('admin.movies.*') ? 1 : 0 }};">movie</span>
             <span class="font-label-md text-label-md">Quản Lý Phim</span>
         </a>
+        <!-- Quản Lý Thể Loại -->
+        <a class="flex items-center gap-3 px-4 py-3 rounded-lg transition-colors duration-200 {{ request()->routeIs('admin.genres.*') ? 'bg-surface-container-low text-primary font-bold' : 'text-on-surface-variant hover:bg-surface-container-low' }}" href="{{ route('admin.genres.index') }}">
+            <span class="material-symbols-outlined" style="font-variation-settings: 'FILL' {{ request()->routeIs('admin.genres.*') ? 1 : 0 }};">category</span>
+            <span class="font-label-md text-label-md">Quản Lý Thể Loại</span>
+        </a>
+        <!-- Inactive Tabs (các tính năng khác) -->
         <a class="flex items-center gap-3 px-4 py-3 rounded-lg text-on-surface-variant hover:bg-surface-container-low transition-colors duration-200" href="#">
             <span class="material-symbols-outlined">theater_comedy</span>
             <span class="font-label-md text-label-md">Quản Lý Rạp</span>

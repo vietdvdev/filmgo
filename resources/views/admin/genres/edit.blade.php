@@ -1,193 +1,110 @@
-<!DOCTYPE html>
-<html lang="vi">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sửa Thể Loại - FilmGo</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css" rel="stylesheet">
-    <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%); min-height: 100vh; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-attachment: fixed; }
-        .sidebar { min-height: 100vh; background: linear-gradient(180deg, #0f172a 0%, #1e293b 50%, #334155 100%); color: #fff; width: 280px; position: fixed; left: 0; top: 0; border-right: 1px solid rgba(255,255,255,0.1); box-shadow: 2px 0 10px rgba(0,0,0,0.3); overflow-y: auto; }
-        .sidebar-header { padding: 30px 20px; border-bottom: 2px solid rgba(255,255,255,0.1); text-align: center; }
-        .sidebar-header .brand { display: flex; align-items: center; justify-content: center; gap: 10px; margin-bottom: 5px; }
-        .sidebar-header .brand-icon { font-size: 32px; color: #667eea; }
-        .sidebar-header h4 { font-size: 24px; font-weight: 700; background: linear-gradient(135deg, #667eea, #764ba2); -webkit-background-clip: text; -webkit-text-fill-color: transparent; margin: 0; }
-        .sidebar-header p { font-size: 12px; color: #cbd5e1; margin: 5px 0 0 0; }
-        .sidebar-menu { padding: 25px 0; }
-        .nav-link { color: #cbd5e1; font-weight: 500; padding: 14px 20px; margin: 5px 10px; border-radius: 10px; transition: all 0.3s ease; display: flex; align-items: center; gap: 12px; }
-        .nav-link:hover { background-color: rgba(102,126,234,0.15); color: #fff; transform: translateX(5px); }
-        .nav-link.active { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: #fff; font-weight: 600; box-shadow: 0 4px 15px rgba(102,126,234,0.4); }
-        .nav-link i { font-size: 18px; width: 20px; }
-        .main-content { margin-left: 280px; padding: 40px 30px; min-height: 100vh; }
-        .page-header { margin-bottom: 30px; }
-        .page-header h1 { font-size: 28px; font-weight: 700; color: #0f172a; margin: 0; }
-        .breadcrumb-link { color: #667eea; text-decoration: none; font-size: 14px; }
-        .breadcrumb-link:hover { text-decoration: underline; }
-        .form-card { background: white; border-radius: 15px; padding: 35px; box-shadow: 0 8px 25px rgba(0,0,0,0.08); max-width: 680px; }
-        .form-label { font-weight: 600; color: #374151; font-size: 14px; margin-bottom: 6px; }
-        .form-control { border-radius: 10px; border: 1px solid #e2e8f0; padding: 11px 16px; font-size: 14px; transition: all 0.2s; }
-        .form-control:focus { border-color: #667eea; box-shadow: 0 0 0 3px rgba(102,126,234,0.12); }
-        .form-control.is-invalid { border-color: #dc2626; }
-        .invalid-feedback { font-size: 13px; color: #dc2626; }
-        .char-count { font-size: 12px; color: #94a3b8; text-align: right; margin-top: 4px; }
-        .info-badge { background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 10px; padding: 12px 16px; display: flex; align-items: center; gap: 10px; margin-bottom: 24px; font-size: 14px; color: #1e40af; }
-        .movies-badge { background: #dcfce7; color: #15803d; padding: 3px 10px; border-radius: 12px; font-weight: 700; font-size: 13px; }
-        .btn-submit { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border: none; color: white; padding: 12px 30px; border-radius: 10px; font-weight: 600; font-size: 15px; cursor: pointer; display: inline-flex; align-items: center; gap: 8px; box-shadow: 0 4px 15px rgba(102,126,234,0.3); transition: all 0.3s; }
-        .btn-submit:hover { opacity: 0.9; transform: translateY(-1px); }
-        .btn-cancel { background: #f1f5f9; color: #475569; padding: 12px 24px; border-radius: 10px; font-weight: 600; font-size: 15px; text-decoration: none; display: inline-flex; align-items: center; gap: 8px; transition: all 0.2s; border: 1px solid #e2e8f0; }
-        .btn-cancel:hover { background: #e2e8f0; color: #374151; }
-        .btn-danger-outline { background: #fff1f2; color: #e11d48; padding: 12px 22px; border-radius: 10px; font-weight: 600; font-size: 15px; border: 1px solid #fecdd3; display: inline-flex; align-items: center; gap: 8px; cursor: pointer; transition: all 0.2s; }
-        .btn-danger-outline:hover { background: #ffe4e6; }
-    </style>
-</head>
-<body>
-<div class="d-flex">
-    <!-- Sidebar -->
-    <div class="sidebar d-flex flex-column">
-        <div class="sidebar-header">
-            <div class="brand"><i class="bi bi-film brand-icon"></i></div>
-            <h4>FILMGO</h4>
-            <p>Quản Trị Admin</p>
-        </div>
-        <div class="sidebar-menu">
-            <ul class="nav nav-pills flex-column gap-2 ps-0">
-                <li class="nav-item">
-                    <a href="{{ route('admin.dashboard') }}" class="nav-link">
-                        <i class="bi bi-speedometer2"></i><span>Dashboard</span>
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a href="#" class="nav-link">
-                        <i class="bi bi-film"></i><span>Quản lý phim</span>
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a href="{{ route('admin.genres.index') }}" class="nav-link active">
-                        <i class="bi bi-tags"></i><span>Quản lý thể loại</span>
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a href="#" class="nav-link">
-                        <i class="bi bi-ticket-perforated"></i><span>Quản lý vé đặt</span>
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a href="#" class="nav-link">
-                        <i class="bi bi-people"></i><span>Quản lý thành viên</span>
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a href="#" class="nav-link">
-                        <i class="bi bi-building"></i><span>Quản lý rạp</span>
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a href="#" class="nav-link">
-                        <i class="bi bi-bar-chart"></i><span>Báo cáo thống kê</span>
-                    </a>
-                </li>
-            </ul>
-        </div>
-    </div>
+@extends('layouts.admin')
 
-    <!-- Main Content -->
-    <div class="main-content flex-grow-1">
-        <div class="page-header">
-            <div class="d-flex align-items-center gap-2 mb-2">
-                <a href="{{ route('admin.genres.index') }}" class="breadcrumb-link">
-                    <i class="bi bi-tags"></i> Quản Lý Thể Loại
+@section('title', 'Chỉnh Sửa Thể Loại - FilmGo')
+
+@section('content')
+<main class="flex-1 overflow-y-auto pt-16 bg-background">
+    <div class="p-margin-page max-w-container-max mx-auto space-y-stack-lg">
+        <!-- Page Header -->
+        <div class="space-y-2">
+            <div class="flex items-center gap-2 text-sm text-on-surface-variant">
+                <a href="{{ route('admin.genres.index') }}" class="hover:underline flex items-center gap-1">
+                    <span class="material-symbols-outlined" style="font-size: 16px;">category</span> Quản Lý Thể Loại
                 </a>
-                <i class="bi bi-chevron-right text-muted" style="font-size:12px;"></i>
-                <span style="font-size:14px; color:#94a3b8;">Chỉnh Sửa</span>
+                <span class="material-symbols-outlined" style="font-size: 14px;">chevron_right</span>
+                <span class="text-outline">Chỉnh Sửa</span>
             </div>
-            <h1><i class="bi bi-pencil-square me-2" style="color:#667eea;"></i>Chỉnh Sửa Thể Loại</h1>
+            <h2 class="font-headline-lg text-headline-lg text-on-surface">Chỉnh Sửa Thể Loại</h2>
         </div>
 
-        <div class="form-card">
-            <!-- Info -->
-            <div class="info-badge">
-                <i class="bi bi-info-circle-fill" style="font-size:18px;"></i>
-                <span>Đang chỉnh sửa: <strong>{{ $genre->name }}</strong> &nbsp;·&nbsp;
-                    <span class="movies-badge"><i class="bi bi-film"></i> {{ $genre->movies()->count() }} phim</span>
+        <div class="bg-surface-container-lowest rounded-lg border border-outline-variant shadow-ambient-sm p-stack-lg max-w-2xl space-y-6">
+            <!-- Info Badge -->
+            <div class="flex items-center gap-3 p-4 bg-primary-fixed text-on-primary-fixed rounded-lg border border-primary-fixed-dim/20">
+                <span class="material-symbols-outlined text-primary" style="font-variation-settings: 'FILL' 1;">info</span>
+                <span class="font-body-md text-body-md">
+                    Đang chỉnh sửa: <strong class="text-primary">{{ $genre->name }}</strong> &nbsp;·&nbsp;
+                    <span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold bg-secondary-container text-on-secondary-container">
+                        <span class="material-symbols-outlined" style="font-size: 14px;">movie</span>
+                        {{ $genre->movies()->count() }} phim liên kết
+                    </span>
                 </span>
             </div>
 
-            <form action="{{ route('admin.genres.update', $genre) }}" method="POST">
+            <form action="{{ route('admin.genres.update', $genre) }}" method="POST" class="space-y-6">
                 @csrf @method('PUT')
 
                 <!-- Tên thể loại -->
-                <div class="mb-4">
-                    <label for="name" class="form-label">
-                        Tên Thể Loại <span class="text-danger">*</span>
+                <div class="space-y-2">
+                    <label for="name" class="block font-label-md text-label-md text-on-surface">
+                        Tên Thể Loại <span class="text-error">*</span>
                     </label>
                     <input
                         type="text"
                         id="name"
                         name="name"
                         value="{{ old('name', $genre->name) }}"
-                        class="form-control @error('name') is-invalid @enderror"
+                        class="w-full px-4 py-2 bg-surface-container-lowest border border-outline-variant rounded-lg font-body-md text-body-md text-on-surface focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-colors @error('name') border-error @enderror"
                         placeholder="Tên thể loại..."
                         maxlength="100"
                         oninput="updateCharCount(this, 'nameCount', 100)"
                     >
-                    <div class="char-count"><span id="nameCount">{{ strlen(old('name', $genre->name)) }}</span>/100</div>
+                    <div class="flex justify-end text-xs text-on-surface-variant">
+                        <div><span id="nameCount">{{ strlen(old('name', $genre->name)) }}</span>/100</div>
+                    </div>
                     @error('name')
-                        <div class="invalid-feedback d-block">{{ $message }}</div>
+                        <p class="text-error font-body-md text-xs mt-1">{{ $message }}</p>
                     @enderror
                 </div>
 
                 <!-- Mô tả -->
-                <div class="mb-4">
-                    <label for="description" class="form-label">Mô Tả</label>
+                <div class="space-y-2">
+                    <label for="description" class="block font-label-md text-label-md text-on-surface">Mô Tả</label>
                     <textarea
                         id="description"
                         name="description"
                         rows="4"
-                        class="form-control @error('description') is-invalid @enderror"
+                        class="w-full px-4 py-2 bg-surface-container-lowest border border-outline-variant rounded-lg font-body-md text-body-md text-on-surface focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-colors @error('description') border-error @enderror"
                         placeholder="Mô tả ngắn về thể loại phim này..."
                     >{{ old('description', $genre->description) }}</textarea>
                     @error('description')
-                        <div class="invalid-feedback d-block">{{ $message }}</div>
+                        <p class="text-error font-body-md text-xs mt-1">{{ $message }}</p>
                     @enderror
                 </div>
 
-                <div class="d-flex gap-3 mt-4 flex-wrap">
-                    <button type="submit" class="btn-submit">
-                        <i class="bi bi-check-lg"></i> Cập Nhật
+                <div class="flex gap-3 pt-4 border-t border-outline-variant/30">
+                    <button type="submit" class="bg-primary text-on-primary font-label-md text-label-md px-5 py-2.5 rounded-lg hover:bg-primary-container transition-colors flex items-center gap-2">
+                        <span class="material-symbols-outlined" style="font-size: 18px;">save</span> Cập Nhật
                     </button>
-                    <a href="{{ route('admin.genres.index') }}" class="btn-cancel">
-                        <i class="bi bi-x-lg"></i> Hủy
+                    <a href="{{ route('admin.genres.index') }}" class="bg-surface-container-high text-on-surface font-label-md text-label-md px-5 py-2.5 rounded-lg hover:bg-surface-container-highest transition-colors flex items-center gap-2">
+                        <span class="material-symbols-outlined" style="font-size: 18px;">close</span> Hủy
                     </a>
                 </div>
             </form>
 
-            <!-- Xóa -->
-            @if($genre->movies()->count() === 0)
-                <hr class="my-4" style="border-color:#f1f5f9;">
-                <form action="{{ route('admin.genres.destroy', $genre) }}" method="POST"
-                      onsubmit="return confirm('Xóa thể loại «{{ $genre->name }}»? Hành động này không thể hoàn tác!')">
-                    @csrf @method('DELETE')
-                    <button type="submit" class="btn-danger-outline">
-                        <i class="bi bi-trash"></i> Xóa Thể Loại Này
-                    </button>
-                </form>
-            @else
-                <hr class="my-4" style="border-color:#f1f5f9;">
-                <p class="text-muted" style="font-size:13px;">
-                    <i class="bi bi-lock text-warning"></i>
-                    Không thể xóa thể loại đang có <strong>{{ $genre->movies()->count() }} phim</strong> liên kết.
-                </p>
-            @endif
+            <!-- Xóa nhanh nếu không có phim liên kết -->
+            <div class="pt-6 border-t border-outline-variant/30">
+                @if($genre->movies()->count() === 0)
+                    <form action="{{ route('admin.genres.destroy', $genre) }}" method="POST"
+                          onsubmit="return confirm('Xóa thể loại «{{ $genre->name }}»? Hành động này không thể hoàn tác!')">
+                        @csrf @method('DELETE')
+                        <button type="submit" class="bg-red-50 text-red-600 border border-red-200 hover:bg-red-100 transition-colors font-label-md text-label-md px-4 py-2.5 rounded-lg flex items-center gap-2">
+                            <span class="material-symbols-outlined" style="font-size: 18px;">trash</span> Xóa Thể Loại Này
+                        </button>
+                    </form>
+                @else
+                    <div class="flex items-center gap-2 text-xs text-on-surface-variant">
+                        <span class="material-symbols-outlined text-amber-500" style="font-size: 16px;">lock</span>
+                        <span>Không thể xóa thể loại đang có <strong>{{ $genre->movies()->count() }} phim</strong> liên kết.</span>
+                    </div>
+                @endif
+            </div>
         </div>
     </div>
-</div>
+</main>
 
 <script>
     function updateCharCount(input, countId, max) {
         document.getElementById(countId).textContent = input.value.length;
     }
 </script>
-</body>
-</html>
+@endsection
