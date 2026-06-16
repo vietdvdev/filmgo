@@ -346,15 +346,15 @@
                     </a>
                 </li>
                 <li class="nav-item">
-                    <a href="#" class="nav-link">
+                    <a href="{{ route('admin.movies.index') }}" class="nav-link">
                         <i class="bi bi-film"></i>
                         <span>Quản lý phim</span>
                     </a>
                 </li>
                 <li class="nav-item">
-                    <a href="#" class="nav-link">
+                    <a href="{{ route('admin.genres.index') }}" class="nav-link">
                         <i class="bi bi-tags"></i>
-                        <span>Quản lý danh mục</span>
+                        <span>Quản lý thể loại</span>
                     </a>
                 </li>
                 <li class="nav-item">
