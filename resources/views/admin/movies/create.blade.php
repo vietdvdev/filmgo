@@ -110,11 +110,11 @@
                                 <span class="material-symbols-outlined text-primary" style="font-variation-settings: 'FILL' 1;">sell</span>
                                 <h3 class="font-headline-sm text-headline-sm">Thể Loại</h3>
                             </div>
-                            <div class="flex flex-wrap gap-2">
+                             <div class="flex flex-wrap gap-2">
                                 @foreach($genres as $genre)
-                                    <input type="checkbox" name="genres[]" id="genre_{{ $genre->id }}" value="{{ $genre->id }}" class="hidden peer"
-                                        {{ in_array($genre->id, old('genres', [])) ? 'checked' : '' }}>
-                                    <label for="genre_{{ $genre->id }}" class="cursor-pointer inline-flex items-center gap-1.5 px-4.5 py-2 border border-outline-variant rounded-full text-body-md text-on-surface-variant hover:bg-surface-container-low peer-checked:border-primary peer-checked:bg-primary-container/20 peer-checked:text-primary transition-all duration-200 select-none">
+                                    <label class="cursor-pointer inline-flex items-center gap-1.5 px-4.5 py-2 border border-outline-variant rounded-full text-body-md text-on-surface-variant hover:bg-surface-container-low has-[:checked]:border-primary has-[:checked]:bg-primary-container/20 has-[:checked]:text-primary transition-all duration-200 select-none">
+                                        <input type="checkbox" name="genres[]" value="{{ $genre->id }}" class="sr-only peer"
+                                            {{ in_array($genre->id, old('genres', [])) ? 'checked' : '' }}>
                                         <span class="material-symbols-outlined text-sm peer-checked:inline hidden">done</span>
                                         {{ $genre->name }}
                                     </label>
