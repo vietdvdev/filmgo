@@ -1,4 +1,4 @@
-<header class="bg-surface border-b border-outline-variant h-16 w-full fixed top-0 pl-[280px] z-10 flex justify-between items-center pl-0 pr-10 transition-all duration-200 ease-in-out">
+<header class="bg-surface border-b border-outline-variant h-16 fixed top-0 left-[280px] right-0 z-10 flex justify-between items-center pl-0 pr-10 transition-all duration-200 ease-in-out">
     <!-- Left: Menu Breadcrumb động -->
     <div class="flex-1 flex items-center">
         <div class="flex items-center gap-2 text-sm text-on-surface-variant font-medium">
