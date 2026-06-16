@@ -13,7 +13,13 @@ class MovieController extends Controller
 {
     public function index(Request $request)
     {
-        $query = Movie::withTrashed()->with('genres');
+        $tabFilter = $request->input('tab', 'active');
+
+        if ($tabFilter === 'trash') {
+            $query = Movie::onlyTrashed()->with('genres');
+        } else {
+            $query = Movie::query()->with('genres');
+        }
 
         if ($request->filled('search')) {
             $query->where('title', 'like', '%' . $request->search . '%');
@@ -29,8 +35,11 @@ class MovieController extends Controller
 
         $movies = $query->orderBy('created_at', 'desc')->paginate(10)->withQueryString();
         $genres = Genre::orderBy('name')->get();
+        
+        $activeCount = Movie::count();
+        $trashCount = Movie::onlyTrashed()->count();
 
-        return view('admin.movies.index', compact('movies', 'genres'));
+        return view('admin.movies.index', compact('movies', 'genres', 'activeCount', 'trashCount', 'tabFilter'));
     }
 
     public function create()
