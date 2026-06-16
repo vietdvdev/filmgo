@@ -83,15 +83,15 @@
                                             {{ $genre->movies_count }} phim
                                         </span>
                                     </td>
-                                    <td class="py-4 px-6 text-right">
-                                        <div class="inline-flex gap-2 justify-end">
-                                            <a href="{{ route('admin.genres.edit', $genre) }}" class="inline-flex items-center gap-1 text-[13px] font-semibold px-3 py-1.5 rounded-lg bg-secondary-container text-on-secondary-container hover:bg-secondary-fixed transition-colors">
+                                    <td class="py-4 px-6 text-right whitespace-nowrap">
+                                        <div class="flex gap-2 items-center justify-end whitespace-nowrap">
+                                            <a href="{{ route('admin.genres.edit', $genre) }}" class="inline-flex items-center gap-1 text-[13px] font-semibold px-3 py-1.5 rounded-lg bg-secondary-container text-on-secondary-container hover:bg-secondary-fixed transition-colors whitespace-nowrap">
                                                 <span class="material-symbols-outlined" style="font-size: 16px;">edit</span> Sửa
                                             </a>
-                                            <form action="{{ route('admin.genres.destroy', $genre) }}" method="POST"
+                                            <form action="{{ route('admin.genres.destroy', $genre) }}" method="POST" class="inline-block align-middle"
                                                   onsubmit="return confirm('Bạn có chắc muốn xóa thể loại «{{ $genre->name }}»?')">
                                                 @csrf @method('DELETE')
-                                                <button type="submit" class="inline-flex items-center gap-1 text-[13px] font-semibold px-3 py-1.5 rounded-lg bg-red-50 text-red-600 hover:bg-red-100 transition-colors">
+                                                <button type="submit" class="inline-flex items-center gap-1 text-[13px] font-semibold px-3 py-1.5 rounded-lg bg-red-50 text-red-600 hover:bg-red-100 transition-colors whitespace-nowrap">
                                                     <span class="material-symbols-outlined" style="font-size: 16px;">trash</span> Xóa
                                                 </button>
                                             </form>

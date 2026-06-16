@@ -77,12 +77,12 @@
                                 <th class="py-3 px-4 font-medium" style="width: 50px;">#</th>
                                 <th class="py-3 px-4 font-medium" style="width: 80px;">Poster</th>
                                 <th class="py-3 px-4 font-medium" style="width: 25%;">Tên Phim</th>
-                                <th class="py-3 px-4 font-medium">Thể Loại</th>
-                                <th class="py-3 px-4 font-medium" style="width: 100px;">Thời Lượng</th>
-                                <th class="py-3 px-4 font-medium" style="width: 120px;">Khởi Chiếu</th>
-                                <th class="py-3 px-4 font-medium" style="width: 80px;">Tuổi</th>
-                                <th class="py-3 px-4 font-medium" style="width: 120px;">Trạng Thái</th>
-                                <th class="py-3 px-4 font-medium text-right" style="width: 180px;">Thao Tác</th>
+                                <th class="py-3 px-4 font-medium whitespace-nowrap">Thể Loại</th>
+                                <th class="py-3 px-4 font-medium whitespace-nowrap" style="width: 110px;">Thời Lượng</th>
+                                <th class="py-3 px-4 font-medium whitespace-nowrap" style="width: 120px;">Khởi Chiếu</th>
+                                <th class="py-3 px-4 font-medium whitespace-nowrap" style="width: 80px;">Tuổi</th>
+                                <th class="py-3 px-4 font-medium whitespace-nowrap" style="width: 130px;">Trạng Thái</th>
+                                <th class="py-3 px-4 font-medium text-right whitespace-nowrap" style="width: 190px;">Thao Tác</th>
                             </tr>
                         </thead>
                         <tbody class="font-body-md text-body-md text-on-surface divide-y divide-outline-variant">
@@ -122,32 +122,32 @@
                                     </td>
                                     <td class="py-3 px-4">
                                         @if($movie->trashed())
-                                            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-neutral-100 text-neutral-800">Đã xóa</span>
+                                            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-neutral-100 text-neutral-800 whitespace-nowrap">Đã xóa</span>
                                         @elseif($movie->status === 'showing')
-                                            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-800">Đang chiếu</span>
+                                            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-800 whitespace-nowrap">Đang chiếu</span>
                                         @elseif($movie->status === 'upcoming')
-                                            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-blue-100 text-blue-800">Sắp chiếu</span>
+                                            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-blue-100 text-blue-800 whitespace-nowrap">Sắp chiếu</span>
                                         @else
-                                            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-red-100 text-red-800">Ngừng chiếu</span>
+                                            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-red-100 text-red-800 whitespace-nowrap">Ngừng chiếu</span>
                                         @endif
                                     </td>
-                                    <td class="py-3 px-4 text-right">
-                                        <div class="inline-flex gap-2 justify-end">
+                                    <td class="py-3 px-4 text-right whitespace-nowrap">
+                                        <div class="flex gap-2 items-center justify-end whitespace-nowrap">
                                             @if($movie->trashed())
-                                                <form action="{{ route('admin.movies.restore', $movie->id) }}" method="POST" class="inline">
+                                                <form action="{{ route('admin.movies.restore', $movie->id) }}" method="POST" class="inline-block align-middle">
                                                     @csrf
-                                                    <button type="submit" class="inline-flex items-center gap-1 text-[13px] font-semibold px-3 py-1.5 rounded-lg bg-emerald-50 text-emerald-600 hover:bg-emerald-100 transition-colors">
+                                                    <button type="submit" class="inline-flex items-center gap-1 text-[13px] font-semibold px-3 py-1.5 rounded-lg bg-emerald-50 text-emerald-600 hover:bg-emerald-100 transition-colors whitespace-nowrap">
                                                         <span class="material-symbols-outlined" style="font-size: 16px;">settings_backup_restore</span> Khôi phục
                                                     </button>
                                                 </form>
                                             @else
-                                                <a href="{{ route('admin.movies.edit', $movie) }}" class="inline-flex items-center gap-1 text-[13px] font-semibold px-3 py-1.5 rounded-lg bg-secondary-container text-on-secondary-container hover:bg-secondary-fixed transition-colors">
+                                                <a href="{{ route('admin.movies.edit', $movie) }}" class="inline-flex items-center gap-1 text-[13px] font-semibold px-3 py-1.5 rounded-lg bg-secondary-container text-on-secondary-container hover:bg-secondary-fixed transition-colors whitespace-nowrap">
                                                     <span class="material-symbols-outlined" style="font-size: 16px;">edit</span> Sửa
                                                 </a>
-                                                <form action="{{ route('admin.movies.destroy', $movie) }}" method="POST" class="inline"
+                                                <form action="{{ route('admin.movies.destroy', $movie) }}" method="POST" class="inline-block align-middle"
                                                       onsubmit="return confirm('Xóa phim «{{ addslashes($movie->title) }}»?')">
                                                     @csrf @method('DELETE')
-                                                    <button type="submit" class="inline-flex items-center gap-1 text-[13px] font-semibold px-3 py-1.5 rounded-lg bg-red-50 text-red-600 hover:bg-red-100 transition-colors">
+                                                    <button type="submit" class="inline-flex items-center gap-1 text-[13px] font-semibold px-3 py-1.5 rounded-lg bg-red-50 text-red-600 hover:bg-red-100 transition-colors whitespace-nowrap">
                                                         <span class="material-symbols-outlined" style="font-size: 16px;">trash</span> Xóa
                                                     </button>
                                                 </form>
