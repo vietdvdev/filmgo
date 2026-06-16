@@ -122,13 +122,13 @@
                                     </td>
                                     <td class="py-3 px-4">
                                         @if($movie->trashed())
-                                            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-neutral-100 text-neutral-800 whitespace-nowrap">Đã xóa</span>
+                                            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-neutral-100 text-neutral-800 border border-neutral-300 whitespace-nowrap">Đã xóa</span>
                                         @elseif($movie->status === 'showing')
-                                            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-800 whitespace-nowrap">Đang chiếu</span>
+                                            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-emerald-100 text-emerald-900 border border-emerald-300 whitespace-nowrap">Đang chiếu</span>
                                         @elseif($movie->status === 'upcoming')
-                                            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-blue-100 text-blue-800 whitespace-nowrap">Sắp chiếu</span>
+                                            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-blue-100 text-blue-900 border border-blue-300 whitespace-nowrap">Sắp chiếu</span>
                                         @else
-                                            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-red-100 text-red-800 whitespace-nowrap">Ngừng chiếu</span>
+                                            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-red-100 text-red-900 border border-red-300 whitespace-nowrap">Ngừng chiếu</span>
                                         @endif
                                     </td>
                                     <td class="py-3 px-4 text-right whitespace-nowrap">
@@ -148,7 +148,7 @@
                                                       onsubmit="return confirm('Xóa phim «{{ addslashes($movie->title) }}»?')">
                                                     @csrf @method('DELETE')
                                                     <button type="submit" class="inline-flex items-center gap-1 text-[13px] font-semibold px-3 py-1.5 rounded-lg bg-red-50 text-red-600 hover:bg-red-100 transition-colors whitespace-nowrap">
-                                                        <span class="material-symbols-outlined" style="font-size: 16px;">trash</span> Xóa
+                                                        <span class="material-symbols-outlined" style="font-size: 16px;">delete</span> Xóa
                                                     </button>
                                                 </form>
                                             @endif
