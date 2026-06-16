@@ -32,7 +32,7 @@ class ReviewSeeder extends Seeder
 
         // Mỗi bộ phim có từ 2 đến 5 lượt đánh giá từ các người dùng ngẫu nhiên
         foreach ($movies as $movie) {
-            $reviewCount = rand(2, 5);
+            $reviewCount = rand(1, min(5, $users->count()));
             $randomUsers = $users->random($reviewCount);
 
             foreach ($randomUsers as $user) {
