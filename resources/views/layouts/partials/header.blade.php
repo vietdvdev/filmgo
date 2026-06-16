@@ -60,18 +60,5 @@
             <span class="material-symbols-outlined">mail</span>
             <span class="absolute top-2.5 right-2.5 w-1.5 h-1.5 bg-blue-500 rounded-full"></span>
         </button>
-        
-        <div class="h-6 w-[1px] bg-outline-variant mx-2"></div>
-        
-        <!-- Nút hành động nhanh -->
-        <a href="{{ route('admin.movies.create') }}" class="bg-primary text-on-primary font-label-md text-label-md px-4 py-2 rounded-lg hover:bg-blue-700 hover:shadow-sm transition-all duration-200 flex items-center gap-1.5">
-            <span class="material-symbols-outlined" style="font-size: 18px;">add</span>
-            Đăng Phim
-        </a>
-        
-        <!-- Avatar profile -->
-        <div class="ml-2 w-9 h-9 rounded-full bg-surface-container-highest overflow-hidden border border-outline-variant/60 cursor-pointer shadow-sm hover:border-primary transition-all duration-200">
-            <img alt="Admin Profile Avatar" class="w-full h-full object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuD8FUWMNC0ffrEhTJJ2QQlZG0NpRn9_rQq5TMl71FLZ3M26VsE49J6rbi3NKBzpZUHIC4psG4hFT954Gr_kJ57mdBvRYbF93dNWatcURYqY3hhtZaK91AiCUbaTq-ti1O8dJ60UhEY7AolLpoL1Xnqmxg4aZo2gqQoHIW8NDYw1Dt0s_5hy-GrgDN3MMWctpiTEAKzG5-gk9c8KlEnvHV2lz3U5F2HPtYzXQrYr763FJlkAustguFhgRRd_w6sJ0CT6Q91LMaNNXY8">
-        </div>
     </div>
 </header>
