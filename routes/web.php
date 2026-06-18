@@ -4,6 +4,8 @@ use App\Http\Controllers\Admin\AuthController;
 use App\Http\Controllers\Admin\DashboardController;
 use App\Http\Controllers\Admin\GenreController;
 use App\Http\Controllers\Admin\MovieController;
+use App\Http\Controllers\Admin\UserCinemaController;
+use App\Http\Controllers\Admin\UserController;
 use App\Http\Controllers\Customer\CustomerAuthController;
 use App\Http\Controllers\Customer\CustomerForgotPasswordController;
 use App\Http\Controllers\Customer\CustomerResetPasswordController;
@@ -64,4 +66,12 @@ Route::prefix('admin')->group(function () {
     // 5. Quản lý phim
     Route::post('movies/{id}/restore', [MovieController::class, 'restore'])->name('admin.movies.restore');
     Route::resource('movies', MovieController::class)->names('admin.movies');
+
+    // 6. Quản lý người dùng
+    Route::post('users/{id}/restore', [UserController::class, 'restore'])->name('admin.users.restore');
+    Route::resource('users', UserController::class)->names('admin.users');
+
+    // 6. Quản lý phân công rạp
+    Route::resource('user-cinemas', UserCinemaController::class)
+    ->names('admin.user-cinemas');
 });
