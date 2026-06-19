@@ -7,17 +7,19 @@ use Illuminate\Http\Request;
 
 class ManagerCinemaController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
-        $cinemas = auth()
-            ->user()
-            ->cinemas()
-            ->latest()
-            ->get();
+        $query = auth()->user()->cinemas()->withCount('rooms');
 
-        return view(
-            'manager.cinemas.index',
-            compact('cinemas')
-        );
+        if ($request->filled('search')) {
+            $query->where(function ($q) use ($request) {
+                $q->where('cinemas.name', 'like', '%' . $request->search . '%')
+                  ->orWhere('cinemas.city', 'like', '%' . $request->search . '%');
+            });
+        }
+
+        $cinemas = $query->latest('cinemas.id')->get();
+
+        return view('manager.cinemas.index', compact('cinemas'));
     }
 }
