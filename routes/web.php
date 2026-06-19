@@ -6,6 +6,7 @@ use App\Http\Controllers\Admin\GenreController;
 use App\Http\Controllers\Admin\MovieController;
 use App\Http\Controllers\Admin\PriceRuleController;
 use App\Http\Controllers\Admin\SeatTypeController;
+use App\Http\Controllers\Admin\CinemaController;
 use App\Http\Controllers\Admin\UserCinemaController;
 use App\Http\Controllers\Admin\UserController;
 use App\Http\Controllers\Admin\ManagementAuthController;
@@ -90,7 +91,10 @@ Route::prefix('admin')->group(function () {
         Route::post('users/{id}/restore', [UserController::class, 'restore'])->name('admin.users.restore');
         Route::resource('users', UserController::class)->names('admin.users');
 
-        // 7. Quản lý phân công rạp
+        // 7. Quản lý rạp chiếu
+        Route::resource('cinemas', CinemaController::class)->names('admin.cinemas');
+
+        // 8. Quản lý phân công rạp
         Route::resource('user-cinemas', UserCinemaController::class)->names('admin.user-cinemas');
     });
 });
@@ -112,12 +116,8 @@ Route::prefix('manager')->group(function () {
         Route::get('/dashboard', [App\Http\Controllers\Manager\ManagerDashboardController::class, 'index'])->name('manager.dashboard');
 
 
-        Route::prefix('manager')->name('manager.')->group(function () {
-            Route::get(
-                '/my-cinemas',
-                [ManagerCinemaController::class, 'index']
-            )->name('cinemas.index');
-        });
+        // Quản lý rạp chiếu (xem thông tin rạp được phân công)
+        Route::get('/cinemas', [ManagerCinemaController::class, 'index'])->name('manager.cinemas.index');
 
         // Quản lý nhân sự
         // Staff
