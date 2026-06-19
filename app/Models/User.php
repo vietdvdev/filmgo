@@ -77,8 +77,7 @@ class User extends Authenticatable
     // Relationships with other clusters (defined here to ensure full scope)
     public function cinemas(): BelongsToMany
     {
-        return $this->belongsToMany(Cinema::class, 'user_cinemas', 'user_id', 'cinema_id')
-                    ->withTimestamps();
+        return $this->belongsToMany(Cinema::class, 'user_cinemas', 'user_id', 'cinema_id');
     }
 
     public function bookings(): HasMany

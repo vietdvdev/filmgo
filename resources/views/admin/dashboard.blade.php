@@ -394,7 +394,7 @@
                     <i class="bi bi-person-circle"></i>
                     <span>Xin chào, Admin!</span>
                 </div>
-                <form action="{{ route('admin.logout') }}" method="POST" style="margin: 0;">
+                <form action="{{ route('admin.logout') }}" method="POST" style="margin: 0;" onsubmit="return confirm('Bạn có chắc chắn muốn đăng xuất khỏi hệ thống quản trị admin?');">
                     @csrf
                     <button type="submit" style="background: linear-gradient(135deg, #f43f5e 0%, #e11d48 100%); border: none; color: white; padding: 10px 20px; border-radius: 10px; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 8px; box-shadow: 0 4px 15px rgba(244, 63, 94, 0.3); transition: all 0.3s ease;">
                         <i class="bi bi-box-arrow-right"></i>
