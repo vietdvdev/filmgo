@@ -26,6 +26,22 @@ class UserSeeder extends Seeder
             $admin->roles()->attach($adminRole->id);
         }
 
+        // Tạo tài khoản Manager mặc định
+        $manager = User::updateOrCreate(
+            ['email' => 'manager@filmgo.vn'],
+            [
+                'full_name' => 'Nguyễn Văn Manager',
+                'phone' => '0988888888',
+                'password' => Hash::make('password'),
+                'status' => 'active',
+            ]
+        );
+
+        $managerRole = Role::where('name', 'manager')->first();
+        if ($managerRole && !$manager->roles()->where('role_id', $managerRole->id)->exists()) {
+            $manager->roles()->attach($managerRole->id);
+        }
+
         // Tạo thêm 15 người dùng (khách hàng) để đảm bảo có đủ dữ liệu cho các tính năng khác (đánh giá, vé đặt...)
         User::factory()->count(15)->create()->each(function ($user) {
             $customerRole = Role::where('name', 'customer')->first();
