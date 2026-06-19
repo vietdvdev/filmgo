@@ -120,11 +120,49 @@
                 <span class="text-[11px] text-on-surface-variant truncate">admin@filmgo.vn</span>
             </div>
         </div>
-        <a class="flex items-center gap-3 px-4 py-3 rounded-lg text-on-surface-variant hover:bg-surface-container-low transition-colors duration-200"
-            href="#">
-            <span class="material-symbols-outlined">logout</span>
+        <form id="admin-logout-form" action="{{ route('admin.logout') }}" method="POST" class="hidden">
+            @csrf
+        </form>
+
+        {{-- Nút Đăng Xuất --}}
+        <button
+            type="button"
+            onclick="openLogoutModal()"
+            class="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-red-500 hover:bg-red-50 hover:text-red-600 transition-all duration-200 cursor-pointer font-semibold group">
+            <span class="material-symbols-outlined text-xl group-hover:translate-x-0.5 transition-transform duration-200">logout</span>
             <span class="font-label-md text-label-md">Đăng Xuất</span>
-        </a>
+        </button>
+    </div>
+
+    {{-- Modal xác nhận đăng xuất --}}
+    <div id="logout-modal" class="fixed inset-0 z-50 hidden flex items-center justify-center">
+        {{-- Backdrop --}}
+        <div class="absolute inset-0 bg-black/40 backdrop-blur-sm" onclick="closeLogoutModal()"></div>
+        {{-- Dialog --}}
+        <div class="relative bg-white rounded-xl shadow-2xl w-[380px] mx-4 p-6 z-10 animate-in">
+            <div class="flex flex-col items-center text-center gap-3">
+                <div class="w-14 h-14 rounded-full bg-red-50 flex items-center justify-center">
+                    <span class="material-symbols-outlined text-red-500 text-3xl">logout</span>
+                </div>
+                <h2 class="text-lg font-bold text-gray-900">Xác nhận đăng xuất</h2>
+                <p class="text-sm text-gray-500">Bạn có chắc chắn muốn đăng xuất khỏi hệ thống quản trị FilmGo không?</p>
+            </div>
+            <div class="mt-6 flex gap-3">
+                <button
+                    type="button"
+                    onclick="closeLogoutModal()"
+                    class="flex-1 px-4 py-2.5 rounded-lg border border-gray-200 text-gray-700 text-sm font-semibold hover:bg-gray-50 transition-colors duration-200">
+                    Hủy bỏ
+                </button>
+                <button
+                    type="button"
+                    onclick="document.getElementById('admin-logout-form').submit()"
+                    class="flex-1 px-4 py-2.5 rounded-lg bg-red-500 text-white text-sm font-semibold hover:bg-red-600 transition-colors duration-200 flex items-center justify-center gap-2">
+                    <span class="material-symbols-outlined text-base">logout</span>
+                    Đăng xuất
+                </button>
+            </div>
+        </div>
     </div>
 </aside>
 
@@ -132,4 +170,21 @@
     function toggleUserMenu() {
         document.getElementById('user-menu').classList.toggle('hidden');
     }
+
+    function openLogoutModal() {
+        const modal = document.getElementById('logout-modal');
+        modal.classList.remove('hidden');
+        modal.classList.add('flex');
+    }
+
+    function closeLogoutModal() {
+        const modal = document.getElementById('logout-modal');
+        modal.classList.add('hidden');
+        modal.classList.remove('flex');
+    }
+
+    // Đóng modal khi nhấn phím Escape
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape') closeLogoutModal();
+    });
 </script>
