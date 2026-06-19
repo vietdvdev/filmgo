@@ -138,7 +138,9 @@ Route::prefix('manager')->group(function () {
 
         // Quản lý phòng chiếu
         Route::get('/rooms', [App\Http\Controllers\Manager\ManagerRoomController::class, 'index'])->name('manager.rooms.index');
+        Route::get('/rooms/create', [App\Http\Controllers\Manager\ManagerRoomController::class, 'create'])->name('manager.rooms.create');
         Route::post('/rooms', [App\Http\Controllers\Manager\ManagerRoomController::class, 'store'])->name('manager.rooms.store');
+        Route::get('/rooms/{id}/edit', [App\Http\Controllers\Manager\ManagerRoomController::class, 'edit'])->name('manager.rooms.edit');
         Route::put('/rooms/{id}', [App\Http\Controllers\Manager\ManagerRoomController::class, 'update'])->name('manager.rooms.update');
         Route::delete('/rooms/{id}', [App\Http\Controllers\Manager\ManagerRoomController::class, 'destroy'])->name('manager.rooms.destroy');
         Route::get('/rooms/{roomId}/seat-map', [App\Http\Controllers\Manager\ManagerRoomController::class, 'seatMap'])->name('manager.rooms.seat-map');
