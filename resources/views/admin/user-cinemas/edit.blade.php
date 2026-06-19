@@ -38,39 +38,53 @@
                     @method('PUT')
 
                     {{-- Người dùng --}}
-                    <div>
-                        <label class="block mb-2 font-medium text-on-surface">
-                            Nhân viên / Quản lý
-                        </label>
+<div>
+    <label class="block mb-2 font-medium text-on-surface">
+        Quản lý (Active)
+    </label>
 
-                        <select name="user_id"
-                            class="w-full px-4 py-3 rounded-lg border border-outline-variant bg-surface-container-lowest focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary">
+    <select name="user_id"
+        class="w-full px-4 py-3 rounded-lg border border-outline-variant bg-surface-container-lowest focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary">
 
-                            <option value="">
-                                -- Chọn nhân viên hoặc quản lý --
-                            </option>
+        <option value="">
+            -- Chọn quản lý --
+        </option>
 
-                            @foreach ($users as $user)
-                                <option value="{{ $user->id }}"
-                                    {{ old('user_id', $assignment->user_id) == $user->id ? 'selected' : '' }}>
+        @foreach ($users as $user)
+            @php
+                // Điều kiện 1: Phải có role 'manager' và trạng thái 'active'
+                $isManagerActive = $user->roles->first() && $user->roles->first()->name === 'manager' && $user->status === 'active';
+                
+                // Điều kiện 2: Hoặc đây chính là người đang được phân công trong bản ghi này (để tránh lỗi hiển thị khi sửa)
+                $isCurrentAssigned = old('user_id', $assignment->user_id) == $user->id;
+            @endphp
 
-                                    {{ $user->full_name }}
+            @if ($isManagerActive || $isCurrentAssigned)
+                <option value="{{ $user->id }}"
+                    {{ $isCurrentAssigned ? 'selected' : '' }}>
 
-                                    @if ($user->roles->first())
-                                        ({{ $user->roles->first()->name }})
-                                    @endif
+                    {{ $user->full_name }}
 
-                                </option>
-                            @endforeach
+                    @if ($user->roles->first())
+                        ({{ $user->roles->first()->name }})
+                    @endif
+                    
+                    @if ($user->status !== 'active')
+                        - [Tạm khóa]
+                    @endif
 
-                        </select>
+                </option>
+            @endif
+        @endforeach
 
-                        @error('user_id')
-                            <p class="mt-2 text-sm text-red-600">
-                                {{ $message }}
-                            </p>
-                        @enderror
-                    </div>
+    </select>
+
+    @error('user_id')
+        <p class="mt-2 text-sm text-red-600">
+            {{ $message }}
+        </p>
+    @enderror
+</div>
 
                     {{-- Rạp --}}
                     <div>

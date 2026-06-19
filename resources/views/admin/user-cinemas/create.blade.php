@@ -39,26 +39,26 @@
                     {{-- User --}}
                     <div>
                         <label class="block mb-2 font-medium text-on-surface">
-                            Nhân viên / Quản lý
+                            Quản lý (Active)
                         </label>
 
                         <select name="user_id"
                             class="w-full px-4 py-3 rounded-lg border border-outline-variant bg-surface-container-lowest focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary">
 
                             <option value="">
-                                -- Chọn nhân viên hoặc quản lý --
+                                -- Chọn quản lý --
                             </option>
 
                             @foreach ($users as $user)
-                                <option value="{{ $user->id }}" {{ old('user_id') == $user->id ? 'selected' : '' }}>
+                                {{-- Kiểm tra user có role là manager và status là active (giả định cột trạng thái là status) --}}
+                                @if ($user->roles->first() && $user->roles->first()->name === 'manager' && $user->status === 'active')
+                                    <option value="{{ $user->id }}" {{ old('user_id') == $user->id ? 'selected' : '' }}>
 
-                                    {{ $user->full_name }}
+                                        {{ $user->full_name }}
 
-                                    @if ($user->roles->first())
                                         ({{ $user->roles->first()->name }})
-                                    @endif
-
-                                </option>
+                                    </option>
+                                @endif
                             @endforeach
 
                         </select>

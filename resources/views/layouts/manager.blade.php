@@ -47,6 +47,11 @@
                 <span class="material-symbols-outlined text-lg">dashboard</span>
                 Tổng Quan
             </a>
+            <a href="{{ route('manager.cinemas.index') }}"
+            class="flex items-center gap-3 px-3 py-2.5 text-sm font-semibold transition-colors duration-200 rounded-none {{ request()->routeIs('manager.cinemas.*') ? 'bg-blue-600 text-white' : 'text-slate-300 hover:bg-slate-800 hover:text-white' }}">
+                <span class="material-symbols-outlined text-lg">theaters</span>
+                Rạp đang quản lý
+            </a>
             <a href="{{ route('manager.staff.index') }}"
                class="flex items-center gap-3 px-3 py-2.5 text-sm font-semibold transition-colors duration-200 rounded-none {{ request()->routeIs('manager.staff.*') ? 'bg-blue-600 text-white' : 'text-slate-300 hover:bg-slate-800 hover:text-white' }}">
                 <span class="material-symbols-outlined text-lg">group</span>
