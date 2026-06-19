@@ -4,6 +4,8 @@ use App\Http\Controllers\Admin\AuthController;
 use App\Http\Controllers\Admin\DashboardController;
 use App\Http\Controllers\Admin\GenreController;
 use App\Http\Controllers\Admin\MovieController;
+use App\Http\Controllers\Admin\PriceRuleController;
+use App\Http\Controllers\Admin\SeatTypeController;
 use App\Http\Controllers\Admin\UserCinemaController;
 use App\Http\Controllers\Admin\UserController;
 use App\Http\Controllers\Admin\ManagementAuthController;
@@ -69,6 +71,13 @@ Route::prefix('admin')->group(function () {
 
         // 4. Quản lý thể loại phim
         Route::resource('genres', GenreController::class)->names('admin.genres');
+
+        // 4.5. Quản lý loại ghế
+        Route::resource('seat-types', SeatTypeController::class)->names('admin.seat-types');
+
+        // 4.6. Quản lý quy tắc giá phụ thu
+        Route::resource('price-rules', PriceRuleController::class)->names('admin.price-rules');
+        Route::post('price-rules/{priceRule}/toggle-status', [PriceRuleController::class, 'toggleStatus'])->name('admin.price-rules.toggle-status');
 
         // 5. Quản lý phim
         Route::post('movies/{id}/restore', [MovieController::class, 'restore'])->name('admin.movies.restore');
