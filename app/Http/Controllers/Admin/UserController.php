@@ -11,48 +11,50 @@ use Illuminate\Validation\Rule;
 
 class UserController extends Controller
 {
+
     public function index(Request $request)
-{
-    $roles = Role::orderBy('name')->get();
+    {
+        $roles = Role::orderBy('name')->get();
 
-    $users = User::with('roles')
+        $users = User::with('roles')
 
-        // Tìm kiếm
-        ->when($request->filled('search'), function ($query) use ($request) {
-            $search = $request->search;
+            // Tìm kiếm
+            ->when($request->filled('search'), function ($query) use ($request) {
+                $search = $request->search;
 
-            $query->where(function ($q) use ($search) {
-                $q->where('full_name', 'like', "%{$search}%")
-                  ->orWhere('email', 'like', "%{$search}%");
-            });
-        })
+                $query->where(function ($q) use ($search) {
+                    $q->where('full_name', 'like', "%{$search}%")
+                        ->orWhere('email', 'like', "%{$search}%");
+                });
+            })
 
-        // Lọc trạng thái
-        ->when($request->filled('status'), function ($query) use ($request) {
-            $query->where('status', $request->status);
-        })
+            // Lọc trạng thái
+            ->when($request->filled('status'), function ($query) use ($request) {
+                $query->where('status', $request->status);
+            })
 
-        // Lọc nhiều role
-        ->when($request->filled('roles'), function ($query) use ($request) {
-            $query->whereHas('roles', function ($q) use ($request) {
-                $q->whereIn('roles.id', $request->roles);
-            });
-        })
+            // Lọc nhiều role
+            ->when($request->filled('roles'), function ($query) use ($request) {
+                $query->whereHas('roles', function ($q) use ($request) {
+                    $q->whereIn('roles.id', $request->roles);
+                });
+            })
 
-        ->latest()
-        ->paginate(15)
-        ->withQueryString();
+            ->latest()
+            ->paginate(15)
+            ->withQueryString();
 
-    $trashedUsers = User::onlyTrashed()
-        ->latest()
-        ->get();
+        $trashedUsers = User::onlyTrashed()
+            ->latest()
+            ->get();
 
-    return view('admin.users.index', compact(
-        'users',
-        'roles',
-        'trashedUsers'
-    ));
-}
+        return view('admin.users.index', compact(
+            'users',
+            'roles',
+            'trashedUsers'
+        ));
+    }
+
     public function create()
     {
         $roles = Role::all();
@@ -70,7 +72,7 @@ class UserController extends Controller
             'status'    => ['required', 'in:active,locked'],
             'roles'     => ['array'],
             'roles.*'   => ['exists:roles,id'],
-        ]);
+        ], $this->validationMessages());
 
         if ($request->hasFile('avatar')) {
             $validated['avatar'] = $request->file('avatar')->store('avatars', 'public');
@@ -107,7 +109,7 @@ class UserController extends Controller
             'status'    => ['required', 'in:active,locked'],
             'roles'     => ['array'],
             'roles.*'   => ['exists:roles,id'],
-        ]);
+        ], $this->validationMessages());
 
         if ($request->hasFile('avatar')) {
             $validated['avatar'] = $request->file('avatar')->store('avatars', 'public');
@@ -144,5 +146,39 @@ class UserController extends Controller
 
         return redirect()->route('admin.users.index')
             ->with('success', 'Khôi phục người dùng thành công.');
+    }
+
+    /**
+     * Thông báo lỗi validate dùng chung cho store() và update().
+     */
+    protected function validationMessages(): array
+    {
+        return [
+            'full_name.required' => 'Vui lòng nhập họ tên.',
+            'full_name.string'   => 'Họ tên phải là chuỗi ký tự.',
+            'full_name.max'      => 'Họ tên không được vượt quá :max ký tự.',
+
+            'email.required' => 'Vui lòng nhập email.',
+            'email.email'    => 'Email không đúng định dạng.',
+            'email.max'      => 'Email không được vượt quá :max ký tự.',
+            'email.unique'   => 'Email này đã được sử dụng bởi tài khoản khác.',
+
+            'phone.string' => 'Số điện thoại phải là chuỗi ký tự.',
+            'phone.max'    => 'Số điện thoại không được vượt quá :max ký tự.',
+
+            'password.required'  => 'Vui lòng nhập mật khẩu.',
+            'password.string'    => 'Mật khẩu phải là chuỗi ký tự.',
+            'password.min'       => 'Mật khẩu phải có ít nhất :min ký tự.',
+            'password.confirmed' => 'Mật khẩu xác nhận không khớp.',
+
+            'avatar.image' => 'Ảnh đại diện phải là một file hình ảnh.',
+            'avatar.max'   => 'Dung lượng ảnh đại diện không được vượt quá 2MB.',
+
+            'status.required' => 'Vui lòng chọn trạng thái.',
+            'status.in'       => 'Trạng thái không hợp lệ.',
+
+            'roles.array'    => 'Dữ liệu vai trò không hợp lệ.',
+            'roles.*.exists' => 'Vai trò được chọn không tồn tại trong hệ thống.',
+        ];
     }
 }

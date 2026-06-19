@@ -5,133 +5,266 @@ namespace App\Http\Controllers\Manager;
 use App\Http\Controllers\Controller;
 use App\Models\Role;
 use App\Models\User;
+use App\Models\UserCinema;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
-use Illuminate\Validation\ValidationException;
 
 class ManagerStaffController extends Controller
 {
-    private function getCinemaId()
+    /**
+     * Lấy danh sách rạp mà manager đang quản lý
+     */
+    private function managerCinemaIds()
     {
-        return Auth::user()->cinemas()->first()->id;
+        return Auth::user()
+            ->cinemas()
+            ->pluck('cinemas.id')
+            ->toArray();
     }
 
+    /**
+     * Danh sách nhân viên
+     */
     public function index(Request $request)
     {
-        // Mock dữ liệu giả lập cho danh sách nhân viên
-        $mockData = collect([
-            (object)[
-                'id' => 1,
-                'full_name' => 'Nguyễn Văn Hải',
-                'email' => 'hai.nv@filmgo.vn',
-                'phone' => '0987654321',
-                'status' => 'active',
-                'created_at' => now()
-            ],
-            (object)[
-                'id' => 2,
-                'full_name' => 'Trần Thị Thu Trang',
-                'email' => 'trang.ttt@filmgo.vn',
-                'phone' => '0912345678',
-                'status' => 'active',
-                'created_at' => now()
-            ],
-            (object)[
-                'id' => 3,
-                'full_name' => 'Lê Hoàng Nam',
-                'email' => 'nam.lh@filmgo.vn',
-                'phone' => '0909090909',
-                'status' => 'locked',
-                'created_at' => now()
-            ]
-        ]);
+        $cinemaIds = $this->managerCinemaIds();
 
-        if ($request->filled('search')) {
-            $search = $request->search;
-            $mockData = $mockData->filter(fn($item) => stripos($item->full_name, $search) !== false || stripos($item->email, $search) !== false);
-        }
+        $staffs = User::with(['roles', 'cinemas'])
+            ->whereHas('roles', function ($q) {
+                $q->where('name', 'staff');
+            })
+            ->whereHas('cinemas', function ($q) use ($cinemaIds) {
+                $q->whereIn('cinemas.id', $cinemaIds);
+            })
 
-        $currentPage = 1;
-        $perPage = 10;
-        $staffs = new \Illuminate\Pagination\LengthAwarePaginator(
-            $mockData->forPage($currentPage, $perPage),
-            $mockData->count(),
-            $perPage,
-            $currentPage,
-            ['path' => route('manager.staff.index')]
+            ->when($request->filled('search'), function ($query) use ($request) {
+                $query->where(function ($q) use ($request) {
+                    $q->where('full_name', 'like', '%' . $request->search . '%')
+                        ->orWhere('email', 'like', '%' . $request->search . '%');
+                });
+            })
+
+            ->when($request->filled('cinema_id'), function ($query) use ($request) {
+                $query->whereHas('cinemas', function ($q) use ($request) {
+                    $q->where('cinemas.id', $request->cinema_id);
+                });
+            })
+
+            ->latest()
+            ->paginate(15)
+            ->withQueryString();
+
+        $cinemas = Auth::user()->cinemas()->orderBy('name')->get();
+
+        return view(
+            'manager.staff.index',
+            compact(
+                'staffs',
+                'cinemas'
+            )
         );
-
-        return view('manager.staff.index', compact('staffs'));
     }
+
+    /**
+     * Thêm nhân viên
+     */
 
     public function create()
-    {
-        return view('manager.staff.create');
-    }
+{
+    $cinemas = auth()->user()
+        ->cinemas()
+        ->orderBy('name')
+        ->get();
 
+    return view(
+        'manager.staff.create',
+        compact('cinemas')
+    );
+}
     public function store(Request $request)
     {
         $request->validate([
-            'full_name' => 'required|string|max:255',
-            'email'     => 'required|email|max:255',
-            'phone'     => 'nullable|string|max:20',
-            'password'  => 'required|string|min:8|confirmed',
-        ], [
-            'full_name.required' => 'Họ và tên không được để trống.',
-            'email.required'     => 'Email không được để trống.',
-            'password.required'  => 'Mật khẩu không được để trống.',
-            'password.min'       => 'Mật khẩu phải có ít nhất 8 ký tự.',
-            'password.confirmed' => 'Xác nhận mật khẩu không khớp.',
+    'full_name' => 'required|string|max:255',
+    'email' => 'required|email|unique:users,email',
+    'phone' => 'nullable|regex:/^(0)[0-9]{9}$/',
+    'password' => 'required|min:6|confirmed',
+    'cinema_id' => 'required|exists:cinemas,id',
+], [
+    'full_name.required' => 'Vui lòng nhập họ và tên.',
+    'full_name.max' => 'Họ và tên không được vượt quá 255 ký tự.',
+
+    'email.required' => 'Vui lòng nhập email.',
+    'email.email' => 'Email không đúng định dạng.',
+    'email.unique' => 'Email đã tồn tại trong hệ thống.',
+
+    'phone.regex' => 'Số điện thoại không hợp lệ.',
+
+    'password.required' => 'Vui lòng nhập mật khẩu.',
+    'password.min' => 'Mật khẩu phải có ít nhất 6 ký tự.',
+    'password.confirmed' => 'Xác nhận mật khẩu không khớp.',
+
+    'cinema_id.required' => 'Vui lòng chọn rạp làm việc.',
+    'cinema_id.exists' => 'Rạp được chọn không tồn tại.',
+]);
+
+        $managerCinemaIds = $this->managerCinemaIds();
+
+        if (!in_array($request->cinema_id, $managerCinemaIds)) {
+            abort(403);
+        }
+
+        $staff = User::create([
+            'full_name' => $request->full_name,
+            'email' => $request->email,
+            'phone' => $request->phone,
+            'password' => Hash::make($request->password),
+            'status' => 'active',
         ]);
 
-        // Mock hành động thêm mới thành công
-        return redirect()->route('manager.staff.index')->with('success', 'Thêm nhân viên mới thành công (dữ liệu giả lập)!');
+        $staffRole = Role::where('name', 'staff')->first();
+
+        if ($staffRole) {
+            $staff->roles()->attach($staffRole->id);
+        }
+
+        UserCinema::create([
+            'user_id' => $staff->id,
+            'cinema_id' => $request->cinema_id,
+        ]);
+
+        return redirect()
+            ->route('manager.staff.index')
+            ->with(
+                'success',
+                'Thêm nhân viên thành công.'
+            );
     }
+
+    /**
+     * Cập nhật nhân viên
+     */
 
     public function edit($id)
-    {
-        $staff = (object)[
-            'id' => $id,
-            'full_name' => 'Nguyễn Văn Hải',
-            'email' => 'hai.nv@filmgo.vn',
-            'phone' => '0987654321',
-            'status' => 'active'
-        ];
+{
+    $staff = User::with('cinemas')
+        ->findOrFail($id);
 
-        return view('manager.staff.edit', compact('staff'));
-    }
+    $cinemas = auth()->user()
+        ->cinemas()
+        ->orderBy('name')
+        ->get();
 
+    return view(
+        'manager.staff.edit',
+        compact(
+            'staff',
+            'cinemas'
+        )
+    );
+}
     public function update(Request $request, $id)
-    {
-        $request->validate([
-            'full_name' => 'required|string|max:255',
-            'phone'     => 'nullable|string|max:20',
-        ], [
-            'full_name.required' => 'Họ và tên không được để trống.',
-        ]);
+{
+    $staff = User::findOrFail($id);
 
-        // Mock hành động cập nhật thành công
-        return redirect()->route('manager.staff.index')->with('success', 'Cập nhật thông tin nhân viên thành công (dữ liệu giả lập)!');
+    $request->validate([
+    'full_name' => 'required|string|max:255',
+    'phone' => 'nullable|regex:/^(0)[0-9]{9}$/',
+    'cinema_id' => 'required|exists:cinemas,id',
+], [
+    'full_name.required' => 'Vui lòng nhập họ và tên.',
+    'full_name.max' => 'Họ tên không được vượt quá 255 ký tự.',
+
+    'phone.regex' => 'Số điện thoại không hợp lệ.',
+
+    'cinema_id.required' => 'Vui lòng chọn rạp làm việc.',
+    'cinema_id.exists' => 'Rạp được chọn không tồn tại.',
+]);
+
+    $managerCinemaIds = $this->managerCinemaIds();
+
+    if (!in_array($request->cinema_id, $managerCinemaIds)) {
+        abort(403);
     }
 
+    $staff->update([
+        'full_name' => $request->full_name,
+        'phone'     => $request->phone,
+    ]);
+
+    UserCinema::updateOrCreate(
+        ['user_id' => $staff->id],
+        ['cinema_id' => $request->cinema_id]
+    );
+
+    return redirect()
+        ->route('manager.staff.index')
+        ->with('success', 'Cập nhật nhân viên thành công.');
+}
+
+    /**
+     * Xóa nhân viên
+     */
+    public function destroy($id)
+    {
+        $staff = User::findOrFail($id);
+
+        UserCinema::where(
+            'user_id',
+            $staff->id
+        )->delete();
+
+        $staff->delete();
+
+        return redirect()
+            ->route('manager.staff.index')
+            ->with(
+                'success',
+                'Xóa nhân viên thành công.'
+            );
+    }
+
+    /**
+     * Khóa / Mở khóa
+     */
     public function toggleStatus($id)
     {
-        // Mock hành động khóa/mở khóa thành công
-        return redirect()->route('manager.staff.index')->with('success', 'Thay đổi trạng thái tài khoản nhân viên thành công (dữ liệu giả lập)!');
+        $staff = User::findOrFail($id);
+
+        $staff->update([
+            'status' => $staff->status === 'active'
+                ? 'locked'
+                : 'active'
+        ]);
+
+        return redirect()
+            ->route('manager.staff.index')
+            ->with(
+                'success',
+                'Cập nhật trạng thái thành công.'
+            );
     }
 
+    /**
+     * Reset mật khẩu
+     */
     public function resetPassword(Request $request, $id)
     {
         $request->validate([
-            'password' => 'required|string|min:8|confirmed',
-        ], [
-            'password.required' => 'Mật khẩu mới không được để trống.',
-            'password.min'      => 'Mật khẩu mới phải có ít nhất 8 ký tự.',
-            'password.confirmed'=> 'Xác nhận mật khẩu không khớp.',
+            'password' => 'required|min:8|confirmed',
         ]);
 
-        // Mock hành động reset mật khẩu thành công
-        return redirect()->route('manager.staff.index')->with('success', 'Đã đặt lại mật khẩu nhân viên thành công (dữ liệu giả lập)!');
+        $staff = User::findOrFail($id);
+
+        $staff->update([
+            'password' => Hash::make($request->password),
+        ]);
+
+        return redirect()
+            ->route('manager.staff.index')
+            ->with(
+                'success',
+                'Đặt lại mật khẩu thành công.'
+            );
     }
 }

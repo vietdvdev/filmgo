@@ -10,10 +10,13 @@ use App\Http\Controllers\Admin\UserCinemaController;
 use App\Http\Controllers\Admin\UserController;
 use App\Http\Controllers\Admin\ManagementAuthController;
 use App\Http\Controllers\Customer\CustomerAuthController;
+use App\Http\Controllers\Customer\CustomerCinemaController;
 use App\Http\Controllers\Customer\CustomerForgotPasswordController;
 use App\Http\Controllers\Customer\CustomerProfileController;
 use App\Http\Controllers\Customer\CustomerResetPasswordController;
 use App\Http\Controllers\Manager\ManagerAuthController;
+use App\Http\Controllers\Manager\ManagerCinemaController;
+use App\Http\Controllers\Manager\ManagerStaffController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -108,11 +111,30 @@ Route::prefix('manager')->group(function () {
 
         Route::get('/dashboard', [App\Http\Controllers\Manager\ManagerDashboardController::class, 'index'])->name('manager.dashboard');
 
+
+        Route::prefix('manager')->name('manager.')->group(function () {
+            Route::get(
+                '/my-cinemas',
+                [ManagerCinemaController::class, 'index']
+            )->name('cinemas.index');
+        });
+
         // Quản lý nhân sự
-        Route::get('/staff', [App\Http\Controllers\Manager\ManagerStaffController::class, 'index'])->name('manager.staff.index');
-        Route::post('/staff', [App\Http\Controllers\Manager\ManagerStaffController::class, 'store'])->name('manager.staff.store');
-        Route::patch('/staff/{id}/toggle', [App\Http\Controllers\Manager\ManagerStaffController::class, 'toggleStatus'])->name('manager.staff.toggle');
-        Route::put('/staff/{id}/reset-password', [App\Http\Controllers\Manager\ManagerStaffController::class, 'resetPassword'])->name('manager.staff.reset-password');
+        // Staff
+        Route::get('/staff', [ManagerStaffController::class, 'index'])->name('manager.staff.index');
+        Route::get(
+    '/staff/create',
+    [ManagerStaffController::class, 'create']
+)->name('manager.staff.create');
+        Route::post('/staff', [ManagerStaffController::class, 'store'])->name('manager.staff.store');
+        Route::get(
+    '/staff/{id}/edit',
+    [ManagerStaffController::class, 'edit']
+)->name('manager.staff.edit');
+        Route::put('/staff/{id}', [ManagerStaffController::class, 'update'])->name('manager.staff.update');
+        Route::delete('/staff/{id}', [ManagerStaffController::class, 'destroy'])->name('manager.staff.destroy');
+        Route::patch('/staff/{id}/toggle', [ManagerStaffController::class, 'toggleStatus'])->name('manager.staff.toggle');
+        Route::put('/staff/{id}/reset-password', [ManagerStaffController::class, 'resetPassword'])->name('manager.staff.reset-password');
 
         // Quản lý phòng chiếu
         Route::get('/rooms', [App\Http\Controllers\Manager\ManagerRoomController::class, 'index'])->name('manager.rooms.index');
