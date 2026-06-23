@@ -15,6 +15,8 @@ use App\Http\Controllers\Customer\CustomerCinemaController;
 use App\Http\Controllers\Customer\CustomerForgotPasswordController;
 use App\Http\Controllers\Customer\CustomerProfileController;
 use App\Http\Controllers\Customer\CustomerResetPasswordController;
+use App\Http\Controllers\Customer\HomeController;
+use App\Http\Controllers\Customer\MovieController as CustomerMovieController;
 use App\Http\Controllers\Manager\ManagerAuthController;
 use App\Http\Controllers\Manager\ManagerCinemaController;
 use App\Http\Controllers\Manager\ManagerStaffController;
@@ -28,10 +30,13 @@ use Illuminate\Support\Facades\Route;
 */
 
 // Trang chủ hệ thống khách hàng
-Route::get('/', function () {
-    return view('home');
-})->name('home');
-
+Route::get('/', [HomeController::class, 'index'])->name('home');
+Route::get('/movies/showing',[CustomerMovieController::class, 'showing'])->name('movies.showing');
+Route::get('/movies/upcoming',[CustomerMovieController::class, 'upcoming'])->name('movies.upcoming');
+Route::get(
+    '/movies/search',
+    [CustomerMovieController::class, 'search']
+)->name('movies.search');
 // Xác thực khách hàng (Khách chưa đăng nhập)
 Route::middleware('guest')->group(function () {
     Route::get('/register', [CustomerAuthController::class, 'showRegisterForm'])->name('register');
@@ -124,14 +129,14 @@ Route::prefix('manager')->group(function () {
         // Staff
         Route::get('/staff', [ManagerStaffController::class, 'index'])->name('manager.staff.index');
         Route::get(
-    '/staff/create',
-    [ManagerStaffController::class, 'create']
-)->name('manager.staff.create');
+            '/staff/create',
+            [ManagerStaffController::class, 'create']
+        )->name('manager.staff.create');
         Route::post('/staff', [ManagerStaffController::class, 'store'])->name('manager.staff.store');
         Route::get(
-    '/staff/{id}/edit',
-    [ManagerStaffController::class, 'edit']
-)->name('manager.staff.edit');
+            '/staff/{id}/edit',
+            [ManagerStaffController::class, 'edit']
+        )->name('manager.staff.edit');
         Route::put('/staff/{id}', [ManagerStaffController::class, 'update'])->name('manager.staff.update');
         Route::delete('/staff/{id}', [ManagerStaffController::class, 'destroy'])->name('manager.staff.destroy');
         Route::patch('/staff/{id}/toggle', [ManagerStaffController::class, 'toggleStatus'])->name('manager.staff.toggle');
@@ -139,7 +144,9 @@ Route::prefix('manager')->group(function () {
 
         // Quản lý phòng chiếu
         Route::get('/rooms', [App\Http\Controllers\Manager\ManagerRoomController::class, 'index'])->name('manager.rooms.index');
+        Route::get('/rooms/create', [App\Http\Controllers\Manager\ManagerRoomController::class, 'create'])->name('manager.rooms.create');
         Route::post('/rooms', [App\Http\Controllers\Manager\ManagerRoomController::class, 'store'])->name('manager.rooms.store');
+        Route::get('/rooms/{id}/edit', [App\Http\Controllers\Manager\ManagerRoomController::class, 'edit'])->name('manager.rooms.edit');
         Route::put('/rooms/{id}', [App\Http\Controllers\Manager\ManagerRoomController::class, 'update'])->name('manager.rooms.update');
         Route::delete('/rooms/{id}', [App\Http\Controllers\Manager\ManagerRoomController::class, 'destroy'])->name('manager.rooms.destroy');
         Route::get('/rooms/{roomId}/seat-map', [App\Http\Controllers\Manager\ManagerRoomController::class, 'seatMap'])->name('manager.rooms.seat-map');
