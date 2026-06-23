@@ -4,7 +4,6 @@ namespace App\Http\Controllers\Manager;
 
 use App\Http\Controllers\Controller;
 use App\Models\Room;
-<<<<<<< HEAD
 use App\Models\Showtime;
 use App\Services\RoomSeatSyncService;
 use Illuminate\Http\JsonResponse;
