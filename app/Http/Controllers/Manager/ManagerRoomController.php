@@ -5,8 +5,11 @@ namespace App\Http\Controllers\Manager;
 use App\Http\Controllers\Controller;
 use App\Models\Room;
 use App\Models\Showtime;
+use App\Services\RoomSeatSyncService;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Validation\ValidationException;
 use Carbon\Carbon;
 
 class ManagerRoomController extends Controller
@@ -18,52 +21,17 @@ class ManagerRoomController extends Controller
 
     public function index(Request $request)
     {
-        // Mock dữ liệu giả lập cho danh sách phòng chiếu
-        $mockRooms = collect([
-            (object)[
-                'id' => 1,
-                'room_name' => 'Phòng Chiếu 01',
-                'capacity' => 120,
-                'room_type' => '2D',
-                'status' => 'active'
-            ],
-            (object)[
-                'id' => 2,
-                'room_name' => 'Phòng Chiếu 02',
-                'capacity' => 150,
-                'room_type' => '3D',
-                'status' => 'active'
-            ],
-            (object)[
-                'id' => 3,
-                'room_name' => 'Phòng Chiếu 03',
-                'capacity' => 200,
-                'room_type' => 'IMAX',
-                'status' => 'maintenance'
-            ],
-            (object)[
-                'id' => 4,
-                'room_name' => 'Phòng Chiếu 04',
-                'capacity' => 80,
-                'room_type' => '4DX',
-                'status' => 'inactive'
-            ]
-        ]);
+        // Lấy danh sách rạp chiếu mà Manager đang quản lý
+        $cinemaIds = Auth::user()->cinemas()->pluck('cinemas.id')->toArray();
+
+        $query = Room::whereIn('cinema_id', $cinemaIds);
 
         if ($request->filled('search')) {
             $search = $request->search;
-            $mockRooms = $mockRooms->filter(fn($item) => stripos($item->room_name, $search) !== false);
+            $query->where('room_name', 'like', '%' . $search . '%');
         }
 
-        $currentPage = 1;
-        $perPage = 10;
-        $rooms = new \Illuminate\Pagination\LengthAwarePaginator(
-            $mockRooms->forPage($currentPage, $perPage),
-            $mockRooms->count(),
-            $perPage,
-            $currentPage,
-            ['path' => route('manager.rooms.index')]
-        );
+        $rooms = $query->paginate(10);
 
         return view('manager.rooms.index', compact('rooms'));
     }
@@ -125,31 +93,147 @@ class ManagerRoomController extends Controller
         return redirect()->route('manager.rooms.index')->with('success', 'Đã xóa phòng chiếu thành công (dữ liệu giả lập).');
     }
 
-    public function seatMap($roomId)
+    /**
+     * Hiển thị trang Thiết Lập Sơ Đồ Ghế tương tác (Vue component).
+     * Thay thế hoàn toàn hàm mock cũ.
+     */
+    public function seatMap(int $roomId, RoomSeatSyncService $syncService): \Illuminate\Contracts\View\View|\Illuminate\Http\RedirectResponse
     {
-        $room = (object)[
-            'id' => $roomId,
-            'room_name' => 'Phòng Chiếu ' . sprintf("%02d", $roomId),
-            'capacity' => 120,
-            'room_type' => '2D'
-        ];
-        
-        // Mock sơ đồ ghế hàng A-J, cột 1-12
-        $seats = collect();
-        foreach (range('A', 'J') as $row) {
-            $rowSeats = collect();
-            for ($num = 1; $num <= 12; $num++) {
-                $rowSeats->push((object)[
-                    'id' => $row . $num,
-                    'row_name' => $row,
-                    'seat_number' => $num,
-                    'type' => ($row == 'I' || $row == 'J') ? 'vip' : 'standard',
-                    'status' => 'active'
-                ]);
-            }
-            $seats->put($row, $rowSeats);
-        }
+        try {
+            // Xác thực quyền: phòng phải thuộc rạp của Manager đang đăng nhập
+            $room = $syncService->authorizeAndFetchRoom($roomId, Auth::id());
 
-        return view('manager.rooms.seat_map', compact('room', 'seats'));
+            // Load thông tin rạp và các ghế hiện có của phòng
+            $room->load(['cinema', 'seats']);
+
+            // Lấy toàn bộ loại ghế để truyền vào Vue component qua data attribute
+            $seatTypes = \App\Models\SeatType::orderBy('id')->get(['id', 'name', 'surcharge_price']);
+
+            return view('manager.rooms.seat_map_vue', compact('room', 'seatTypes'));
+
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            return redirect()->route('manager.rooms.index')
+                ->with('error', collect($e->errors())->flatten()->first());
+        } catch (\Exception $e) {
+            return redirect()->route('manager.rooms.index')
+                ->with('error', 'Không thể truy cập sơ đồ ghế: ' . $e->getMessage());
+        }
+    }
+
+    // =========================================================================
+    // syncSeats — Đồng bộ toàn bộ sơ đồ ghế của một phòng chiếu
+    // =========================================================================
+    /**
+     * Nhận danh sách ghế từ client (JSON), xác thực quyền, xóa ghế cũ và
+     * chèn lại toàn bộ trong một DB Transaction.
+     *
+     * Request body (JSON):
+     * {
+     *   "seats": [
+     *     { "seat_row": "A", "seat_number": 1, "seat_type_id": 1, "status": "active" },
+     *     ...
+     *   ]
+     * }
+     *
+     * Success Response (200):
+     * {
+     *   "success": true,
+     *   "message": "Đồng bộ sơ đồ ghế thành công.",
+     *   "data": { "room_id": 1, "room_name": "...", "seat_count": 120 }
+     * }
+     *
+     * Error Response (422 / 403 / 500):
+     * {
+     *   "success": false,
+     *   "message": "...",
+     *   "errors": { ... }   // chỉ xuất hiện khi là lỗi validation
+     * }
+     *
+     * @param  Request              $request
+     * @param  int                  $roomId   Route parameter
+     * @param  RoomSeatSyncService  $syncService  Auto-injected bởi Laravel Service Container
+     * @return JsonResponse
+     */
+    public function syncSeats(
+        Request $request,
+        int $roomId,
+        RoomSeatSyncService $syncService
+    ): JsonResponse {
+        // ── Bước 1: Validate cấu trúc Request ────────────────────────────────
+        // Dùng dot-notation để validate từng phần tử trong mảng seats[*].
+        $request->validate(
+            [
+                'seats'                  => ['required', 'array', 'max:500'],
+                'seats.*.seat_row'       => ['required', 'string', 'max:10', 'regex:/^[A-Z]+$/i'],
+                'seats.*.seat_number'    => ['required', 'integer', 'min:1', 'max:99'],
+                'seats.*.seat_type_id'   => ['required', 'integer', 'exists:seat_types,id'],
+                'seats.*.status'         => ['required', 'in:active,maintenance'],
+            ],
+            [
+                'seats.required'                 => 'Danh sách ghế không được để trống.',
+                'seats.array'                    => 'Dữ liệu ghế phải là một mảng.',
+                'seats.max'                      => 'Mỗi phòng tối đa 500 ghế.',
+                'seats.*.seat_row.required'      => 'Hàng ghế không được để trống.',
+                'seats.*.seat_row.regex'         => 'Hàng ghế chỉ được chứa chữ cái (A-Z).',
+                'seats.*.seat_number.required'   => 'Số thứ tự ghế không được để trống.',
+                'seats.*.seat_number.min'        => 'Số thứ tự ghế phải >= 1.',
+                'seats.*.seat_number.max'        => 'Số thứ tự ghế phải <= 99.',
+                'seats.*.seat_type_id.required'  => 'Loại ghế không được để trống.',
+                'seats.*.seat_type_id.exists'    => 'Loại ghế không hợp lệ.',
+                'seats.*.status.required'        => 'Trạng thái ghế không được để trống.',
+                'seats.*.status.in'              => 'Trạng thái ghế chỉ được là active hoặc maintenance.',
+            ]
+        );
+
+        $seats = $request->input('seats', []);
+
+        try {
+            // ── Bước 2: Xác thực quyền sở hữu phòng theo user_cinemas ───────
+            // Chỉ Manager đang đăng nhập mới được thao tác với phòng thuộc rạp
+            // được phân công cho họ. Tham chiếu bảng user_cinemas.
+            $room = $syncService->authorizeAndFetchRoom($roomId, Auth::id());
+
+            // ── Bước 3: Kiểm tra ghế đang có đặt vé/holding ─────────────────
+            // Không cho phép đồng bộ khi còn giao dịch chưa hoàn tất để đảm
+            // bảo tính toàn vẹn dữ liệu đặt vé.
+            $syncService->guardAgainstActiveBookings($roomId);
+
+            // ── Bước 4: Kiểm tra trùng lặp trong chính payload ───────────────
+            // Tránh vi phạm UNIQUE(room_id, seat_row, seat_number) khi insert.
+            $syncService->guardAgainstDuplicatesInPayload($seats);
+
+            // ── Bước 5: Thực thi đồng bộ trong DB::transaction() ─────────────
+            // Xóa ghế cũ → insert hàng loạt → cập nhật capacity.
+            $result = $syncService->sync($room, $seats);
+
+            return response()->json([
+                'success' => true,
+                'message' => "Đồng bộ sơ đồ ghế thành công. Đã tạo {$result['seat_count']} ghế.",
+                'data'    => $result,
+            ], 200);
+
+        } catch (ValidationException $e) {
+            // Lỗi từ validate() hoặc do guardAgainst*() ném ra
+            return response()->json([
+                'success' => false,
+                'message' => 'Dữ liệu không hợp lệ. Vui lòng kiểm tra lại.',
+                'errors'  => $e->errors(),
+            ], 422);
+
+        } catch (\Exception $e) {
+            // Lỗi không xác định (DB, network, v.v.) — log để debug
+            \Log::error('[syncSeats] Lỗi không xác định', [
+                'room_id'   => $roomId,
+                'user_id'   => Auth::id(),
+                'exception' => $e->getMessage(),
+                'trace'     => $e->getTraceAsString(),
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Đã xảy ra lỗi hệ thống. Vui lòng thử lại sau.',
+            ], 500);
+        }
     }
 }
+

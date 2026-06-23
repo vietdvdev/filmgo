@@ -1,0 +1,203 @@
+<?php
+
+namespace App\Services;
+
+use App\Models\Room;
+use App\Models\Seat;
+use App\Models\SeatType;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Auth\Access\AuthorizationException;
+use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
+use InvalidArgumentException;
+
+class ManagerSeatService
+{
+    /**
+     * Xác thực quyền sở hữu phòng chiếu thuộc rạp của Manager đang đăng nhập.
+     *
+     * @param int $roomId
+     * @param int $cinemaId
+     * @return Room
+     * @throws AuthorizationException|NotFoundHttpException
+     */
+    public function validateRoomOwnership(int $roomId, int $cinemaId): Room
+    {
+        $room = Room::find($roomId);
+
+        if (!$room) {
+            throw new NotFoundHttpException('Phòng chiếu không tồn tại trong hệ thống.');
+        }
+
+        if ($room->cinema_id !== $cinemaId) {
+            throw new AuthorizationException('Bạn không có quyền quản lý phòng chiếu của rạp khác.');
+        }
+
+        return $room;
+    }
+
+    /**
+     * Lấy danh sách ghế của phòng chiếu và thông tin các loại ghế.
+     *
+     * @param int $roomId
+     * @param int $cinemaId
+     * @return array
+     */
+    public function getRoomSeatsAndTypes(int $roomId, int $cinemaId): array
+    {
+        $room = $this->validateRoomOwnership($roomId, $cinemaId);
+
+        $seats = Seat::where('room_id', $roomId)
+            ->with('seatType')
+            ->get();
+
+        // Sắp xếp theo số ghế trước, sau đó gom nhóm theo hàng và sắp xếp các hàng (A, B, C...)
+        $groupedSeats = $seats->sortBy('seat_number')
+            ->groupBy('seat_row')
+            ->sortKeys();
+
+        $seatTypes = SeatType::all();
+
+        return [
+            'room' => $room,
+            'groupedSeats' => $groupedSeats,
+            'seatTypes' => $seatTypes
+        ];
+    }
+
+    /**
+     * Tạo hàng loạt ghế cho một hàng.
+     *
+     * @param int $roomId
+     * @param int $cinemaId
+     * @param array $data
+     * @return int Số lượng ghế đã tạo thành công
+     * @throws InvalidArgumentException
+     */
+    public function bulkStoreSeats(int $roomId, int $cinemaId, array $data): int
+    {
+        $this->validateRoomOwnership($roomId, $cinemaId);
+
+        $seatRow = strtoupper(trim($data['seat_row'] ?? ''));
+        $startNumber = (int)($data['start_number'] ?? 0);
+        $endNumber = (int)($data['end_number'] ?? 0);
+        $seatTypeId = (int)($data['seat_type_id'] ?? 0);
+
+        if (empty($seatRow) || strlen($seatRow) > 5) {
+            throw new InvalidArgumentException('Ký hiệu hàng ghế không hợp lệ (ví dụ: A, B, AA).');
+        }
+
+        if ($startNumber <= 0 || $endNumber <= 0 || $startNumber > $endNumber) {
+            throw new InvalidArgumentException('Khoảng số ghế bắt đầu và kết thúc không hợp lệ.');
+        }
+
+        if (($endNumber - $startNumber + 1) > 50) {
+            throw new InvalidArgumentException('Mỗi lần chỉ tạo được tối đa 50 ghế trên một hàng.');
+        }
+
+        $seatTypeExists = SeatType::where('id', $seatTypeId)->exists();
+        if (!$seatTypeExists) {
+            throw new InvalidArgumentException('Loại ghế được chọn không tồn tại.');
+        }
+
+        // Lấy danh sách các số ghế đã tồn tại cho hàng ghế này
+        $existingNumbers = Seat::where('room_id', $roomId)
+            ->where('seat_row', $seatRow)
+            ->whereBetween('seat_number', [$startNumber, $endNumber])
+            ->pluck('seat_number')
+            ->toArray();
+
+        $seatsToInsert = [];
+        for ($num = $startNumber; $num <= $endNumber; $num++) {
+            if (!in_array($num, $existingNumbers)) {
+                $seatsToInsert[] = [
+                    'room_id' => $roomId,
+                    'seat_type_id' => $seatTypeId,
+                    'seat_row' => $seatRow,
+                    'seat_number' => $num,
+                    'status' => 'active',
+                ];
+            }
+        }
+
+        if (empty($seatsToInsert)) {
+            throw new InvalidArgumentException("Tất cả các ghế từ {$seatRow}{$startNumber} đến {$seatRow}{$endNumber} đều đã tồn tại.");
+        }
+
+        DB::transaction(function () use ($seatsToInsert) {
+            Seat::insert($seatsToInsert);
+        });
+
+        return count($seatsToInsert);
+    }
+
+    /**
+     * Cập nhật thông tin của một ghế.
+     *
+     * @param int $roomId
+     * @param int $seatId
+     * @param int $cinemaId
+     * @param array $data
+     * @return Seat
+     * @throws InvalidArgumentException
+     */
+    public function updateSeat(int $roomId, int $seatId, int $cinemaId, array $data): Seat
+    {
+        $this->validateRoomOwnership($roomId, $cinemaId);
+
+        $seat = Seat::where('id', $seatId)
+            ->where('room_id', $roomId)
+            ->first();
+
+        if (!$seat) {
+            throw new NotFoundHttpException('Ghế không tồn tại trong phòng chiếu này.');
+        }
+
+        if (isset($data['seat_type_id'])) {
+            $seatTypeExists = SeatType::where('id', (int)$data['seat_type_id'])->exists();
+            if (!$seatTypeExists) {
+                throw new InvalidArgumentException('Loại ghế không hợp lệ.');
+            }
+            $seat->seat_type_id = (int)$data['seat_type_id'];
+        }
+
+        if (isset($data['status'])) {
+            if (!in_array($data['status'], ['active', 'maintenance'])) {
+                throw new InvalidArgumentException('Trạng thái ghế không hợp lệ.');
+            }
+            $seat->status = $data['status'];
+        }
+
+        $seat->save();
+
+        return $seat->load('seatType');
+    }
+
+    /**
+     * Xóa một ghế vật lý cụ thể.
+     *
+     * @param int $roomId
+     * @param int $seatId
+     * @param int $cinemaId
+     * @return bool
+     */
+    public function deleteSeat(int $roomId, int $seatId, int $cinemaId): bool
+    {
+        $this->validateRoomOwnership($roomId, $cinemaId);
+
+        $seat = Seat::where('id', $seatId)
+            ->where('room_id', $roomId)
+            ->first();
+
+        if (!$seat) {
+            throw new NotFoundHttpException('Ghế không tồn tại hoặc không thuộc phòng chiếu này.');
+        }
+
+        // Kiểm tra xem ghế đã có suất chiếu nào liên kết hoặc đã được đặt trước đó chưa để tránh lỗi dữ liệu
+        $hasBookings = $seat->showtimeSeats()->exists();
+        if ($hasBookings) {
+            throw new InvalidArgumentException('Không thể xóa ghế này vì đã được liên kết với lịch chiếu hoặc giao dịch đặt vé.');
+        }
+
+        return (bool)$seat->delete();
+    }
+}
