@@ -79,8 +79,8 @@
                         </td>
                         <td class="py-4 px-6 text-right whitespace-nowrap">
                             <div class="flex gap-2 justify-end items-center">
-                                <!-- Seat Map Button -->
-                                <a href="{{ route('manager.rooms.seat-map', $room->id) }}" 
+                                {{-- Seat Map Button — trỏ tới Vue SeatMapBuilder --}}
+                                <a href="{{ route('manager.rooms.seat-map', $room->id) }}"
                                    class="inline-flex items-center gap-1 text-xs font-bold px-3 py-1.5 border border-blue-300 text-blue-700 bg-white hover:bg-blue-50 transition-all rounded-none">
                                     <span class="material-symbols-outlined text-sm">grid_on</span> Sơ đồ ghế
                                 </a>

@@ -20,6 +20,7 @@ use App\Http\Controllers\Customer\MovieController as CustomerMovieController;
 use App\Http\Controllers\Manager\ManagerAuthController;
 use App\Http\Controllers\Manager\ManagerCinemaController;
 use App\Http\Controllers\Manager\ManagerStaffController;
+use App\Http\Controllers\Manager\ManagerSeatController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -149,6 +150,18 @@ Route::prefix('manager')->group(function () {
         Route::put('/rooms/{id}', [App\Http\Controllers\Manager\ManagerRoomController::class, 'update'])->name('manager.rooms.update');
         Route::delete('/rooms/{id}', [App\Http\Controllers\Manager\ManagerRoomController::class, 'destroy'])->name('manager.rooms.destroy');
         Route::get('/rooms/{roomId}/seat-map', [App\Http\Controllers\Manager\ManagerRoomController::class, 'seatMap'])->name('manager.rooms.seat-map');
+
+        // Quản lý sơ đồ ghế (Thiết lập sơ đồ ghế - CRUD đơn lẻ)
+        Route::get('/rooms/{roomId}/seats', [ManagerSeatController::class, 'index'])->name('manager.rooms.seats.index');
+        Route::post('/rooms/{roomId}/seats/bulk', [ManagerSeatController::class, 'bulkStore'])->name('manager.rooms.seats.bulk');
+        Route::put('/rooms/{roomId}/seats/{seatId}', [ManagerSeatController::class, 'update'])->name('manager.rooms.seats.update');
+        Route::delete('/rooms/{roomId}/seats/{seatId}', [ManagerSeatController::class, 'destroy'])->name('manager.rooms.seats.destroy');
+
+        // Đồng bộ toàn bộ sơ đồ ghế (Full Sync — xóa cũ, chèn mới, cập nhật capacity)
+        Route::post(
+            '/rooms/{roomId}/sync-seats',
+            [App\Http\Controllers\Manager\ManagerRoomController::class, 'syncSeats']
+        )->name('manager.rooms.sync-seats');
 
         // Suất chiếu
         Route::get('/showtimes', [App\Http\Controllers\Manager\ManagerShowtimeController::class, 'index'])->name('manager.showtimes.index');
