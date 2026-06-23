@@ -25,3 +25,8 @@ _ide_helper.php
 Homestead.json
 Homestead.yaml
 Thumbs.db
+
+# AI Agent & Temporary scratch files
+.agents/
+scratch/
+test_baseurl.php
