@@ -17,8 +17,15 @@
 
     <!-- Alerts -->
     @if(session('success'))
-        <div class="p-4 bg-emerald-50 text-emerald-800 border border-emerald-200 text-sm font-semibold rounded-none">
+        <div class="p-4 bg-emerald-50 text-emerald-800 border border-emerald-200 text-sm font-semibold rounded-none flex items-center gap-2">
+            <span class="material-symbols-outlined text-base">check_circle</span>
             {{ session('success') }}
+        </div>
+    @endif
+    @if($errors->has('error'))
+        <div class="p-4 bg-red-50 text-red-800 border border-red-200 text-sm font-semibold rounded-none flex items-center gap-2">
+            <span class="material-symbols-outlined text-base">error</span>
+            {{ $errors->first('error') }}
         </div>
     @endif
 
@@ -56,33 +63,39 @@
             </thead>
             <tbody class="text-sm divide-y divide-slate-100">
                 @forelse($showtimes as $showtime)
-                    <tr class="hover:bg-slate-50/50 {{ $showtime->status === 'canceled' ? 'opacity-50 bg-slate-50/30' : '' }}">
+                    <tr class="hover:bg-slate-50/50 {{ $showtime->status === 'finished' ? 'opacity-50 bg-slate-50/30' : '' }}">
                         <td class="py-4 px-6 text-slate-500 font-medium">{{ $loop->iteration + ($showtimes->currentPage() - 1) * $showtimes->perPage() }}</td>
                         <td class="py-4 px-6 font-bold text-slate-900">{{ $showtime->movie->title }}</td>
-                        <td class="py-4 px-6 font-medium text-slate-700">{{ $showtime->room->room_name }}</td>
+                        <td class="py-4 px-6 font-medium text-slate-700">
+                            {{ $showtime->room->room_name }}
+                            <div class="text-[10px] text-slate-400 font-normal">{{ $showtime->room->cinema->name }}</div>
+                        </td>
                         <td class="py-4 px-6 text-slate-600">{{ $showtime->show_date->format('d/m/Y') }}</td>
                         <td class="py-4 px-6 text-slate-700 font-semibold">
                             {{ Carbon\Carbon::parse($showtime->start_time)->format('H:i') }} - {{ Carbon\Carbon::parse($showtime->end_time)->format('H:i') }}
                         </td>
                         <td class="py-4 px-6 text-slate-900 font-bold">{{ number_format($showtime->base_price) }}đ</td>
                         <td class="py-4 px-6">
-                            @if($showtime->status === 'active')
-                                <span class="inline-flex items-center px-2.5 py-0.5 text-xs font-bold bg-emerald-100 text-emerald-800">Mở bán vé</span>
+                            @if($showtime->status === 'upcoming')
+                                <span class="inline-flex items-center px-2.5 py-0.5 text-xs font-bold bg-blue-100 text-blue-800">Sắp chiếu</span>
+                            @elseif($showtime->status === 'showing')
+                                <span class="inline-flex items-center px-2.5 py-0.5 text-xs font-bold bg-emerald-100 text-emerald-800">Đang chiếu</span>
                             @else
-                                <span class="inline-flex items-center px-2.5 py-0.5 text-xs font-bold bg-red-100 text-red-800">Đã hủy</span>
+                                <span class="inline-flex items-center px-2.5 py-0.5 text-xs font-bold bg-slate-100 text-slate-600">Đã kết thúc</span>
                             @endif
                         </td>
-                        <td class="py-4 px-6 text-right whitespace-nowrap">
-                            @if($showtime->status === 'active')
+                        <td class="py-4 px-6 text-right whitespace-nowrap space-x-2">
+                            <a href="{{ route('manager.showtimes.seats', $showtime->id) }}" class="inline-flex items-center gap-1 text-xs font-bold px-3 py-1.5 bg-blue-50 text-blue-600 border border-blue-200 hover:bg-blue-600 hover:text-white transition-all rounded-none">
+                                <span class="material-symbols-outlined text-sm">event_seat</span> Xem ghế
+                            </a>
+                            @if($showtime->status === 'upcoming')
                                 <form action="{{ route('manager.showtimes.cancel', $showtime->id) }}" method="POST" onsubmit="return confirm('Bạn có chắc muốn hủy suất chiếu này?')" class="inline">
                                     @csrf
                                     @method('PATCH')
                                     <button type="submit" class="inline-flex items-center gap-1 text-xs font-bold px-3 py-1.5 bg-red-50 text-red-600 border border-red-200 hover:bg-red-600 hover:text-white transition-all rounded-none">
-                                        <span class="material-symbols-outlined text-sm">cancel</span> Hủy suất
+                                        <span class="material-symbols-outlined text-sm">cancel</span> Hủy
                                     </button>
                                 </form>
-                            @else
-                                <span class="text-slate-400 text-xs italic">—</span>
                             @endif
                         </td>
                     </tr>

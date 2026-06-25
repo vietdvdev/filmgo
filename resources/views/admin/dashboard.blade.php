@@ -370,7 +370,7 @@
                     </a>
                 </li>
                 <li class="nav-item">
-                    <a href="#" class="nav-link">
+                    <a href="{{ route('admin.cinemas.index') }}" class="nav-link">
                         <i class="bi bi-building"></i>
                         <span>Quản lý rạp</span>
                     </a>
