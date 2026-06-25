@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Manager;
 
 use App\Http\Controllers\Controller;
 use App\Models\Booking;
+use App\Models\Cinema;
 use App\Models\Showtime;
 use App\Models\ShowtimeSeat;
 use Illuminate\Http\Request;
@@ -15,7 +16,18 @@ class ManagerReportController extends Controller
 {
     private function getCinemaId()
     {
-        return Auth::user()->cinemas()->first()->id;
+        $user = Auth::user();
+        if ($user->roles()->where('name', 'admin')->exists()) {
+            $cinema = $user->cinemas()->first() ?? Cinema::first();
+        } else {
+            $cinema = $user->cinemas()->first();
+        }
+
+        if (!$cinema) {
+            abort(403, 'Tài khoản chưa được phân công quản lý rạp nào.');
+        }
+
+        return $cinema->id;
     }
 
     public function index(Request $request)

@@ -19,7 +19,7 @@ return new class extends Migration
             $table->time('start_time')->comment('Giờ bắt đầu chiếu');
             $table->time('end_time')->comment('Giờ kết thúc');
             $table->integer('base_price')->comment('Giá vé cơ sở của suất (VNĐ)');
-            $table->enum('status', ['upcoming', 'showing', 'finished'])->default('upcoming')->comment('Trạng thái suất chiếu');
+            $table->enum('status', ['upcoming', 'showing', 'finished', 'cancelled'])->default('upcoming')->comment('Trạng thái suất chiếu');
             $table->timestamps();
             $table->softDeletes()->comment('Xóa mềm - hủy suất chiếu');
 
