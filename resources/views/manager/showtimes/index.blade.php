@@ -21,6 +21,11 @@
             {{ session('success') }}
         </div>
     @endif
+    @if(session('error'))
+        <div class="p-4 bg-red-50 text-red-800 border border-red-200 text-sm font-semibold rounded-none">
+            {{ session('error') }}
+        </div>
+    @endif
 
     <!-- Search & Filter -->
     <div class="bg-white border border-slate-200 shadow-sm p-4 rounded-none">
@@ -56,7 +61,7 @@
             </thead>
             <tbody class="text-sm divide-y divide-slate-100">
                 @forelse($showtimes as $showtime)
-                    <tr class="hover:bg-slate-50/50 {{ $showtime->status === 'canceled' ? 'opacity-50 bg-slate-50/30' : '' }}">
+                    <tr class="hover:bg-slate-50/50 {{ $showtime->status === 'cancelled' ? 'opacity-50 bg-slate-50/30' : '' }}">
                         <td class="py-4 px-6 text-slate-500 font-medium">{{ $loop->iteration + ($showtimes->currentPage() - 1) * $showtimes->perPage() }}</td>
                         <td class="py-4 px-6 font-bold text-slate-900">{{ $showtime->movie->title }}</td>
                         <td class="py-4 px-6 font-medium text-slate-700">{{ $showtime->room->room_name }}</td>
@@ -66,21 +71,24 @@
                         </td>
                         <td class="py-4 px-6 text-slate-900 font-bold">{{ number_format($showtime->base_price) }}đ</td>
                         <td class="py-4 px-6">
-                            @if($showtime->status === 'active')
+                            @if($showtime->status === 'upcoming')
+                                <span class="inline-flex items-center px-2.5 py-0.5 text-xs font-bold bg-blue-100 text-blue-800">Sắp chiếu</span>
+                            @elseif($showtime->status === 'showing')
                                 <span class="inline-flex items-center px-2.5 py-0.5 text-xs font-bold bg-emerald-100 text-emerald-800">Mở bán vé</span>
+                            @elseif($showtime->status === 'finished')
+                                <span class="inline-flex items-center px-2.5 py-0.5 text-xs font-bold bg-slate-100 text-slate-600">Đã kết thúc</span>
                             @else
                                 <span class="inline-flex items-center px-2.5 py-0.5 text-xs font-bold bg-red-100 text-red-800">Đã hủy</span>
                             @endif
                         </td>
                         <td class="py-4 px-6 text-right whitespace-nowrap">
-                            @if($showtime->status === 'active')
-                                <form action="{{ route('manager.showtimes.cancel', $showtime->id) }}" method="POST" onsubmit="return confirm('Bạn có chắc muốn hủy suất chiếu này?')" class="inline">
-                                    @csrf
-                                    @method('PATCH')
-                                    <button type="submit" class="inline-flex items-center gap-1 text-xs font-bold px-3 py-1.5 bg-red-50 text-red-600 border border-red-200 hover:bg-red-600 hover:text-white transition-all rounded-none">
-                                        <span class="material-symbols-outlined text-sm">cancel</span> Hủy suất
-                                    </button>
-                                </form>
+                            @if(in_array($showtime->status, ['upcoming', 'showing']))
+                                <button
+                                    type="button"
+                                    onclick="openCancelModal({{ $showtime->id }}, '{{ addslashes($showtime->movie->title) }}', '{{ Carbon\Carbon::parse($showtime->start_time)->format('H:i') }}')"
+                                    class="inline-flex items-center gap-1 text-xs font-bold px-3 py-1.5 bg-red-50 text-red-600 border border-red-200 hover:bg-red-600 hover:text-white transition-all rounded-none">
+                                    <span class="material-symbols-outlined text-sm">cancel</span> Hủy suất
+                                </button>
                             @else
                                 <span class="text-slate-400 text-xs italic">—</span>
                             @endif
@@ -102,4 +110,90 @@
         @endif
     </div>
 </div>
+<!-- Modal Xác Nhận Hủy Suất Chiếu -->
+<div id="cancelModal" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/60">
+    <div class="bg-white w-full max-w-md shadow-2xl rounded-none p-6 space-y-4">
+        <div class="flex items-center gap-3">
+            <span class="material-symbols-outlined text-red-600 text-3xl">warning</span>
+            <h3 class="text-lg font-bold text-slate-900">Xác Nhận Hủy Suất Chiếu</h3>
+        </div>
+        <p class="text-sm text-slate-600">
+            Bạn sắp hủy suất chiếu <strong id="modalMovieTitle" class="text-slate-900"></strong>
+            lúc <strong id="modalStartTime" class="text-slate-900"></strong>.
+            Hành động này <span class="text-red-600 font-bold">không thể hoàn tác</span>.
+        </p>
+        <div>
+            <label class="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-1">
+                Nhập <span class="text-red-600">HUY</span> để xác nhận
+            </label>
+            <input
+                type="text"
+                id="cancelConfirmInput"
+                placeholder="Gõ HUY"
+                autocomplete="off"
+                class="w-full px-3 py-2 border border-slate-300 text-sm focus:outline-none focus:border-red-500 focus:ring-1 focus:ring-red-500 rounded-none"
+            >
+        </div>
+        <div class="flex justify-end gap-3 pt-2">
+            <button
+                type="button"
+                onclick="closeCancelModal()"
+                class="px-4 py-2 text-sm font-semibold text-slate-600 border border-slate-300 hover:bg-slate-50 rounded-none transition-colors">
+                Quay lại
+            </button>
+            <button
+                type="button"
+                id="confirmCancelBtn"
+                onclick="submitCancel()"
+                disabled
+                class="px-4 py-2 text-sm font-bold text-white bg-red-600 hover:bg-red-700 disabled:opacity-40 disabled:cursor-not-allowed rounded-none transition-all">
+                Hủy Suất Chiếu
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Hidden form để submit -->
+<form id="cancelForm" method="POST" class="hidden">
+    @csrf
+    @method('PATCH')
+</form>
+
+@section('scripts')
+<script>
+    let cancelTargetUrl = '';
+
+    function openCancelModal(id, title, time) {
+        cancelTargetUrl = `/manager/showtimes/${id}/cancel`;
+        document.getElementById('modalMovieTitle').textContent = title;
+        document.getElementById('modalStartTime').textContent = time;
+        document.getElementById('cancelConfirmInput').value = '';
+        document.getElementById('confirmCancelBtn').disabled = true;
+        const modal = document.getElementById('cancelModal');
+        modal.classList.remove('hidden');
+        modal.classList.add('flex');
+        document.getElementById('cancelConfirmInput').focus();
+    }
+
+    function closeCancelModal() {
+        const modal = document.getElementById('cancelModal');
+        modal.classList.add('hidden');
+        modal.classList.remove('flex');
+    }
+
+    function submitCancel() {
+        const form = document.getElementById('cancelForm');
+        form.action = cancelTargetUrl;
+        form.submit();
+    }
+
+    document.getElementById('cancelConfirmInput').addEventListener('input', function () {
+        document.getElementById('confirmCancelBtn').disabled = this.value.trim() !== 'HUY';
+    });
+
+    document.getElementById('cancelModal').addEventListener('click', function (e) {
+        if (e.target === this) closeCancelModal();
+    });
+</script>
+@endsection
 @endsection

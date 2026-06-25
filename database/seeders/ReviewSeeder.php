@@ -34,6 +34,10 @@ class ReviewSeeder extends Seeder
         foreach ($movies as $movie) {
             $reviewCount = rand(1, min(5, $users->count()));
             $randomUsers = $users->random($reviewCount);
+            // random(1) trả về Model thay vì Collection, wrap lại cho an toàn
+            if (!($randomUsers instanceof \Illuminate\Support\Collection)) {
+                $randomUsers = collect([$randomUsers]);
+            }
 
             foreach ($randomUsers as $user) {
                 // Sử dụng firstOrCreate để tránh trùng lặp UNIQUE (user_id, movie_id)

@@ -2,6 +2,7 @@
 
 namespace Database\Seeders;
 
+use App\Models\Cinema;
 use App\Models\Movie;
 use App\Models\Room;
 use App\Models\Showtime;
@@ -19,7 +20,7 @@ class ShowtimeSeeder extends Seeder
         if ($movies->isEmpty()) {
             $movies = Movie::all();
         }
-        $rooms = Room::where('status', 'active')->get();
+        $rooms = Room::with('seats')->where('status', 'active')->get();
 
         if ($movies->isEmpty() || $rooms->isEmpty()) {
             return;
@@ -38,9 +39,11 @@ class ShowtimeSeeder extends Seeder
             ['start' => '20:00:00', 'end' => '22:00:00'],
         ];
 
+        // Giới hạn chỉ seed cho 3 rạp đầu tiên để tránh tràn dữ liệu
+        $limitedCinemaIds = Cinema::orderBy('id')->limit(3)->pluck('id');
+
         foreach ($rooms as $room) {
-            // Giới hạn seed cho các phòng chiếu thuộc 3 rạp đầu tiên để tránh tràn dữ liệu và tối ưu hiệu năng chạy
-            if ($room->cinema_id > 3) {
+            if (!$limitedCinemaIds->contains($room->cinema_id)) {
                 continue;
             }
 

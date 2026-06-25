@@ -38,13 +38,14 @@ class BookingSeeder extends Seeder
         for ($i = 0; $i < 15; $i++) {
             $customer = $customers->random();
             $showtime = $showtimes->random();
-            
+
             // Tìm các ghế trống trong suất chiếu này
-            $availableSeats = ShowtimeSeat::where('showtime_id', $showtime->id)
+            $availableSeats = ShowtimeSeat::with('seat.seatType')
+                ->where('showtime_id', $showtime->id)
                 ->where('status', 'available')
                 ->limit(rand(1, 2))
                 ->get();
-                
+
             if ($availableSeats->isEmpty()) {
                 continue;
             }
@@ -52,12 +53,12 @@ class BookingSeeder extends Seeder
             // Tính tổng tiền ghế
             $seatAmount = 0;
             $ticketPrices = [];
-            
+
             foreach ($availableSeats as $showtimeSeat) {
                 $basePrice = $showtime->base_price;
                 $surcharge = $showtimeSeat->seat->seatType->surcharge_price;
                 $finalSeatPrice = $basePrice + $surcharge;
-                
+
                 $seatAmount += $finalSeatPrice;
                 $ticketPrices[$showtimeSeat->id] = $finalSeatPrice;
             }

@@ -3,84 +3,57 @@
 namespace App\Http\Controllers\Manager;
 
 use App\Http\Controllers\Controller;
+use App\Models\ActivityLog;
+use App\Models\Cinema;
 use App\Models\Movie;
 use App\Models\Room;
 use App\Models\Showtime;
+use App\Models\ShowtimeSeat;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
 
 class ManagerShowtimeController extends Controller
 {
-    private function getCinemaId()
+    private function getCinemaId(): int
     {
-        return Auth::user()->cinemas()->first()->id;
+        $user = Auth::user();
+
+        // Admin truy cập giao diện manager — lấy cinema được gán hoặc fallback về cinema đầu tiên
+        if ($user->roles()->where('name', 'admin')->exists()) {
+            $cinema = $user->cinemas()->first() ?? Cinema::first();
+        } else {
+            $cinema = $user->cinemas()->first();
+        }
+
+        if (!$cinema) {
+            abort(403, 'Tài khoản của bạn chưa được phân công quản lý rạp nào. Vui lòng liên hệ Admin.');
+        }
+
+        return $cinema->id;
     }
 
     public function index(Request $request)
     {
-        // Mock dữ liệu giả lập danh sách suất chiếu
-        $showDate = $request->filled('date') ? Carbon::parse($request->date) : Carbon::today();
-        
-        $mockShowtimes = collect([
-            (object)[
-                'id' => 1,
-                'movie' => (object)['title' => 'Lật Mặt 7: Một Điều Ước'],
-                'room' => (object)['room_name' => 'Phòng Chiếu 01'],
-                'show_date' => $showDate,
-                'start_time' => '10:00:00',
-                'end_time' => '12:15:00',
-                'base_price' => 80000,
-                'status' => 'active'
-            ],
-            (object)[
-                'id' => 2,
-                'movie' => (object)['title' => 'Doraemon: Bản Giao Hưởng Địa Cầu'],
-                'room' => (object)['room_name' => 'Phòng Chiếu 02'],
-                'show_date' => $showDate,
-                'start_time' => '13:30:00',
-                'end_time' => '15:30:00',
-                'base_price' => 80000,
-                'status' => 'active'
-            ],
-            (object)[
-                'id' => 3,
-                'movie' => (object)['title' => 'Haikyu!!: Trận Chiến Bãi Phế Thải'],
-                'room' => (object)['room_name' => 'Phòng Chiếu 03'],
-                'show_date' => $showDate,
-                'start_time' => '16:00:00',
-                'end_time' => '17:45:00',
-                'base_price' => 90000,
-                'status' => 'canceled'
-            ]
-        ]);
+        $cinemaId = $this->getCinemaId();
+        $showDate = $request->filled('date') ? $request->date : today()->toDateString();
 
-        $currentPage = 1;
-        $perPage = 15;
-        $showtimes = new \Illuminate\Pagination\LengthAwarePaginator(
-            $mockShowtimes->forPage($currentPage, $perPage),
-            $mockShowtimes->count(),
-            $perPage,
-            $currentPage,
-            ['path' => route('manager.showtimes.index')]
-        );
+        $showtimes = Showtime::with(['movie', 'room'])
+            ->whereHas('room', fn($q) => $q->where('cinema_id', $cinemaId))
+            ->whereDate('show_date', $showDate)
+            ->orderBy('start_time')
+            ->paginate(15)
+            ->withQueryString();
 
         return view('manager.showtimes.index', compact('showtimes'));
     }
 
     public function create()
     {
-        // Mock dữ liệu giả lập cho phim và phòng chiếu
-        $movies = collect([
-            (object)['id' => 1, 'title' => 'Lật Mặt 7: Một Điều Ước', 'duration' => 120],
-            (object)['id' => 2, 'title' => 'Doraemon: Bản Giao Hưởng Địa Cầu', 'duration' => 105],
-            (object)['id' => 3, 'title' => 'Haikyu!!: Trận Chiến Bãi Phế Thải', 'duration' => 95]
-        ]);
-        $rooms = collect([
-            (object)['id' => 1, 'room_name' => 'Phòng Chiếu 01', 'room_type' => '2D', 'capacity' => 120],
-            (object)['id' => 2, 'room_name' => 'Phòng Chiếu 02', 'room_type' => '3D', 'capacity' => 150],
-            (object)['id' => 3, 'room_name' => 'Phòng Chiếu 03', 'room_type' => 'IMAX', 'capacity' => 200]
-        ]);
+        $cinemaId = $this->getCinemaId();
+        $movies = Movie::where('status', 'showing')->orderBy('title')->get();
+        $rooms  = Room::where('cinema_id', $cinemaId)->where('status', 'active')->orderBy('room_name')->get();
 
         return view('manager.showtimes.create', compact('movies', 'rooms'));
     }
@@ -88,9 +61,9 @@ class ManagerShowtimeController extends Controller
     public function store(Request $request)
     {
         $request->validate([
-            'movie_id'   => 'required',
-            'room_id'    => 'required',
-            'show_date'  => 'required|date',
+            'movie_id'   => 'required|exists:movies,id',
+            'room_id'    => 'required|exists:rooms,id',
+            'show_date'  => 'required|date|after_or_equal:today',
             'start_time' => 'required',
             'base_price' => 'required|numeric|min:0',
         ], [
@@ -101,13 +74,74 @@ class ManagerShowtimeController extends Controller
             'base_price.required' => 'Vui lòng nhập giá vé cơ bản.',
         ]);
 
-        // Mock hành động tạo suất chiếu thành công
-        return redirect()->route('manager.showtimes.index')->with('success', 'Tạo suất chiếu mới thành công (dữ liệu giả lập)!');
+        // Verify room belongs to manager's cinema
+        $cinemaId = $this->getCinemaId();
+        $room = Room::where('id', $request->room_id)->where('cinema_id', $cinemaId)->firstOrFail();
+
+        $movie    = Movie::findOrFail($request->movie_id);
+        $start    = Carbon::parse($request->show_date . ' ' . $request->start_time);
+        $end      = $start->copy()->addMinutes($movie->duration ?? 120);
+
+        Showtime::create([
+            'movie_id'   => $request->movie_id,
+            'room_id'    => $request->room_id,
+            'show_date'  => $request->show_date,
+            'start_time' => $start->format('H:i:s'),
+            'end_time'   => $end->format('H:i:s'),
+            'base_price' => $request->base_price,
+            'status'     => 'upcoming',
+        ]);
+
+        return redirect()->route('manager.showtimes.index')->with('success', 'Tạo suất chiếu mới thành công!');
     }
 
     public function cancelShowtime($id)
     {
-        // Mock hành động hủy suất chiếu thành công
-        return redirect()->route('manager.showtimes.index')->with('success', 'Đã hủy suất chiếu thành công (dữ liệu giả lập).');
+        $cinemaId = $this->getCinemaId();
+
+        // Bước 1: Xác thực quyền — suất phải thuộc phòng trong rạp của manager
+        $showtime = Showtime::whereHas(
+            'room',
+            fn($q) => $q->where('cinema_id', $cinemaId)
+        )->findOrFail($id);
+
+        if ($showtime->status === 'cancelled') {
+            return back()->with('error', 'Suất chiếu này đã được hủy trước đó.');
+        }
+
+        // Bước 2: Pre-flight check — không được có ghế 'booked'
+        $hasBookedSeat = ShowtimeSeat::where('showtime_id', $id)
+            ->where('status', 'booked')
+            ->exists();
+
+        if ($hasBookedSeat) {
+            return back()->with(
+                'error',
+                'Không thể hủy suất chiếu đã có khách mua vé. Vui lòng thực hiện quy trình hoàn tiền (Refund) trước.'
+            );
+        }
+
+        // Bước 3 & 4: Xóa ghế + cập nhật trạng thái trong Transaction
+        DB::transaction(function () use ($showtime) {
+            // Bước 3: Hard delete toàn bộ showtime_seats (kể cả ghế 'holding' hết hạn)
+            ShowtimeSeat::where('showtime_id', $showtime->id)->delete();
+
+            // Bước 4: Soft delete + đánh dấu cancelled
+            $showtime->update(['status' => 'cancelled']);
+            $showtime->delete(); // sets deleted_at
+        });
+
+        // Bước 5: Ghi audit log
+        ActivityLog::create([
+            'user_id'     => Auth::id(),
+            'action'      => 'CANCEL_SHOWTIME',
+            'model_type'  => 'Showtime',
+            'model_id'    => $showtime->id,
+            'description' => 'Manager đã hủy suất chiếu ID=' . $showtime->id,
+            'ip_address'  => request()->ip(),
+        ]);
+
+        return redirect()->route('manager.showtimes.index')
+            ->with('success', 'Suất chiếu đã được hủy thành công.');
     }
 }

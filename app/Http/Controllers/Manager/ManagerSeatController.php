@@ -27,7 +27,20 @@ class ManagerSeatController extends Controller
      */
     private function getCinemaId(): int
     {
-        return Auth::user()->cinemas()->first()->id;
+    private function getCinemaId(): int
+    {
+        $user = Auth::user();
+        if ($user->roles()->where('name', 'admin')->exists()) {
+            $cinema = $user->cinemas()->first() ?? \App\Models\Cinema::first();
+        } else {
+            $cinema = $user->cinemas()->first();
+        }
+
+        if (!$cinema) {
+            abort(403, 'Tài khoản chưa được phân công quản lý rạp nào.');
+        }
+
+        return $cinema->id;
     }
 
     /**
