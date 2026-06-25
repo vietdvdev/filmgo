@@ -21,6 +21,7 @@ export default defineConfig({
             ],
         }),
         tailwindcss(),
+        vue(),
     ],
     server: {
         watch: {

@@ -13,7 +13,7 @@
     <!-- Quick Stats Grid -->
     <div class="grid grid-cols-1 gap-5 sm:grid-cols-3">
         <!-- Stat Card 1 -->
-        <div class="bg-white border border-slate-200 shadow-sm p-6 flex items-center justify-between rounded-none">
+        <a href="{{ route('manager.rooms.index') }}" class="bg-white border border-slate-200 shadow-sm p-6 flex items-center justify-between rounded-none hover:shadow-md hover:border-blue-400 transition-all cursor-pointer block">
             <div class="space-y-2">
                 <p class="text-xs font-bold text-slate-400 uppercase tracking-wider">Phòng Chiếu Đang Chạy</p>
                 <p class="text-3xl font-extrabold text-slate-900">{{ $roomCount }}</p>
@@ -21,10 +21,10 @@
             <div class="p-3 bg-blue-50 text-blue-600 rounded-none">
                 <span class="material-symbols-outlined text-2xl">meeting_room</span>
             </div>
-        </div>
+        </a>
 
         <!-- Stat Card 2 -->
-        <div class="bg-white border border-slate-200 shadow-sm p-6 flex items-center justify-between rounded-none">
+        <a href="{{ route('manager.staff.index') }}" class="bg-white border border-slate-200 shadow-sm p-6 flex items-center justify-between rounded-none hover:shadow-md hover:border-emerald-400 transition-all cursor-pointer block">
             <div class="space-y-2">
                 <p class="text-xs font-bold text-slate-400 uppercase tracking-wider">Tổng Nhân Sự Rạp</p>
                 <p class="text-3xl font-extrabold text-slate-900">{{ $staffCount }}</p>
@@ -32,10 +32,10 @@
             <div class="p-3 bg-emerald-50 text-emerald-600 rounded-none">
                 <span class="material-symbols-outlined text-2xl">group</span>
             </div>
-        </div>
+        </a>
 
         <!-- Stat Card 3 -->
-        <div class="bg-white border border-slate-200 shadow-sm p-6 flex items-center justify-between rounded-none">
+        <a href="{{ route('manager.showtimes.index') }}" class="bg-white border border-slate-200 shadow-sm p-6 flex items-center justify-between rounded-none hover:shadow-md hover:border-purple-400 transition-all cursor-pointer block">
             <div class="space-y-2">
                 <p class="text-xs font-bold text-slate-400 uppercase tracking-wider">Suất Chiếu Hôm Nay</p>
                 <p class="text-3xl font-extrabold text-slate-900">{{ $showtimeTodayCount }}</p>
@@ -43,7 +43,7 @@
             <div class="p-3 bg-purple-50 text-purple-600 rounded-none">
                 <span class="material-symbols-outlined text-2xl">schedule</span>
             </div>
-        </div>
+        </a>
     </div>
 
     <!-- Welcome Panel -->

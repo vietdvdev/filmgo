@@ -35,13 +35,26 @@
         <!-- Scoped Cinema Tag -->
         <div class="px-6 py-3 border-b border-slate-800 bg-slate-950 flex-shrink-0">
             <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Rạp Đang Quản Lý</p>
-            <p class="text-sm font-semibold text-white mt-0.5 truncate" title="{{ auth()->user()->cinemas()->first()?->name ?? 'Chưa phân công' }}">
-                {{ auth()->user()->cinemas()->first()?->name ?? 'Chưa phân công' }}
-            </p>
+            @if(auth()->user()->roles()->where('name', 'admin')->exists())
+                <p class="text-sm font-semibold text-amber-400 mt-0.5 truncate" title="Quản trị viên hệ thống">
+                    Quản trị viên hệ thống
+                </p>
+            @else
+                <p class="text-sm font-semibold text-white mt-0.5 truncate" title="{{ auth()->user()->cinemas()->first()?->name ?? 'Chưa phân công' }}">
+                    {{ auth()->user()->cinemas()->first()?->name ?? 'Chưa phân công' }}
+                </p>
+            @endif
         </div>
 
         <!-- Navigation Links -->
         <nav class="flex-1 overflow-y-auto space-y-1 px-4 py-4 min-h-0">
+            @if(auth()->user()->roles()->where('name', 'admin')->exists())
+            <a href="{{ route('admin.dashboard') }}"
+               class="flex items-center gap-3 px-3 py-2.5 text-sm font-semibold transition-colors duration-200 rounded-none text-amber-400 hover:bg-slate-800 hover:text-amber-300">
+                <span class="material-symbols-outlined text-lg">admin_panel_settings</span>
+                Quay lại Trang Admin
+            </a>
+            @endif
             <a href="{{ route('manager.dashboard') }}"
                class="flex items-center gap-3 px-3 py-2.5 text-sm font-semibold transition-colors duration-200 rounded-none {{ request()->routeIs('manager.dashboard') ? 'bg-blue-600 text-white' : 'text-slate-300 hover:bg-slate-800 hover:text-white' }}">
                 <span class="material-symbols-outlined text-lg">dashboard</span>
@@ -165,6 +178,7 @@
             @yield('content')
         </main>
     </div>
+
 
     @yield('scripts')
 </body>

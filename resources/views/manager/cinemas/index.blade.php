@@ -139,8 +139,16 @@
     @empty
         <div class="bg-white border border-slate-200 shadow-sm p-12 text-center">
             <span class="material-symbols-outlined text-5xl text-slate-300 mb-3 block">theaters</span>
-            <p class="text-base font-semibold text-slate-500">Bạn chưa được phân công quản lý rạp nào.</p>
-            <p class="text-sm text-slate-400 mt-1">Vui lòng liên hệ Admin để được phân công.</p>
+            @if(auth()->user()->roles()->where('name', 'admin')->exists())
+                <p class="text-base font-semibold text-slate-500">Bạn đang truy cập với vai trò Quản trị viên (Admin)</p>
+                <p class="text-sm text-slate-400 mt-1 mb-6">Trang này chỉ hiển thị rạp được phân công. Hãy đi tới trang quản trị của Admin để thêm rạp và phân công.</p>
+                <a href="{{ route('admin.cinemas.index') }}" class="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold text-sm px-5 py-2.5 transition-colors">
+                    <span class="material-symbols-outlined text-sm">settings</span> Quản lý rạp chiếu (Admin)
+                </a>
+            @else
+                <p class="text-base font-semibold text-slate-500">Bạn chưa được phân công quản lý rạp nào.</p>
+                <p class="text-sm text-slate-400 mt-1">Vui lòng liên hệ Admin để được phân công.</p>
+            @endif
         </div>
     @endforelse
 
