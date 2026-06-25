@@ -47,10 +47,11 @@
             <span class="font-label-md text-label-md">Quản Lý Quy Tắc Giá</span>
         </a>
 
-        <a class="flex items-center gap-3 px-4 py-3 rounded-lg text-on-surface-variant hover:bg-surface-container-low transition-colors duration-200"
-            href="#">
-            <span class="material-symbols-outlined">calendar_month</span>
-            <span class="font-label-md text-label-md">Lịch Chiếu Phim</span>
+        <a class="flex items-center gap-3 px-4 py-3 rounded-lg transition-colors duration-200 {{ request()->routeIs('admin.cinemas.*') ? 'bg-surface-container-low text-primary font-bold' : 'text-on-surface-variant hover:bg-surface-container-low' }}"
+            href="{{ route('admin.cinemas.index') }}">
+            <span class="material-symbols-outlined"
+                style="font-variation-settings: 'FILL' {{ request()->routeIs('admin.cinemas.*') ? 1 : 0 }};">corporate_fare</span>
+            <span class="font-label-md text-label-md">Quản lý rạp</span>
         </a>
         <div>
             <button type="button" onclick="toggleUserMenu()"

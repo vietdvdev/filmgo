@@ -3,135 +3,213 @@
 namespace App\Http\Controllers\Manager;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\StoreShowtimeRequest;
 use App\Models\ActivityLog;
 use App\Models\Cinema;
 use App\Models\Movie;
 use App\Models\Room;
+use App\Models\Seat;
 use App\Models\Showtime;
 use App\Models\ShowtimeSeat;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
-use Carbon\Carbon;
+use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\Log;
 
 class ManagerShowtimeController extends Controller
 {
-    private function getCinemaId(): int
+    /**
+     * Lấy danh sách ID các rạp mà user hiện tại được phân công.
+     * Admin fallback về tất cả rạp.
+     */
+    private function getCinemaIds(): array
     {
         $user = Auth::user();
 
-        // Admin truy cập giao diện manager — lấy cinema được gán hoặc fallback về cinema đầu tiên
         if ($user->roles()->where('name', 'admin')->exists()) {
-            $cinema = $user->cinemas()->first() ?? Cinema::first();
-        } else {
-            $cinema = $user->cinemas()->first();
+            return Cinema::pluck('id')->toArray();
         }
 
-        if (!$cinema) {
+        $ids = $user->cinemas()->pluck('cinemas.id')->toArray();
+
+        if (empty($ids)) {
             abort(403, 'Tài khoản của bạn chưa được phân công quản lý rạp nào. Vui lòng liên hệ Admin.');
         }
 
-        return $cinema->id;
+        return $ids;
     }
 
     public function index(Request $request)
     {
-        $cinemaId = $this->getCinemaId();
-        $showDate = $request->filled('date') ? $request->date : today()->toDateString();
+        $cinemaIds = $this->getCinemaIds();
 
-        $showtimes = Showtime::with(['movie', 'room'])
-            ->whereHas('room', fn($q) => $q->where('cinema_id', $cinemaId))
+        $showDate = $request->filled('date')
+            ? Carbon::createFromFormat('Y-m-d', $request->input('date'))?->startOfDay() ?? Carbon::today()
+            : Carbon::today();
+
+        $showtimes = Showtime::whereIn('room_id', function ($query) use ($cinemaIds) {
+                $query->select('id')->from('rooms')->whereIn('cinema_id', $cinemaIds)->whereNull('deleted_at');
+            })
             ->whereDate('show_date', $showDate)
+            ->with(['movie', 'room', 'room.cinema'])
             ->orderBy('start_time')
             ->paginate(15)
             ->withQueryString();
 
-        return view('manager.showtimes.index', compact('showtimes'));
+        return view('manager.showtimes.index', compact('showtimes', 'showDate'));
     }
 
     public function create()
     {
-        $cinemaId = $this->getCinemaId();
-        $movies = Movie::where('status', 'showing')->orderBy('title')->get();
-        $rooms  = Room::where('cinema_id', $cinemaId)->where('status', 'active')->orderBy('room_name')->get();
+        $movies = Movie::whereIn('status', ['showing', 'upcoming'])
+            ->orderBy('title')
+            ->get(['id', 'title', 'duration', 'age_limit']);
 
-        return view('manager.showtimes.create', compact('movies', 'rooms'));
+        return view('manager.showtimes.create', compact('movies'));
     }
 
-    public function store(Request $request)
+    public function store(StoreShowtimeRequest $request)
     {
-        $request->validate([
-            'movie_id'   => 'required|exists:movies,id',
-            'room_id'    => 'required|exists:rooms,id',
-            'show_date'  => 'required|date|after_or_equal:today',
-            'start_time' => 'required',
-            'base_price' => 'required|numeric|min:0',
-        ], [
-            'movie_id.required'   => 'Vui lòng chọn phim.',
-            'room_id.required'    => 'Vui lòng chọn phòng chiếu.',
-            'show_date.required'  => 'Vui lòng chọn ngày chiếu.',
-            'start_time.required' => 'Vui lòng chọn giờ bắt đầu.',
-            'base_price.required' => 'Vui lòng nhập giá vé cơ bản.',
-        ]);
+        // Bước 1: Xác thực quyền qua Policy
+        $room = Room::findOrFail($request->integer('room_id'));
 
-        // Verify room belongs to manager's cinema
-        $cinemaId = $this->getCinemaId();
-        $room = Room::where('id', $request->room_id)->where('cinema_id', $cinemaId)->firstOrFail();
+        if ($room->status !== 'active') {
+            return back()->withInput()->withErrors(['room_id' => 'Phòng chiếu này hiện không hoạt động.']);
+        }
 
-        $movie    = Movie::findOrFail($request->movie_id);
-        $start    = Carbon::parse($request->show_date . ' ' . $request->start_time);
-        $end      = $start->copy()->addMinutes($movie->duration ?? 120);
+        Gate::authorize('create', [Showtime::class, $room]);
 
-        Showtime::create([
-            'movie_id'   => $request->movie_id,
-            'room_id'    => $request->room_id,
-            'show_date'  => $request->show_date,
-            'start_time' => $start->format('H:i:s'),
-            'end_time'   => $end->format('H:i:s'),
-            'base_price' => $request->base_price,
-            'status'     => 'upcoming',
-        ]);
+        // Bước 2: Tính end_time
+        $movie = Movie::findOrFail($request->integer('movie_id'));
 
-        return redirect()->route('manager.showtimes.index')->with('success', 'Tạo suất chiếu mới thành công!');
+        if ($movie->status === 'stopped') {
+            return back()->withInput()->withErrors(['movie_id' => 'Phim này đã ngừng chiếu, không thể tạo suất chiếu mới.']);
+        }
+
+        $startTime   = Carbon::createFromFormat('Y-m-d H:i', $request->input('show_date') . ' ' . $request->input('start_time'));
+        $endTime     = $startTime->copy()->addMinutes($movie->duration);
+        $startStr    = $startTime->format('H:i:s');
+        $endStr      = $endTime->format('H:i:s');
+        $showDateStr = $request->input('show_date');
+
+        // Bước 3: Kiểm tra trùng lịch
+        $overlapQuery = Showtime::where('room_id', $room->id)->where('show_date', $showDateStr);
+
+        if ($endStr <= $startStr) {
+            // Phim chiếu qua nửa đêm
+            $overlapQuery->where('start_time', '>=', $startStr);
+        } else {
+            $overlapQuery->where(function ($q) use ($startStr, $endStr) {
+                $q->where('start_time', '<', $endStr)->where('end_time', '>', $startStr);
+            });
+        }
+
+        $overlap = $overlapQuery->with('movie')->first();
+
+        if ($overlap) {
+            return back()->withInput()->withErrors([
+                'start_time' => sprintf(
+                    'Trùng lịch! Khung giờ %s–%s bị chồng lấn với suất chiếu "%s" (%s–%s) tại phòng này.',
+                    $startTime->format('H:i'),
+                    $endTime->format('H:i'),
+                    $overlap->movie->title,
+                    Carbon::parse($overlap->start_time)->format('H:i'),
+                    Carbon::parse($overlap->end_time)->format('H:i')
+                ),
+            ]);
+        }
+
+        // Bước 4: Transaction — lưu suất chiếu + sinh sơ đồ ghế
+        DB::beginTransaction();
+        try {
+            $showtime = Showtime::create([
+                'movie_id'   => $movie->id,
+                'room_id'    => $room->id,
+                'show_date'  => $showDateStr,
+                'start_time' => $startStr,
+                'end_time'   => $endStr,
+                'base_price' => $request->integer('base_price'),
+                'status'     => 'upcoming',
+            ]);
+
+            $showtimeSeatsData = [];
+            Seat::where('room_id', $room->id)->select('id')->chunk(500, function ($seats) use ($showtime, &$showtimeSeatsData) {
+                foreach ($seats as $seat) {
+                    $showtimeSeatsData[] = [
+                        'showtime_id' => $showtime->id,
+                        'seat_id'     => $seat->id,
+                        'user_id'     => null,
+                        'status'      => 'available',
+                        'locked_at'   => null,
+                        'expires_at'  => null,
+                    ];
+                }
+            });
+
+            if (empty($showtimeSeatsData)) {
+                DB::rollBack();
+                return back()->withInput()->withErrors([
+                    'room_id' => 'Phòng chiếu này chưa được thiết lập sơ đồ ghế. Vui lòng cấu hình ghế trước.',
+                ]);
+            }
+
+            ShowtimeSeat::insert($showtimeSeatsData);
+
+            DB::commit();
+
+            return redirect()
+                ->route('manager.showtimes.index', ['date' => $showDateStr])
+                ->with('success', sprintf(
+                    'Tạo suất chiếu "%s" thành công! Đã sinh sơ đồ %d ghế trống.',
+                    $movie->title,
+                    count($showtimeSeatsData)
+                ));
+        } catch (\Throwable $e) {
+            DB::rollBack();
+            Log::error('Lỗi tạo suất chiếu', [
+                'user_id'  => Auth::id(),
+                'room_id'  => $room->id,
+                'movie_id' => $movie->id,
+                'error'    => $e->getMessage(),
+            ]);
+
+            return back()->withInput()->withErrors([
+                'error' => 'Đã xảy ra lỗi hệ thống. Vui lòng thử lại hoặc liên hệ quản trị viên.',
+            ]);
+        }
     }
 
     public function cancelShowtime($id)
     {
-        $cinemaId = $this->getCinemaId();
+        $cinemaIds = $this->getCinemaIds();
 
-        // Bước 1: Xác thực quyền — suất phải thuộc phòng trong rạp của manager
-        $showtime = Showtime::whereHas(
-            'room',
-            fn($q) => $q->where('cinema_id', $cinemaId)
-        )->findOrFail($id);
+        // Bước 1: Xác thực quyền — suất phải thuộc rạp của manager
+        $showtime = Showtime::whereIn('room_id', function ($query) use ($cinemaIds) {
+            $query->select('id')->from('rooms')->whereIn('cinema_id', $cinemaIds)->whereNull('deleted_at');
+        })->findOrFail($id);
 
-        if ($showtime->status === 'cancelled') {
-            return back()->with('error', 'Suất chiếu này đã được hủy trước đó.');
+        // Không cho hủy suất đang chiếu, đã kết thúc, hoặc đã hủy
+        if (in_array($showtime->status, ['showing', 'finished', 'cancelled'])) {
+            return back()->with('error', 'Không thể hủy suất chiếu đang chiếu, đã kết thúc hoặc đã hủy trước đó.');
         }
 
         // Bước 2: Pre-flight check — không được có ghế 'booked'
-        $hasBookedSeat = ShowtimeSeat::where('showtime_id', $id)
-            ->where('status', 'booked')
-            ->exists();
+        $hasBookedSeat = ShowtimeSeat::where('showtime_id', $id)->where('status', 'booked')->exists();
 
         if ($hasBookedSeat) {
-            return back()->with(
-                'error',
-                'Không thể hủy suất chiếu đã có khách mua vé. Vui lòng thực hiện quy trình hoàn tiền (Refund) trước.'
-            );
+            return back()->with('error', 'Không thể hủy suất chiếu đã có khách mua vé. Vui lòng thực hiện quy trình hoàn tiền (Refund) trước.');
         }
 
-        // Bước 3 & 4: Xóa ghế + cập nhật trạng thái trong Transaction
+        // Bước 3 & 4: Transaction — xóa ghế + soft delete suất chiếu
         DB::transaction(function () use ($showtime) {
-            // Bước 3: Hard delete toàn bộ showtime_seats (kể cả ghế 'holding' hết hạn)
             ShowtimeSeat::where('showtime_id', $showtime->id)->delete();
-
-            // Bước 4: Soft delete + đánh dấu cancelled
             $showtime->update(['status' => 'cancelled']);
-            $showtime->delete(); // sets deleted_at
+            $showtime->delete();
         });
 
-        // Bước 5: Ghi audit log
+        // Bước 5: Audit log
         ActivityLog::create([
             'user_id'     => Auth::id(),
             'action'      => 'CANCEL_SHOWTIME',
@@ -141,7 +219,32 @@ class ManagerShowtimeController extends Controller
             'ip_address'  => request()->ip(),
         ]);
 
-        return redirect()->route('manager.showtimes.index')
-            ->with('success', 'Suất chiếu đã được hủy thành công.');
+        return redirect()->route('manager.showtimes.index')->with('success', 'Suất chiếu đã được hủy thành công.');
+    }
+
+    public function seatStatus($id)
+    {
+        $cinemaIds = $this->getCinemaIds();
+
+        $showtime = Showtime::whereIn('room_id', function ($query) use ($cinemaIds) {
+            $query->select('id')->from('rooms')->whereIn('cinema_id', $cinemaIds)->whereNull('deleted_at');
+        })
+            ->with(['movie', 'room', 'room.cinema'])
+            ->findOrFail($id);
+
+        $showtimeSeats = ShowtimeSeat::where('showtime_id', $showtime->id)
+            ->with(['seat', 'seat.seatType'])
+            ->get();
+
+        $seatsGrouped = $showtimeSeats->groupBy(fn($item) => $item->seat->seat_row)->sortKeys();
+
+        $stats = [
+            'total'     => $showtimeSeats->count(),
+            'available' => $showtimeSeats->where('status', 'available')->count(),
+            'holding'   => $showtimeSeats->where('status', 'holding')->count(),
+            'booked'    => $showtimeSeats->where('status', 'booked')->count(),
+        ];
+
+        return view('manager.showtimes.seats', compact('showtime', 'seatsGrouped', 'stats'));
     }
 }
