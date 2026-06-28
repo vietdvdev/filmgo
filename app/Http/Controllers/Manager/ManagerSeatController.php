@@ -27,8 +27,6 @@ class ManagerSeatController extends Controller
      */
     private function getCinemaId(): int
     {
-    private function getCinemaId(): int
-    {
         $user = Auth::user();
         if ($user->roles()->where('name', 'admin')->exists()) {
             $cinema = $user->cinemas()->first() ?? \App\Models\Cinema::first();

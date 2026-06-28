@@ -11,6 +11,7 @@ use App\Http\Controllers\Admin\UserCinemaController;
 use App\Http\Controllers\Admin\UserController;
 use App\Http\Controllers\Admin\ComboController;
 use App\Http\Controllers\Admin\ManagementAuthController;
+use App\Http\Controllers\Admin\PromotionController;
 use App\Http\Controllers\Customer\CustomerAuthController;
 use App\Http\Controllers\Customer\CustomerCinemaController;
 use App\Http\Controllers\Customer\CustomerForgotPasswordController;
@@ -106,6 +107,9 @@ Route::prefix('admin')->group(function () {
 
         // 9. Quản lý Combo bắp nước
         Route::resource('combos', ComboController::class)->names('admin.combos');
+
+        // 10. Quản lý mã khuyến mãi (Promotions)
+        Route::resource('promotions', PromotionController::class)->names('admin.promotions');
     });
 });
 
