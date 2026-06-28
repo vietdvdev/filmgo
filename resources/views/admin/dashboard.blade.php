@@ -358,6 +358,18 @@
                     </a>
                 </li>
                 <li class="nav-item">
+                    <a href="{{ route('admin.seat-types.index') }}" class="nav-link">
+                        <i class="bi bi-grid-1x2"></i>
+                        <span>Quản lý loại ghế</span>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="{{ route('admin.price-rules.index') }}" class="nav-link">
+                        <i class="bi bi-cash-stack"></i>
+                        <span>Quản lý quy tắc giá</span>
+                    </a>
+                </li>
+                <li class="nav-item">
                     <a href="#" class="nav-link">
                         <i class="bi bi-ticket-perforated"></i>
                         <span>Quản lý vé đặt</span>
@@ -373,6 +385,12 @@
                     <a href="{{ route('admin.cinemas.index') }}" class="nav-link">
                         <i class="bi bi-building"></i>
                         <span>Quản lý rạp</span>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="{{ route('admin.combos.index') }}" class="nav-link">
+                        <i class="bi bi-cup-straw"></i>
+                        <span>Combo Bắp Nước</span>
                     </a>
                 </li>
                 <li class="nav-item">

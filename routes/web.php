@@ -9,6 +9,7 @@ use App\Http\Controllers\Admin\SeatTypeController;
 use App\Http\Controllers\Admin\CinemaController;
 use App\Http\Controllers\Admin\UserCinemaController;
 use App\Http\Controllers\Admin\UserController;
+use App\Http\Controllers\Admin\ComboController;
 use App\Http\Controllers\Admin\ManagementAuthController;
 use App\Http\Controllers\Customer\CustomerAuthController;
 use App\Http\Controllers\Customer\CustomerCinemaController;
@@ -102,6 +103,9 @@ Route::prefix('admin')->group(function () {
 
         // 8. Quản lý phân công rạp
         Route::resource('user-cinemas', UserCinemaController::class)->names('admin.user-cinemas');
+
+        // 9. Quản lý Combo bắp nước
+        Route::resource('combos', ComboController::class)->names('admin.combos');
     });
 });
 
