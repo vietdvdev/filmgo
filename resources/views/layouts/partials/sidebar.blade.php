@@ -96,9 +96,10 @@
             <span class="material-symbols-outlined">confirmation_number</span>
             <span class="font-label-md text-label-md">Vé &amp; Đơn Hàng</span>
         </a>
-        <a class="flex items-center gap-3 px-4 py-3 rounded-lg text-on-surface-variant hover:bg-surface-container-low transition-colors duration-200"
-            href="#">
-            <span class="material-symbols-outlined">fastfood</span>
+        <a class="flex items-center gap-3 px-4 py-3 rounded-lg transition-colors duration-200 {{ request()->routeIs('admin.combos.*') ? 'bg-surface-container-low text-primary font-bold' : 'text-on-surface-variant hover:bg-surface-container-low' }}"
+            href="{{ route('admin.combos.index') }}">
+            <span class="material-symbols-outlined"
+                style="font-variation-settings: 'FILL' {{ request()->routeIs('admin.combos.*') ? 1 : 0 }};">fastfood</span>
             <span class="font-label-md text-label-md">Combo Bắp Nước</span>
         </a>
         <a class="flex items-center gap-3 px-4 py-3 rounded-lg text-on-surface-variant hover:bg-surface-container-low transition-colors duration-200"
