@@ -69,4 +69,27 @@ class MovieController extends Controller
         )
     );
 }
+
+    public function show($id)
+    {
+        $movie = Movie::with(['genres', 'actors'])->findOrFail($id);
+        
+        $showtimes = \App\Models\Showtime::with(['room.cinema'])
+            ->where('movie_id', $id)
+            ->where('show_date', '>=', now()->toDateString())
+            ->where('status', 'upcoming')
+            ->orderBy('show_date')
+            ->orderBy('start_time')
+            ->get();
+
+        $showtimesGrouped = $showtimes->groupBy(function($item) {
+            return $item->show_date->format('Y-m-d');
+        })->map(function($dateGroup) {
+            return $dateGroup->groupBy(function($item) {
+                return $item->room->cinema->name;
+            });
+        });
+
+        return view('customer.movies.show', compact('movie', 'showtimesGrouped'));
+    }
 }

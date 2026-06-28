@@ -38,6 +38,7 @@ Route::get(
     '/movies/search',
     [CustomerMovieController::class, 'search']
 )->name('movies.search');
+Route::get('/movies/{id}', [CustomerMovieController::class, 'show'])->name('movies.show');
 // Xác thực khách hàng (Khách chưa đăng nhập)
 Route::middleware('guest')->group(function () {
     Route::get('/register', [CustomerAuthController::class, 'showRegisterForm'])->name('register');
@@ -61,6 +62,17 @@ Route::middleware('auth')->group(function () {
     Route::get('/profile', [CustomerProfileController::class, 'edit'])->name('profile.edit');
     Route::put('/profile', [CustomerProfileController::class, 'updateProfile'])->name('profile.update');
     Route::put('/profile/password', [CustomerProfileController::class, 'updatePassword'])->name('profile.password');
+
+    // Đặt vé xem phim & chọn Combo
+    Route::get('/booking/showtime/{showtime_id}/seats', [App\Http\Controllers\Customer\BookingController::class, 'selectSeats'])->name('booking.select-seats');
+    Route::post('/booking/showtime/{showtime_id}/seats', [App\Http\Controllers\Customer\BookingController::class, 'processSeats'])->name('booking.process-seats');
+    
+    Route::get('/booking/showtime/{showtime_id}/combos', [App\Http\Controllers\Customer\BookingController::class, 'selectCombos'])->name('booking.select-combos');
+    Route::post('/booking/showtime/{showtime_id}/combos', [App\Http\Controllers\Customer\BookingController::class, 'processCombos'])->name('booking.process-combos');
+    
+    Route::get('/booking/showtime/{showtime_id}/checkout', [App\Http\Controllers\Customer\BookingController::class, 'checkout'])->name('booking.checkout');
+    Route::post('/booking/showtime/{showtime_id}/confirm', [App\Http\Controllers\Customer\BookingController::class, 'confirm'])->name('booking.confirm');
+    Route::get('/booking/success/{booking_id}', [App\Http\Controllers\Customer\BookingController::class, 'success'])->name('booking.success');
 });
 
 // Toàn bộ các đường dẫn thuộc hệ thống Admin

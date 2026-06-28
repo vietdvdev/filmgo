@@ -54,7 +54,7 @@
                                 <!-- Quick Action Overlay on Hover -->
                                 <div
                                     class="absolute inset-0 bg-neutral-950/20 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center p-4">
-                                    <a href="#"
+                                    <a href="{{ route('movies.show', $movie->id) }}"
                                         class="bg-white text-neutral-900 font-bold text-xs px-5 py-2.5 rounded-xl shadow-lg transform scale-90 group-hover:scale-100 transition-all duration-300 uppercase tracking-wider flex items-center gap-1 hover:bg-indigo-600 hover:text-white">
                                         <span class="material-symbols-outlined text-sm">local_activity</span> Đặt vé
                                     </a>
