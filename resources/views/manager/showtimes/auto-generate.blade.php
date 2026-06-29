@@ -18,10 +18,10 @@
 
     <!-- Vue App Mount Point -->
     <div id="auto-generate-app">
-        <!-- Render component -->
+        <!-- Render component — truyền URL qua props để Vue dùng -->
         <auto-generate-showtime-form
             my-cinemas-url="{{ route('manager.api.my-cinemas') }}"
-            rooms-url-pattern="{{ route('manager.api.rooms-by-cinema', ['cinema_id' => ':cinema_id']) }}"
+            rooms-url-pattern="{{ str_replace('PLACEHOLDER', ':cinema_id', route('manager.api.rooms-by-cinema', ['cinema_id' => 'PLACEHOLDER'])) }}"
             auto-generate-url="{{ route('manager.showtimes.api.auto-generate') }}"
             cancel-url="{{ route('manager.showtimes.index') }}"
         ></auto-generate-showtime-form>

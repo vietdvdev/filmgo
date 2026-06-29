@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Manager\Api;
 
 use App\Http\Controllers\Controller;
+use App\Models\Cinema;
 use App\Models\Movie;
 use App\Models\Room;
 use App\Models\Seat;
@@ -12,6 +13,7 @@ use App\Models\Holiday;
 use App\Models\PriceRule;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Validator;
@@ -30,13 +32,14 @@ class AutoGenerateController extends Controller
         $validator = Validator::make($request->all(), [
             'movie_id'       => 'required|exists:movies,id',
             'room_id'        => 'required|exists:rooms,id',
-            'show_date'      => 'required|date_format:Y-m-d',
+            'show_date'      => 'required|date_format:Y-m-d|after_or_equal:today',
             'shift_start'    => 'required|date_format:H:i',
             'shift_end'      => 'required|date_format:H:i|after:shift_start',
             'cleaning_time'  => 'required|integer|min:0',
             'standard_price' => 'required|integer|min:0',
         ], [
-            'shift_end.after' => 'Thời gian kết thúc ca chiếu phải sau thời gian bắt đầu.',
+            'shift_end.after'          => 'Giờ đóng ca phải sau giờ mở ca.',
+            'show_date.after_or_equal' => 'Ngày chiếu không được là ngày trong quá khứ.',
         ]);
 
         if ($validator->fails()) {
@@ -74,6 +77,19 @@ class AutoGenerateController extends Controller
                     'success' => false,
                     'message' => 'Phòng chiếu này hiện không hoạt động.'
                 ], 422);
+            }
+
+            // Kiểm tra quyền: Manager chỉ được xếp lịch cho phòng thuộc rạp mình quản lý
+            $user = Auth::user();
+            $isAdmin = $user->roles()->where('name', 'admin')->exists();
+            if (!$isAdmin) {
+                $allowedCinemaIds = $user->cinemas()->pluck('cinemas.id')->toArray();
+                if (!in_array($room->cinema_id, $allowedCinemaIds)) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Bạn không có quyền xếp lịch cho phòng chiếu này.'
+                    ], 403);
+                }
             }
 
             // Truy vấn toàn bộ các suất chiếu hiện có của phòng trong ngày chỉ định, xếp tăng dần theo giờ bắt đầu
@@ -176,6 +192,7 @@ class AutoGenerateController extends Controller
             }
 
             // Tạo danh sách liên kết Ghế - Suất chiếu
+            // Lưu ý: Bảng showtime_seats KHÔNG có cột timestamps (created_at/updated_at)
             $showtimeSeatsData = [];
             foreach ($newShowtimeIds as $showtimeId) {
                 foreach ($seats as $seatId) {
@@ -186,8 +203,6 @@ class AutoGenerateController extends Controller
                         'status'      => 'available',
                         'locked_at'   => null,
                         'expires_at'  => null,
-                        'created_at'  => now(),
-                        'updated_at'  => now(),
                     ];
                 }
             }
@@ -250,6 +265,7 @@ class AutoGenerateController extends Controller
             $actualPrice += $rule->adjustment_amount;
         }
 
-        return $actualPrice;
+        // Đảm bảo giá không âm (trường hợp rule có adjustment_amount âm quá lớn)
+        return max(0, $actualPrice);
     }
 }

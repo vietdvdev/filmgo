@@ -13,7 +13,6 @@ use App\Http\Controllers\Admin\ComboController;
 use App\Http\Controllers\Admin\ManagementAuthController;
 use App\Http\Controllers\Admin\PromotionController;
 use App\Http\Controllers\Customer\CustomerAuthController;
-use App\Http\Controllers\Customer\CustomerCinemaController;
 use App\Http\Controllers\Customer\CustomerForgotPasswordController;
 use App\Http\Controllers\Customer\CustomerProfileController;
 use App\Http\Controllers\Customer\CustomerResetPasswordController;
