@@ -57,8 +57,8 @@ Route::middleware('guest')->group(function () {
 // Đăng xuất khách hàng (Yêu cầu đăng nhập)
 Route::post('/logout', [CustomerAuthController::class, 'logout'])->name('logout')->middleware('auth');
 
-// Quản lý hồ sơ cá nhân khách hàng (Yêu cầu đăng nhập)
-Route::middleware('auth')->group(function () {
+// Quản lý hồ sơ cá nhân khách hàng (Yêu cầu đăng nhập với quyền Customer)
+Route::middleware('customer')->group(function () {
     Route::get('/profile', [CustomerProfileController::class, 'edit'])->name('profile.edit');
     Route::put('/profile', [CustomerProfileController::class, 'updateProfile'])->name('profile.update');
     Route::put('/profile/password', [CustomerProfileController::class, 'updatePassword'])->name('profile.password');
@@ -132,6 +132,9 @@ Route::prefix('manager')->group(function () {
         Route::get('/login', [ManagerAuthController::class, 'showLoginForm'])->name('manager.login');
         Route::post('/login', [ManagerAuthController::class, 'login'])->name('manager.login.submit');
     });
+
+    // 1.5. Trang thông báo "Chưa được phân công rạp" (Case 3) — chỉ cần auth, không cần middleware manager
+    Route::middleware('auth')->get('/no-cinema', [ManagerAuthController::class, 'noCinema'])->name('manager.no-cinema');
 
     // 2. Các trang yêu cầu đăng nhập và vai trò manager
     Route::middleware(['auth', 'manager'])->group(function () {

@@ -85,6 +85,32 @@ class CustomerAuthController extends Controller
             }
 
             if (Auth::attempt($credentials, $request->boolean('remember'))) {
+                $loggedInUser = Auth::user();
+
+                // Chặn admin/manager/staff đăng nhập vào portal Khách hàng
+                $hasManagementRole = $loggedInUser->roles()->whereIn('name', ['admin', 'manager', 'staff'])->exists();
+                if ($hasManagementRole) {
+                    Auth::logout();
+                    $request->session()->invalidate();
+                    $request->session()->regenerateToken();
+
+                    if ($loggedInUser->roles()->where('name', 'admin')->exists()) {
+                        throw ValidationException::withMessages([
+                            'email' => 'Tài khoản Quản trị viên không thể đăng nhập tại đây. Vui lòng truy cập: /admin/login',
+                        ]);
+                    }
+
+                    if ($loggedInUser->roles()->where('name', 'manager')->exists()) {
+                        throw ValidationException::withMessages([
+                            'email' => 'Tài khoản Quản lý Rạp không thể đăng nhập tại đây. Vui lòng truy cập: /manager/login',
+                        ]);
+                    }
+
+                    throw ValidationException::withMessages([
+                        'email' => 'Tài khoản của bạn không có quyền truy cập khu vực Khách hàng.',
+                    ]);
+                }
+
                 $request->session()->regenerate();
                 return redirect()->intended(route('home'))->with('success', 'Đăng nhập thành công!');
             }
