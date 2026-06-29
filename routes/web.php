@@ -57,8 +57,8 @@ Route::middleware('guest')->group(function () {
 // Đăng xuất khách hàng (Yêu cầu đăng nhập)
 Route::post('/logout', [CustomerAuthController::class, 'logout'])->name('logout')->middleware('auth');
 
-// Quản lý hồ sơ cá nhân khách hàng (Yêu cầu đăng nhập)
-Route::middleware('auth')->group(function () {
+// Quản lý hồ sơ cá nhân khách hàng (Yêu cầu đăng nhập với quyền Customer)
+Route::middleware('customer')->group(function () {
     Route::get('/profile', [CustomerProfileController::class, 'edit'])->name('profile.edit');
     Route::put('/profile', [CustomerProfileController::class, 'updateProfile'])->name('profile.update');
     Route::put('/profile/password', [CustomerProfileController::class, 'updatePassword'])->name('profile.password');
