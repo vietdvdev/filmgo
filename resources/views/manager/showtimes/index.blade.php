@@ -10,9 +10,14 @@
             <h2 class="text-2xl font-bold tracking-tight text-slate-900 uppercase">Suất Chiếu Hệ Thống</h2>
             <p class="text-sm text-slate-500 mt-1">Quản lý giờ chiếu và phòng chiếu cho từng phim.</p>
         </div>
-        <a href="{{ route('manager.showtimes.create') }}" class="bg-blue-600 text-white font-semibold text-sm px-4 py-2.5 hover:bg-blue-700 transition-colors flex items-center gap-1.5 rounded-none">
-            <span class="material-symbols-outlined text-sm">add</span> Tạo Suất Chiếu Mới
-        </a>
+        <div class="flex items-center gap-3">
+            <a href="{{ route('manager.showtimes.auto-generate.view') }}" class="bg-purple-600 text-white font-semibold text-sm px-4 py-2.5 hover:bg-purple-700 transition-colors flex items-center gap-1.5 rounded-none shadow-sm">
+                <span class="material-symbols-outlined text-sm animate-pulse">bolt</span> ⚡ Xếp Lịch Tự Động
+            </a>
+            <a href="{{ route('manager.showtimes.create') }}" class="bg-blue-600 text-white font-semibold text-sm px-4 py-2.5 hover:bg-blue-700 transition-colors flex items-center gap-1.5 rounded-none shadow-sm">
+                <span class="material-symbols-outlined text-sm">add</span> Tạo Suất Chiếu Mới
+            </a>
+        </div>
     </div>
 
     <!-- Alerts -->

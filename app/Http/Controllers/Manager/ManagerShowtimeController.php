@@ -70,6 +70,15 @@ class ManagerShowtimeController extends Controller
         return view('manager.showtimes.create', compact('movies'));
     }
 
+    public function showAutoGenerateForm()
+    {
+        $movies = Movie::whereIn('status', ['showing', 'upcoming'])
+            ->orderBy('title')
+            ->get(['id', 'title', 'duration', 'age_limit']);
+
+        return view('manager.showtimes.auto-generate', compact('movies'));
+    }
+
     public function store(StoreShowtimeRequest $request)
     {
         // Bước 1: Xác thực quyền qua Policy

@@ -185,6 +185,7 @@ Route::prefix('manager')->group(function () {
 
         // Suất chiếu
         Route::get('/showtimes', [App\Http\Controllers\Manager\ManagerShowtimeController::class, 'index'])->name('manager.showtimes.index');
+        Route::get('/showtimes/auto-generate', [App\Http\Controllers\Manager\ManagerShowtimeController::class, 'showAutoGenerateForm'])->name('manager.showtimes.auto-generate.view');
         Route::get('/showtimes/create', [App\Http\Controllers\Manager\ManagerShowtimeController::class, 'create'])->name('manager.showtimes.create');
         Route::post('/showtimes', [App\Http\Controllers\Manager\ManagerShowtimeController::class, 'store'])->name('manager.showtimes.store');
         Route::patch('/showtimes/{id}/cancel', [App\Http\Controllers\Manager\ManagerShowtimeController::class, 'cancelShowtime'])->name('manager.showtimes.cancel');
