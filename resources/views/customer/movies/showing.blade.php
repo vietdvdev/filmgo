@@ -31,6 +31,38 @@
                 @endif
             </div>
 
+            <!-- ================= FILTERS ================= -->
+            <form method="GET" action="{{ route('movies.showing') }}" class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8 bg-white border border-slate-200 p-4 rounded-2xl shadow-sm text-neutral-800">
+                <div>
+                    <label for="genre_id" class="block text-xs font-bold text-slate-400 uppercase tracking-widest">Thể loại</label>
+                    <select id="genre_id" name="genre_id" class="mt-1 block w-full px-3 py-2 bg-slate-50 border border-slate-300 text-sm rounded-xl focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500">
+                        <option value="">-- Tất cả thể loại --</option>
+                        @foreach($genres as $genre)
+                            <option value="{{ $genre->id }}" {{ request('genre_id') == $genre->id ? 'selected' : '' }}>{{ $genre->name }}</option>
+                        @endforeach
+                    </select>
+                </div>
+                <div>
+                    <label for="age_limit" class="block text-xs font-bold text-slate-400 uppercase tracking-widest">Giới hạn độ tuổi</label>
+                    <select id="age_limit" name="age_limit" class="mt-1 block w-full px-3 py-2 bg-slate-50 border border-slate-300 text-sm rounded-xl focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500">
+                        <option value="">-- Tất cả độ tuổi --</option>
+                        @foreach($ageLimits as $limit)
+                            <option value="{{ $limit }}" {{ request('age_limit') == $limit ? 'selected' : '' }}>{{ $limit }}</option>
+                        @endforeach
+                    </select>
+                </div>
+                <div class="flex items-end gap-2">
+                    <button type="submit" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold px-5 py-2.5 rounded-xl transition-colors">
+                        Áp dụng
+                    </button>
+                    @if(request()->anyFilled(['genre_id', 'age_limit']))
+                        <a href="{{ route('movies.showing') }}" class="w-full bg-slate-100 hover:bg-slate-200 text-slate-800 text-sm font-semibold px-5 py-2.5 rounded-xl transition-colors text-center">
+                            Xóa lọc
+                        </a>
+                    @endif
+                </div>
+            </form>
+
             <!-- ================= MOVIES GRID ================= -->
             @if ($movies->count())
                 <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-6 sm:gap-8">
@@ -65,7 +97,7 @@
                             <div class="mt-4 px-1 space-y-2">
                                 <h3
                                     class="font-bold text-neutral-800 text-sm sm:text-base line-clamp-1 group-hover:text-indigo-600 transition-colors duration-200">
-                                    {{ $movie->title }}
+                                    <a href="{{ route('movies.show', $movie->id) }}">{{ $movie->title }}</a>
                                 </h3>
 
                                 <div class="flex items-center justify-between gap-2">

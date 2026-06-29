@@ -23,7 +23,7 @@ class PriceRuleSeeder extends Seeder
             ],
             [
                 'name' => 'Suất Chiếu Đêm Khuya',
-                'day_of_week' => null, // Áp dụng mọi ngày trong tuần
+                'day_of_week' => 1, // Áp dụng cho Thứ 2 (hoặc cấu hình cụ thể)
                 'start_time' => '22:30:00',
                 'end_time' => '23:59:59',
                 'adjustment_amount' => -10000,
@@ -31,7 +31,7 @@ class PriceRuleSeeder extends Seeder
             ],
             [
                 'name' => 'Suất Chiếu Sớm Đầu Ngày',
-                'day_of_week' => null, // Áp dụng mọi ngày trong tuần
+                'day_of_week' => 1, // Áp dụng cho Thứ 2 (hoặc cấu hình cụ thể)
                 'start_time' => '08:00:00',
                 'end_time' => '11:00:00',
                 'adjustment_amount' => -15000,

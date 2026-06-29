@@ -62,6 +62,15 @@
                 toasts.value = toasts.value.filter(t => t.id !== id);
             };
 
+
+
+            const standardPrice = ref(80000);
+            const surchargeAmt  = ref(0);
+
+            const computedActualPrice = computed(() => {
+                return Number(standardPrice.value || 0) + Number(surchargeAmt.value || 0);
+            });
+
             // ── Load cinemas on mount ────────────────────────────────────
             const fetchCinemas = async () => {
                 loadingCinemas.value = true;
@@ -131,7 +140,7 @@
                 }, 400);
             };
 
-            // ── Price suggestion ─────────────────────────────────────────
+            // ── Price suggestion (Bây giờ dùng để tính phụ thu ngày/giờ) ─────────────────
             const triggerPriceSuggestion = () => {
                 clearTimeout(priceTimer);
                 if (!form.show_date || !form.start_time) return;
@@ -140,7 +149,8 @@
                         const res = await axios.get(urls.suggestPrice, {
                             params: { show_date: form.show_date, start_time: form.start_time }
                         });
-                        form.base_price = res.data.suggested_price;
+                        // Phụ thu bằng suggested_price trừ đi giá mặc định (80000)
+                        surchargeAmt.value = res.data.suggested_price - 80000;
                         priceReason.value = res.data.reason || '';
                     } catch (e) { /* silent */ }
                 }, 400);
@@ -148,7 +158,7 @@
 
             const onMovieChange      = () => triggerOverlapCheck();
             const onDateOrTimeChange = () => { triggerOverlapCheck(); triggerPriceSuggestion(); };
-            const setPrice           = p => { form.base_price = p; };
+            const setPrice           = p => { standardPrice.value = p; };
 
             // ── Submit Form ──────────────────────────────────────────────
             const submitForm = async () => {
@@ -156,14 +166,14 @@
                 Object.keys(fieldErrors).forEach(k => delete fieldErrors[k]);
                 submitting.value = true;
                 try {
-                    // Axios POST request payload bao gồm cả cinema_id
+                    // Axios POST request payload bao gồm cả cinema_id, base_price được gán bằng computedActualPrice
                     const res = await axios.post(urls.store, {
                         movie_id:   form.movie_id,
                         cinema_id:  form.cinema_id,
                         room_id:    form.room_id,
                         show_date:  form.show_date,
                         start_time: form.start_time,
-                        base_price: form.base_price,
+                        base_price: computedActualPrice.value,
                     });
                     addToast(res.data.message || 'Tạo suất chiếu thành công!', 'success');
                     setTimeout(() => { window.location.href = res.data.redirect || urls.redirect; }, 1500);
@@ -195,7 +205,8 @@
                 submitting, toasts, today,
                 onMovieChange, onCinemaChange, onDateOrTimeChange, triggerOverlapCheck,
                 submitForm, setPrice, addToast, removeToast,
-                loadingCinemas, loadingRooms
+                loadingCinemas, loadingRooms,
+                standardPrice, surchargeAmt, computedActualPrice
             };
         },
 
@@ -345,29 +356,56 @@
         </div>
       </div>
 
-      <!-- Giá Vé -->
-      <div>
-        <div class="flex justify-between items-center mb-1">
-          <label for="base_price" class="block text-xs font-bold uppercase tracking-wider text-slate-700">
-            Giá Vé Cơ Bản (VNĐ)
-          </label>
-          <span v-if="priceReason" class="text-xs font-bold bg-amber-100 text-amber-800 px-2 py-0.5 rounded-full">
-            {{ priceReason }}
-          </span>
+      <!-- Phần Giá Vé (3 ô hiển thị riêng biệt) -->
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <!-- Ô 1: GIÁ TIÊU CHUẨN -->
+        <div class="bg-slate-50 border border-slate-200 p-4 flex flex-col justify-between">
+          <div>
+            <h4 class="text-xs font-bold uppercase tracking-wider text-slate-700 mb-2">1. GIÁ TIÊU CHUẨN</h4>
+            <input v-model.number="standardPrice" type="number" required min="0" step="1000"
+              class="block w-full px-3 py-2 border border-slate-300 text-sm focus:outline-none focus:border-blue-600 focus:ring-1 focus:ring-blue-600 bg-white">
+            <div class="flex gap-1.5 mt-2">
+              <button type="button" @click="setPrice(80000)"
+                class="text-[10px] px-2 py-0.5 bg-slate-200 text-slate-700 hover:bg-slate-300 transition-colors">80K</button>
+              <button type="button" @click="setPrice(100000)"
+                class="text-[10px] px-2 py-0.5 bg-slate-200 text-slate-700 hover:bg-slate-300 transition-colors">100K</button>
+              <button type="button" @click="setPrice(120000)"
+                class="text-[10px] px-2 py-0.5 bg-slate-200 text-slate-700 hover:bg-slate-300 transition-colors">120K</button>
+            </div>
+          </div>
+          <p v-if="fieldErrors.base_price" class="mt-1 text-xs text-red-600 font-semibold">
+            {{ fieldErrors.base_price }}
+          </p>
         </div>
-        <input id="base_price" v-model.number="form.base_price" type="number" required min="0" step="1000"
-          class="block w-full px-3 py-2 border border-slate-300 text-sm focus:outline-none focus:border-blue-600 focus:ring-1 focus:ring-blue-600">
-        <div class="flex gap-2 mt-2">
-          <button type="button" @click="setPrice(80000)"
-            class="text-xs px-2.5 py-1 bg-slate-100 text-slate-600 hover:bg-slate-200 transition-colors">80.000đ</button>
-          <button type="button" @click="setPrice(100000)"
-            class="text-xs px-2.5 py-1 bg-slate-100 text-slate-600 hover:bg-slate-200 transition-colors">100.000đ</button>
-          <button type="button" @click="setPrice(120000)"
-            class="text-xs px-2.5 py-1 bg-slate-100 text-slate-600 hover:bg-slate-200 transition-colors">120.000đ</button>
+
+        <!-- Ô 2: PHỤ THU NGÀY/GIỜ -->
+        <div class="bg-amber-50/50 border border-amber-200/70 p-4 flex flex-col justify-between">
+          <div>
+            <h4 class="text-xs font-bold uppercase tracking-wider text-slate-700 mb-2">2. PHỤ THU NGÀY/GIỜ</h4>
+            <div class="text-lg font-bold text-amber-800">
+              + {{ surchargeAmt.toLocaleString() }} ₫
+            </div>
+            <p v-if="priceReason" class="text-[11px] text-amber-700 mt-1 italic leading-tight">
+              Reason: {{ priceReason }}
+            </p>
+            <p v-else class="text-[11px] text-slate-400 mt-1 italic">
+              Không có phụ thu ngày thường
+            </p>
+          </div>
         </div>
-        <p v-if="fieldErrors.base_price" class="mt-1 text-xs text-red-600 font-semibold">
-          {{ fieldErrors.base_price }}
-        </p>
+
+        <!-- Ô 3: GIÁ THỰC TẾ -->
+        <div class="bg-blue-50 border border-blue-200 p-4 flex flex-col justify-between">
+          <div>
+            <h4 class="text-xs font-bold uppercase tracking-wider text-slate-700 mb-2">3. GIÁ THỰC TẾ</h4>
+            <div class="text-xl font-black text-blue-800">
+              {{ computedActualPrice.toLocaleString() }} ₫
+            </div>
+            <p class="text-[10px] text-blue-600 mt-1">
+              (Bằng giá tiêu chuẩn + phụ thu)
+            </p>
+          </div>
+        </div>
       </div>
 
       <!-- Buttons -->

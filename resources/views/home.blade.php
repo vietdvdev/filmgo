@@ -112,12 +112,12 @@
                                     </a>
                                 </div>
                             </div>
-
+ 
                             <!-- Card Descriptions -->
                             <div class="mt-4 px-1 space-y-1">
                                 <h3
                                     class="font-bold text-neutral-800 text-sm sm:text-base line-clamp-1 group-hover:text-indigo-600 transition-colors duration-200">
-                                    {{ $movie->title }}
+                                    <a href="{{ route('movies.show', $movie->id) }}">{{ $movie->title }}</a>
                                 </h3>
                                 <div class="flex items-center gap-1.5 text-neutral-400 text-xs">
                                     <span class="material-symbols-outlined text-sm text-neutral-400">schedule</span>
@@ -170,13 +170,22 @@
                                     class="absolute top-3 left-3 px-2 py-0.5 text-[10px] font-bold bg-white/90 backdrop-blur-md text-neutral-600 rounded-lg shadow-sm border border-slate-200/50">
                                     {{ $movie->age_limit }}
                                 </div>
-                            </div>
 
+                                <!-- Quick Action Overlay on Hover -->
+                                <div
+                                    class="absolute inset-0 bg-neutral-950/20 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center p-4">
+                                    <a href="{{ route('movies.show', $movie->id) }}"
+                                        class="bg-white text-neutral-900 font-bold text-xs px-5 py-2.5 rounded-xl shadow-lg transform scale-90 group-hover:scale-100 transition-all duration-300 uppercase tracking-wider flex items-center gap-1 hover:bg-indigo-600 hover:text-white">
+                                        Chi tiết
+                                    </a>
+                                </div>
+                            </div>
+ 
                             <!-- Card Descriptions -->
                             <div class="mt-4 px-1 space-y-2">
                                 <h3
                                     class="font-bold text-neutral-800 text-sm sm:text-base line-clamp-1 group-hover:text-purple-600 transition-colors duration-200">
-                                    {{ $movie->title }}
+                                    <a href="{{ route('movies.show', $movie->id) }}">{{ $movie->title }}</a>
                                 </h3>
 
                                 <div class="flex items-center justify-between gap-2 pt-1">
