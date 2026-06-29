@@ -21,6 +21,11 @@
     </div>
 
     <!-- Alerts -->
+    <div id="js-flash-message" class="hidden p-4 bg-emerald-50 text-emerald-800 border border-emerald-200 text-sm font-semibold rounded-none flex items-center gap-2 mb-4">
+        <span class="material-symbols-outlined text-base">check_circle</span>
+        <span class="message-content"></span>
+    </div>
+
     @if(session('success'))
         <div class="p-4 bg-emerald-50 text-emerald-800 border border-emerald-200 text-sm font-semibold rounded-none flex items-center gap-2">
             <span class="material-symbols-outlined text-base">check_circle</span>
@@ -198,6 +203,17 @@
     document.getElementById('cancelModal').addEventListener('click', function (e) {
         if (e.target === this) closeCancelModal();
     });
+
+    // Xử lý hiển thị thông báo thành công từ việc xếp lịch tự động
+    const jsMsg = sessionStorage.getItem('showtime_success_message');
+    if (jsMsg) {
+        const alertEl = document.getElementById('js-flash-message');
+        if (alertEl) {
+            alertEl.querySelector('.message-content').textContent = jsMsg;
+            alertEl.classList.remove('hidden');
+        }
+        sessionStorage.removeItem('showtime_success_message');
+    }
 </script>
 @endsection
 @endsection

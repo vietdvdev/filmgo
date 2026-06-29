@@ -154,10 +154,10 @@
                     const res = await axios.post(props.autoGenerateUrl, payload);
 
                     if (res.data && res.data.success) {
-                        globalSuccessMessage.value = `✅ Đã tạo thành công ${res.data.total_generated} suất chiếu mới!`;
-                        // Reset các trường phim và phòng, giữ nguyên cấu hình ca
-                        payload.movie_id = '';
-                        payload.room_id  = '';
+                        // Lưu thông báo thành công vào sessionStorage để hiển thị sau khi reload trang
+                        sessionStorage.setItem('showtime_success_message', `Đã tự động xếp thành công ${res.data.total_generated} suất chiếu mới cho ngày ${payload.show_date}!`);
+                        // Chuyển hướng về trang danh sách suất chiếu với tham số ngày đã chọn
+                        window.location.href = `${props.cancelUrl}?date=${payload.show_date}`;
                     }
                 } catch (error) {
                     const status = error.response ? error.response.status : null;
