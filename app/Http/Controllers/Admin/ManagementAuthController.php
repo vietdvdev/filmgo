@@ -15,13 +15,12 @@ class ManagementAuthController extends Controller
      */
     public function showLoginForm()
     {
-        // Nếu đã đăng nhập và đúng là Admin thì chuyển thẳng vào dashboard
         if (Auth::check()) {
             $user = Auth::user();
             if ($user->roles()->where('name', 'admin')->exists()) {
                 return redirect()->route('admin.dashboard');
             }
-            // Đăng nhập sai cổng (manager/customer vào admin login) → logout và hiển thị form
+            // Đã đăng nhập nhưng sai role → logout, hiển thị form với thông báo
             Auth::logout();
             request()->session()->invalidate();
             request()->session()->regenerateToken();
@@ -32,7 +31,7 @@ class ManagementAuthController extends Controller
 
     /**
      * Xử lý đăng nhập Admin.
-     * Chỉ tài khoản có vai trò 'admin' mới được phép đăng nhập.
+     * Chỉ tài khoản role 'admin' mới được phép. Các role khác bị chặn với thông báo rõ ràng.
      */
     public function login(Request $request)
     {
@@ -48,32 +47,33 @@ class ManagementAuthController extends Controller
         if (Auth::attempt($credentials, $request->boolean('remember'))) {
             $user = Auth::user();
 
-            // Kiểm tra trạng thái tài khoản
+            // === TRƯỜNG HỢP 2: Tài khoản bị khóa ===
             if ($user->status === 'locked') {
                 Auth::logout();
                 $request->session()->invalidate();
                 $request->session()->regenerateToken();
 
                 throw ValidationException::withMessages([
-                    'email' => 'Tài khoản của bạn đã bị khóa. Vui lòng liên hệ quản trị viên hệ thống.',
+                    'email' => 'Tài khoản của bạn hiện đang bị khóa hoặc tạm ngưng hoạt động. Vui lòng liên hệ Quản lý hoặc Quản trị viên hệ thống để được hỗ trợ.',
                 ]);
             }
 
-            // Kiểm tra vai trò: CHỈ 'admin' được phép đăng nhập vào cổng này
+            // === TRƯỜNG HỢP 1: Sai vai trò — Khách hàng/Manager cố đăng nhập vào Admin ===
             if (!$user->roles()->where('name', 'admin')->exists()) {
                 Auth::logout();
                 $request->session()->invalidate();
                 $request->session()->regenerateToken();
 
-                // Đưa ra thông báo phù hợp theo từng loại tài khoản
+                // Manager cố vào Admin → hướng dẫn đúng cổng
                 if ($user->roles()->where('name', 'manager')->exists()) {
                     throw ValidationException::withMessages([
-                        'email' => 'Tài khoản Manager không thể đăng nhập tại đây. Vui lòng truy cập: /manager/login',
+                        'email' => 'Khu vực này chỉ dành cho Quản trị viên hệ thống. Tài khoản Manager của bạn cần đăng nhập tại: /manager/login',
                     ]);
                 }
 
+                // Khách hàng hoặc các role khác cố đăng nhập vào Admin
                 throw ValidationException::withMessages([
-                    'email' => 'Tài khoản của bạn không có quyền truy cập hệ thống Quản trị.',
+                    'email' => 'Khu vực này chỉ dành cho nhân sự nội bộ. Tài khoản của bạn không có quyền truy cập vào khu vực quản trị này.',
                 ]);
             }
 
@@ -92,7 +92,6 @@ class ManagementAuthController extends Controller
     public function logout(Request $request)
     {
         Auth::logout();
-
         $request->session()->invalidate();
         $request->session()->regenerateToken();
 

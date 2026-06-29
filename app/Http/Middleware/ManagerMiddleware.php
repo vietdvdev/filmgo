@@ -23,15 +23,10 @@ class ManagerMiddleware
 
         // Chỉ role 'manager' được phép vào khu vực Manager
         if ($user->roles()->where('name', 'manager')->exists()) {
-            // Kiểm tra manager đã được phân công rạp chưa
+            // === TRƯỜNG HỢP 3: Manager chưa được phân công rạp ===
+            // Vẫn cho vào nhưng redirect về trang thông báo "blank slate", KHÔNG logout
             if (!$user->cinemas()->exists()) {
-                Auth::logout();
-                $request->session()->invalidate();
-                $request->session()->regenerateToken();
-
-                return redirect()->route('manager.login')->withErrors([
-                    'email' => 'Tài khoản của bạn chưa được phân công quản lý rạp chiếu nào. Vui lòng liên hệ Quản trị viên.',
-                ]);
+                return redirect()->route('manager.no-cinema');
             }
 
             return $next($request);
@@ -43,19 +38,22 @@ class ManagerMiddleware
         $request->session()->regenerateToken();
 
         if ($request->expectsJson()) {
-            return response()->json(['message' => 'Không có quyền truy cập khu vực Quản lý Rạp.'], 403);
+            return response()->json([
+                'message' => 'Khu vực này chỉ dành cho nhân sự nội bộ. Tài khoản của bạn không có quyền truy cập vào khu vực Quản lý Rạp.'
+            ], 403);
         }
 
-        // Admin cố vào trang manager → về admin dashboard
+        // Admin cố vào trang manager → hướng về đúng cổng
         if ($user->roles()->where('name', 'admin')->exists()) {
             return redirect()->route('admin.login')->withErrors([
                 'email' => 'Tài khoản Admin không có quyền vào khu vực Quản lý Rạp. Vui lòng đăng nhập tại trang Quản trị.',
             ]);
         }
 
-        // Các role khác (customer, staff) → về manager login
-        return redirect()->route('manager.login')->withErrors([
-            'email' => 'Tài khoản của bạn không có quyền truy cập khu vực Quản lý Rạp.',
-        ]);
+        // === TRƯỜNG HỢP 1: Khách hàng/role khác cố vào manager ===
+        // → 403, redirect về trang chủ với thông báo rõ ràng
+        return redirect()->route('home')->with('forbidden_error',
+            'Khu vực này chỉ dành cho nhân sự nội bộ. Vui lòng quay lại trang chủ mua vé.'
+        );
     }
 }

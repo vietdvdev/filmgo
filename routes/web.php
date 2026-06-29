@@ -133,6 +133,9 @@ Route::prefix('manager')->group(function () {
         Route::post('/login', [ManagerAuthController::class, 'login'])->name('manager.login.submit');
     });
 
+    // 1.5. Trang thông báo "Chưa được phân công rạp" (Case 3) — chỉ cần auth, không cần middleware manager
+    Route::middleware('auth')->get('/no-cinema', [ManagerAuthController::class, 'noCinema'])->name('manager.no-cinema');
+
     // 2. Các trang yêu cầu đăng nhập và vai trò manager
     Route::middleware(['auth', 'manager'])->group(function () {
         // Đăng xuất

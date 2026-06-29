@@ -66,6 +66,14 @@
 
     <!-- Main Content Wrapper -->
     <main class="flex-grow">
+        {{-- Banner cảnh báo khi bị chặn từ khu vực quản trị (HTTP 403) --}}
+        @if(session('forbidden_error'))
+        <div class="bg-red-900/80 border-b border-red-700 px-6 py-3 flex items-center gap-3">
+            <span class="material-symbols-outlined text-red-400 text-xl shrink-0">block</span>
+            <p class="text-sm text-red-200 font-medium">{{ session('forbidden_error') }}</p>
+        </div>
+        @endif
+
         @yield('content')
     </main>
 

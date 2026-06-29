@@ -14,7 +14,6 @@ class ManagerAuthController extends Controller
      */
     public function showLoginForm()
     {
-        // Nếu đã đăng nhập và là manager thì chuyển thẳng vào dashboard
         if (Auth::check() && Auth::user()->roles()->where('name', 'manager')->exists()) {
             return redirect()->route('manager.dashboard');
         }
@@ -24,6 +23,7 @@ class ManagerAuthController extends Controller
 
     /**
      * Xử lý đăng nhập của Manager.
+     * Chỉ role 'manager'. Thông báo lỗi theo từng trường hợp cụ thể.
      */
     public function login(Request $request)
     {
@@ -39,30 +39,45 @@ class ManagerAuthController extends Controller
         if (Auth::attempt($credentials, $request->boolean('remember'))) {
             $user = Auth::user();
 
-            // Kiểm tra trạng thái tài khoản
+            // === TRƯỜNG HỢP 2: Tài khoản bị khóa ===
             if ($user->status === 'locked') {
                 Auth::logout();
                 $request->session()->invalidate();
                 $request->session()->regenerateToken();
 
                 throw ValidationException::withMessages([
-                    'email' => 'Tài khoản của bạn đã bị khóa. Vui lòng liên hệ quản trị viên.',
+                    'email' => 'Tài khoản của bạn hiện đang bị khóa hoặc tạm ngưng hoạt động. Vui lòng liên hệ Quản lý hoặc Quản trị viên hệ thống để được hỗ trợ.',
                 ]);
             }
 
-            // Chỉ tài khoản có vai trò "manager" mới được phép đăng nhập
-            if (! $user->roles()->where('name', 'manager')->exists()) {
+            // === TRƯỜNG HỢP 1: Sai vai trò ===
+            if (!$user->roles()->where('name', 'manager')->exists()) {
                 Auth::logout();
                 $request->session()->invalidate();
                 $request->session()->regenerateToken();
 
+                // Admin cố dùng cổng Manager
+                if ($user->roles()->where('name', 'admin')->exists()) {
+                    throw ValidationException::withMessages([
+                        'email' => 'Khu vực này chỉ dành cho Quản lý Rạp. Tài khoản Admin cần đăng nhập tại: /admin/login',
+                    ]);
+                }
+
+                // Khách hàng hoặc role khác
                 throw ValidationException::withMessages([
-                    'email' => 'Tài khoản này không có quyền truy cập khu vực Quản lý Rạp.',
+                    'email' => 'Khu vực này chỉ dành cho nhân sự nội bộ. Tài khoản của bạn không có quyền truy cập vào khu vực Quản lý Rạp.',
                 ]);
             }
 
+            // === TRƯỜNG HỢP 3: Manager chưa được phân công rạp ===
+            // Vẫn cho phép đăng nhập → chuyển đến trang thông báo "chưa phân công"
             $request->session()->regenerate();
-            return redirect()->route('manager.dashboard');
+
+            if (!$user->cinemas()->exists()) {
+                return redirect()->route('manager.no-cinema');
+            }
+
+            return redirect()->intended(route('manager.dashboard'));
         }
 
         throw ValidationException::withMessages([
@@ -71,12 +86,32 @@ class ManagerAuthController extends Controller
     }
 
     /**
+     * Trang thông báo "Chưa được phân công rạp" (Case 3 — Blank Slate).
+     * Manager đã đăng nhập thành công nhưng chưa được Admin gán rạp.
+     */
+    public function noCinema()
+    {
+        $user = Auth::user();
+
+        // Nếu không phải manager → redirect về home
+        if (!$user->roles()->where('name', 'manager')->exists()) {
+            return redirect()->route('home');
+        }
+
+        // Nếu đã có rạp rồi → vào dashboard bình thường
+        if ($user->cinemas()->exists()) {
+            return redirect()->route('manager.dashboard');
+        }
+
+        return view('manager.no-cinema');
+    }
+
+    /**
      * Đăng xuất Manager.
      */
     public function logout(Request $request)
     {
         Auth::logout();
-
         $request->session()->invalidate();
         $request->session()->regenerateToken();
 

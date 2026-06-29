@@ -32,19 +32,21 @@ class AdminMiddleware
         $request->session()->regenerateToken();
 
         if ($request->expectsJson()) {
-            return response()->json(['message' => 'Không có quyền truy cập khu vực quản trị.'], 403);
+            return response()->json([
+                'message' => 'Khu vực này chỉ dành cho nhân sự nội bộ. Tài khoản của bạn không có quyền truy cập vào khu vực quản trị này.'
+            ], 403);
         }
 
-        // Manager → về trang login Manager
+        // Manager → hướng dẫn về đúng cổng
         if ($user->roles()->where('name', 'manager')->exists()) {
             return redirect()->route('manager.login')->withErrors([
                 'email' => 'Tài khoản Manager không có quyền vào khu vực Quản trị hệ thống. Vui lòng đăng nhập tại trang Manager.',
             ]);
         }
 
-        // Các role khác (customer, staff) → về admin login với thông báo rõ
-        return redirect()->route('admin.login')->withErrors([
-            'email' => 'Tài khoản của bạn không có quyền truy cập khu vực Quản trị hệ thống.',
-        ]);
+        // Khách hàng/role khác → 403, redirect về trang chủ với thông báo
+        return redirect()->route('home')->with('forbidden_error',
+            'Khu vực này chỉ dành cho nhân sự nội bộ. Vui lòng quay lại trang chủ.'
+        );
     }
 }
