@@ -194,6 +194,7 @@ Route::prefix('manager')->group(function () {
         Route::get('/showtimes/api/check-overlap', [App\Http\Controllers\Manager\Api\ManagerShowtimeApiController::class, 'checkOverlap'])->name('manager.showtimes.api.check-overlap');
         Route::get('/showtimes/api/suggest-price', [App\Http\Controllers\Manager\Api\ManagerShowtimeApiController::class, 'suggestPrice'])->name('manager.showtimes.api.suggest-price');
         Route::post('/showtimes/api/store', [App\Http\Controllers\Manager\Api\ManagerShowtimeApiController::class, 'store'])->name('manager.showtimes.api.store');
+        Route::post('/showtimes/api/auto-generate', [App\Http\Controllers\Manager\Api\AutoGenerateController::class, 'autoGenerate'])->name('manager.showtimes.api.auto-generate');
 
         // Thêm API endpoint cho rạp và phòng chiếu (dưới prefix /manager)
         Route::get('/api/admin/my-cinemas', [App\Http\Controllers\Manager\Api\ManagerShowtimeApiController::class, 'myCinemas'])->name('manager.api.my-cinemas');
