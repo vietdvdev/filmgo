@@ -10,12 +10,22 @@
             <h2 class="text-2xl font-bold tracking-tight text-slate-900 uppercase">Suất Chiếu Hệ Thống</h2>
             <p class="text-sm text-slate-500 mt-1">Quản lý giờ chiếu và phòng chiếu cho từng phim.</p>
         </div>
-        <a href="{{ route('manager.showtimes.create') }}" class="bg-blue-600 text-white font-semibold text-sm px-4 py-2.5 hover:bg-blue-700 transition-colors flex items-center gap-1.5 rounded-none">
-            <span class="material-symbols-outlined text-sm">add</span> Tạo Suất Chiếu Mới
-        </a>
+        <div class="flex items-center gap-3">
+            <a href="{{ route('manager.showtimes.auto-generate.view') }}" class="bg-purple-600 text-white font-semibold text-sm px-4 py-2.5 hover:bg-purple-700 transition-colors flex items-center gap-1.5 rounded-none shadow-sm">
+                <span class="material-symbols-outlined text-sm animate-pulse">bolt</span> ⚡ Xếp Lịch Tự Động
+            </a>
+            <a href="{{ route('manager.showtimes.create') }}" class="bg-blue-600 text-white font-semibold text-sm px-4 py-2.5 hover:bg-blue-700 transition-colors flex items-center gap-1.5 rounded-none shadow-sm">
+                <span class="material-symbols-outlined text-sm">add</span> Tạo Suất Chiếu Mới
+            </a>
+        </div>
     </div>
 
     <!-- Alerts -->
+    <div id="js-flash-message" class="hidden p-4 bg-emerald-50 text-emerald-800 border border-emerald-200 text-sm font-semibold rounded-none flex items-center gap-2 mb-4">
+        <span class="material-symbols-outlined text-base">check_circle</span>
+        <span class="message-content"></span>
+    </div>
+
     @if(session('success'))
         <div class="p-4 bg-emerald-50 text-emerald-800 border border-emerald-200 text-sm font-semibold rounded-none flex items-center gap-2">
             <span class="material-symbols-outlined text-base">check_circle</span>
@@ -193,6 +203,17 @@
     document.getElementById('cancelModal').addEventListener('click', function (e) {
         if (e.target === this) closeCancelModal();
     });
+
+    // Xử lý hiển thị thông báo thành công từ việc xếp lịch tự động
+    const jsMsg = sessionStorage.getItem('showtime_success_message');
+    if (jsMsg) {
+        const alertEl = document.getElementById('js-flash-message');
+        if (alertEl) {
+            alertEl.querySelector('.message-content').textContent = jsMsg;
+            alertEl.classList.remove('hidden');
+        }
+        sessionStorage.removeItem('showtime_success_message');
+    }
 </script>
 @endsection
 @endsection

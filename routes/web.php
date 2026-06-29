@@ -13,7 +13,6 @@ use App\Http\Controllers\Admin\ComboController;
 use App\Http\Controllers\Admin\ManagementAuthController;
 use App\Http\Controllers\Admin\PromotionController;
 use App\Http\Controllers\Customer\CustomerAuthController;
-use App\Http\Controllers\Customer\CustomerCinemaController;
 use App\Http\Controllers\Customer\CustomerForgotPasswordController;
 use App\Http\Controllers\Customer\CustomerProfileController;
 use App\Http\Controllers\Customer\CustomerResetPasswordController;
@@ -185,6 +184,7 @@ Route::prefix('manager')->group(function () {
 
         // Suất chiếu
         Route::get('/showtimes', [App\Http\Controllers\Manager\ManagerShowtimeController::class, 'index'])->name('manager.showtimes.index');
+        Route::get('/showtimes/auto-generate', [App\Http\Controllers\Manager\ManagerShowtimeController::class, 'showAutoGenerateForm'])->name('manager.showtimes.auto-generate.view');
         Route::get('/showtimes/create', [App\Http\Controllers\Manager\ManagerShowtimeController::class, 'create'])->name('manager.showtimes.create');
         Route::post('/showtimes', [App\Http\Controllers\Manager\ManagerShowtimeController::class, 'store'])->name('manager.showtimes.store');
         Route::patch('/showtimes/{id}/cancel', [App\Http\Controllers\Manager\ManagerShowtimeController::class, 'cancelShowtime'])->name('manager.showtimes.cancel');
@@ -194,6 +194,7 @@ Route::prefix('manager')->group(function () {
         Route::get('/showtimes/api/check-overlap', [App\Http\Controllers\Manager\Api\ManagerShowtimeApiController::class, 'checkOverlap'])->name('manager.showtimes.api.check-overlap');
         Route::get('/showtimes/api/suggest-price', [App\Http\Controllers\Manager\Api\ManagerShowtimeApiController::class, 'suggestPrice'])->name('manager.showtimes.api.suggest-price');
         Route::post('/showtimes/api/store', [App\Http\Controllers\Manager\Api\ManagerShowtimeApiController::class, 'store'])->name('manager.showtimes.api.store');
+        Route::post('/showtimes/api/auto-generate', [App\Http\Controllers\Manager\Api\AutoGenerateController::class, 'autoGenerate'])->name('manager.showtimes.api.auto-generate');
 
         // Thêm API endpoint cho rạp và phòng chiếu (dưới prefix /manager)
         Route::get('/api/admin/my-cinemas', [App\Http\Controllers\Manager\Api\ManagerShowtimeApiController::class, 'myCinemas'])->name('manager.api.my-cinemas');
