@@ -52,7 +52,7 @@
           <!-- Cột nhãn hàng ở bên trái (Clickable để toggle toàn bộ hàng) -->
           <button 
             type="button"
-            @click="toggleRow(rowName, rowSeats)"
+            @click="toggleRow(rowName)"
             class="w-8 h-8 flex items-center justify-center cursor-pointer font-bold rounded-none hover:bg-blue-100 hover:text-blue-600 border border-transparent hover:border-blue-300 transition-colors uppercase text-xs text-slate-500"
             title="Nhấp để chọn/bỏ chọn toàn bộ hàng"
           >
@@ -174,8 +174,13 @@ const toggleSeat = (seat) => {
   seat.is_selected = !seat.is_selected
 }
 
-// Bật/tắt trạng thái chọn cho cả hàng (Smart Toggle)
-const toggleRow = (rowName, rowSeats) => {
+// Bật/tắt trạng thái chọn cho cả hàng (Smart Toggle theo tên hàng)
+const toggleRow = (rowName) => {
+  // Lọc các ghế thuộc hàng này
+  const rowSeats = seats.value.filter(seat => seat.row === rowName)
+  
+  if (rowSeats.length === 0) return
+
   // Kiểm tra xem TOÀN BỘ ghế trong hàng đã được chọn hay chưa
   const allSelected = rowSeats.every(seat => seat.is_selected === true)
 
