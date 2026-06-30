@@ -86,13 +86,16 @@ class MovieController extends Controller
         $selectedDate = $request->input('date', today()->toDateString());
 
         $showtimes = Showtime::where('movie_id', $movie->id)
-            ->whereDate('show_date', $selectedDate)
+            ->whereDate('show_date', '>=', today()->toDateString())
             ->whereIn('status', ['upcoming', 'showing'])
             ->with(['room', 'room.cinema'])
+            ->orderBy('start_time')
             ->get();
 
-        $showtimesGrouped = $showtimes->groupBy(function ($showtime) {
-            return $showtime->room->cinema->name;
+        $showtimesGrouped = $showtimes->groupBy('show_date')->map(function ($dateShowtimes) {
+            return $dateShowtimes->groupBy(function ($showtime) {
+                return $showtime->room->cinema->name;
+            });
         });
         $availableDates = [];
         for ($i = 0; $i < 7; $i++) {
