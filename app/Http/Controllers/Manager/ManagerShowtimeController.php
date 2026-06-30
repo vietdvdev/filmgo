@@ -46,20 +46,155 @@ class ManagerShowtimeController extends Controller
     {
         $cinemaIds = $this->getCinemaIds();
 
+        // Lấy danh sách rạp được phân công quản lý
+        $cinemas = Cinema::whereIn('id', $cinemaIds)->get(['id', 'name']);
+
+        // Lấy danh sách phim đang/sắp chiếu
+        $movies = Movie::whereIn('status', ['showing', 'upcoming'])
+            ->orderBy('title')
+            ->get(['id', 'title', 'duration', 'age_limit']);
+
         $showDate = $request->filled('date')
             ? Carbon::createFromFormat('Y-m-d', $request->input('date'))?->startOfDay() ?? Carbon::today()
             : Carbon::today();
 
-        $showtimes = Showtime::whereIn('room_id', function ($query) use ($cinemaIds) {
-                $query->select('id')->from('rooms')->whereIn('cinema_id', $cinemaIds)->whereNull('deleted_at');
-            })
-            ->whereDate('show_date', $showDate)
-            ->with(['movie', 'room', 'room.cinema'])
-            ->orderBy('start_time')
-            ->paginate(15)
-            ->withQueryString();
+        return view('manager.showtimes.index', compact('cinemas', 'movies', 'showDate'));
+    }
 
-        return view('manager.showtimes.index', compact('showtimes', 'showDate'));
+    /**
+     * API Lấy danh sách phòng thuộc rạp cụ thể (Cascading Select)
+     */
+    public function apiGetRooms(Request $request)
+    {
+        $cinemaIds = $this->getCinemaIds();
+        $cinemaId = $request->integer('cinema_id');
+
+        if (!in_array($cinemaId, $cinemaIds)) {
+            return response()->json(['error' => 'Bạn không có quyền truy cập rạp này.'], 403);
+        }
+
+        $rooms = Room::where('cinema_id', $cinemaId)
+            ->where('status', 'active')
+            ->get(['id', 'room_name as name']);
+
+        return response()->json(['rooms' => $rooms]);
+    }
+
+    /**
+     * API Lấy danh sách suất chiếu có bộ lọc (cinema_id, room_id, movie_id, date)
+     */
+    public function apiGetShowtimes(Request $request)
+    {
+        $cinemaIds = $this->getCinemaIds();
+        $cinemaId  = $request->integer('cinema_id');
+        $roomId    = $request->input('room_id');
+        $movieId   = $request->input('movie_id');
+        $date      = $request->input('date', today()->toDateString());
+
+        // Kiểm tra quyền đối với rạp được chọn
+        if ($cinemaId && !in_array($cinemaId, $cinemaIds)) {
+            return response()->json(['error' => 'Bạn không có quyền truy cập rạp này.'], 403);
+        }
+
+        // Lấy danh sách ID phòng chiếu hợp lệ của rạp được chọn (hoặc tất cả rạp được quyền quản lý)
+        $targetCinemaIds = $cinemaId ? [$cinemaId] : $cinemaIds;
+        $allowedRoomIds = Room::whereIn('cinema_id', $targetCinemaIds)->pluck('id')->toArray();
+
+        $query = Showtime::whereIn('room_id', $allowedRoomIds)
+            ->whereDate('show_date', $date);
+
+        if ($roomId) {
+            $query->where('room_id', $roomId);
+        }
+
+        if ($movieId) {
+            $query->where('movie_id', $movieId);
+        }
+
+        // Load relations và đếm ghế trống/đặt hiệu năng cao (withCount)
+        $showtimes = $query->with([
+                'movie:id,title,duration,age_limit',
+                'room:id,room_name as name,cinema_id',
+                'room.cinema:id,name'
+            ])
+            ->withCount([
+                'showtimeSeats as total_seats',
+                'showtimeSeats as booked_seats' => function ($q) {
+                    $q->where('status', 'booked');
+                }
+            ])
+            ->orderBy('start_time')
+            ->get();
+
+        return response()->json($showtimes);
+    }
+
+    /**
+     * API Mở bán hàng loạt suất chiếu (Bulk Update upcoming -> active)
+     */
+    public function apiBulkOpenSales(Request $request)
+    {
+        $request->validate([
+            'ids' => 'required|array',
+            'ids.*' => 'exists:showtimes,id'
+        ]);
+
+        $cinemaIds = $this->getCinemaIds();
+        $showtimeIds = $request->input('ids');
+
+        // Xác thực quyền: tất cả suất chiếu phải thuộc rạp quản lý
+        $count = Showtime::whereIn('id', $showtimeIds)
+            ->whereIn('room_id', function ($q) use ($cinemaIds) {
+                $q->select('id')->from('rooms')->whereIn('cinema_id', $cinemaIds);
+            })
+            ->count();
+
+        if ($count !== count($showtimeIds)) {
+            return response()->json(['error' => 'Bạn không có quyền thao tác trên một số suất chiếu đã chọn.'], 403);
+        }
+
+        // Cập nhật trạng thái sang active (Đang mở bán)
+        Showtime::whereIn('id', $showtimeIds)
+            ->where('status', 'upcoming')
+            ->update(['status' => 'active']);
+
+        return response()->json(['success' => true]);
+    }
+
+    /**
+     * API Xóa/Hủy suất chiếu
+     */
+    public function apiDeleteShowtime($id)
+    {
+        $cinemaIds = $this->getCinemaIds();
+
+        $showtime = Showtime::whereIn('room_id', function ($q) use ($cinemaIds) {
+            $q->select('id')->from('rooms')->whereIn('cinema_id', $cinemaIds);
+        })->findOrFail($id);
+
+        // Pre-flight check: Không được có ghế đã bán (booked)
+        $hasBookedSeat = ShowtimeSeat::where('showtime_id', $id)->where('status', 'booked')->exists();
+        if ($hasBookedSeat) {
+            return response()->json(['error' => 'Suất chiếu đã có ghế được đặt, không thể hủy!'], 400);
+        }
+
+        DB::transaction(function () use ($showtime) {
+            ShowtimeSeat::where('showtime_id', $showtime->id)->delete();
+            $showtime->update(['status' => 'cancelled']);
+            $showtime->delete();
+        });
+
+        // Audit Log
+        ActivityLog::create([
+            'user_id'     => Auth::id(),
+            'action'      => 'CANCEL_SHOWTIME_API',
+            'model_type'  => 'Showtime',
+            'model_id'    => $showtime->id,
+            'description' => 'Manager đã hủy suất chiếu API ID=' . $showtime->id,
+            'ip_address'  => request()->ip(),
+        ]);
+
+        return response()->json(['success' => true]);
     }
 
     public function create()
