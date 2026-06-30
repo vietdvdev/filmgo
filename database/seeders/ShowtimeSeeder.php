@@ -55,27 +55,26 @@ class ShowtimeSeeder extends Seeder
                     $movie = $movies->random();
 
                     $showtime = Showtime::create([
-                        'movie_id' => $movie->id,
-                        'room_id' => $room->id,
-                        'show_date' => $date,
+                        'movie_id'   => $movie->id,
+                        'room_id'    => $room->id,
+                        'show_date'  => $date,
                         'start_time' => $slot['start'],
-                        'end_time' => $slot['end'],
+                        'end_time'   => $slot['end'],
                         'base_price' => fake()->randomElement([60000, 75000, 90000]),
-                        'status' => 'upcoming',
+                        'status'     => 'upcoming',
                     ]);
 
-                    // Đồng bộ tạo ngay trạng thái ghế trống ('available') cho toàn bộ ghế vật lý của phòng trong suất chiếu
-                    $seats = $room->seats;
-                    foreach ($seats as $seat) {
-                        ShowtimeSeat::create([
-                            'showtime_id' => $showtime->id,
-                            'seat_id' => $seat->id,
-                            'user_id' => null,
-                            'status' => 'available',
-                            'locked_at' => null,
-                            'expires_at' => null,
-                        ]);
-                    }
+                    // Batch insert toàn bộ ghế trong 1 query thay vì từng INSERT riêng
+                    $seatsData = $room->seats->map(fn($seat) => [
+                        'showtime_id' => $showtime->id,
+                        'seat_id'     => $seat->id,
+                        'user_id'     => null,
+                        'status'      => 'available',
+                        'locked_at'   => null,
+                        'expires_at'  => null,
+                    ])->toArray();
+
+                    ShowtimeSeat::insert($seatsData);
                 }
             }
         }

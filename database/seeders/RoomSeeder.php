@@ -39,24 +39,17 @@ class RoomSeeder extends Seeder
                     'status' => 'active',
                 ]);
 
-                // Sinh ghế cho phòng chiếu
-                // Chia hàng ghế: A, B, C, D, E, F, G, H... mỗi hàng 10 ghế
                 $rows = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'J', 'K'];
                 $seatsPerRow = 10;
+                $seatsToInsert = [];
                 $totalGenerated = 0;
 
-                foreach ($rows as $rowIndex => $rowLetter) {
-                    if ($totalGenerated >= $capacity) {
-                        break;
-                    }
+                foreach ($rows as $rowLetter) {
+                    if ($totalGenerated >= $capacity) break;
 
                     for ($num = 1; $num <= $seatsPerRow; $num++) {
-                        if ($totalGenerated >= $capacity) {
-                            break;
-                        }
+                        if ($totalGenerated >= $capacity) break;
 
-                        // Định nghĩa loại ghế theo hàng
-                        // Ví dụ: A-D là ghế Thường, E-H là ghế VIP, J-K là Sweetbox
                         if (in_array($rowLetter, ['A', 'B', 'C', 'D'])) {
                             $typeId = $normalType->id;
                         } elseif (in_array($rowLetter, ['E', 'F', 'G', 'H'])) {
@@ -65,17 +58,21 @@ class RoomSeeder extends Seeder
                             $typeId = $sweetboxType->id;
                         }
 
-                        Seat::create([
-                            'room_id' => $room->id,
+                        $seatsToInsert[] = [
+                            'room_id'      => $room->id,
                             'seat_type_id' => $typeId,
-                            'seat_row' => $rowLetter,
-                            'seat_number' => $num,
-                            'status' => 'active',
-                        ]);
+                            'seat_row'     => $rowLetter,
+                            'seat_number'  => $num,
+                            'status'       => 'active',
+                            'created_at'   => now(),
+                            'updated_at'   => now(),
+                        ];
 
                         $totalGenerated++;
                     }
                 }
+
+                Seat::insert($seatsToInsert);
             }
         }
     }

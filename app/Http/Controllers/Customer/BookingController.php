@@ -167,6 +167,22 @@ class BookingController extends Controller
 
         $grandTotal = $totalSeatPrice + $totalComboPrice;
 
+        // Lấy voucher đã áp dụng từ session (nếu có)
+        $appliedVoucher  = session()->get("booking.{$showtimeId}.voucher");
+        $discountAmount  = 0;
+        if ($appliedVoucher) {
+            // Tính lại discount theo subtotal hiện tại để tránh giả mạo
+            if ($appliedVoucher['discount_type'] === 'percent') {
+                $discountAmount = (int) ($grandTotal * ($appliedVoucher['discount_value'] / 100));
+            } else {
+                $discountAmount = min($appliedVoucher['discount_amount'], $grandTotal);
+            }
+            // Cập nhật lại discount_amount trong session theo giá trị thực
+            $appliedVoucher['discount_amount'] = $discountAmount;
+            session()->put("booking.{$showtimeId}.voucher", $appliedVoucher);
+        }
+        $finalTotal = max(0, $grandTotal - $discountAmount);
+
         // Lấy tất cả combo đang hoạt động để làm sản phẩm upsell
         $allCombos = Combo::where('status', 'active')->latest()->get();
 
@@ -177,6 +193,9 @@ class BookingController extends Controller
             'selectedCombos',
             'totalComboPrice',
             'grandTotal',
+            'discountAmount',
+            'finalTotal',
+            'appliedVoucher',
             'allCombos'
         ));
     }
@@ -202,15 +221,14 @@ class BookingController extends Controller
         }
 
         $userId = Auth::id();
+        $voucherData = session()->get("booking.{$showtimeId}.voucher");
 
         try {
-            // Gọi Service xử lý đặt vé
-            $booking = $this->bookingService->createBooking($userId, $showtimeId, $seatIds, $combosData);
+            $booking = $this->bookingService->createBooking($userId, $showtimeId, $seatIds, $combosData, $voucherData);
 
-            // Xóa session booking tạm thời của showtime này
             session()->forget("booking.{$showtimeId}");
 
-            return redirect()->route('booking.success', $booking->id)->with('success', 'Chúc mừng bạn đã đặt vé thành công!');
+            return redirect()->route('booking.success', $booking->id)->with('success', 'Chúc mững bạn đã đặt vé thành công!');
         } catch (Exception $e) {
             return redirect()->route('booking.select-seats', $showtimeId)->with('error', 'Đặt vé thất bại: ' . $e->getMessage());
         }
