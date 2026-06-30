@@ -91,8 +91,8 @@ class MovieController extends Controller
             ->with(['room', 'room.cinema'])
             ->get();
 
-        $groupedShowtimes = $showtimes->groupBy(function ($showtime) {
-            return $showtime->room->cinema->id;
+        $showtimesGrouped = $showtimes->groupBy(function ($showtime) {
+            return $showtime->room->cinema->name;
         });
         $availableDates = [];
         for ($i = 0; $i < 7; $i++) {
@@ -101,7 +101,7 @@ class MovieController extends Controller
 
         return view(
             'customer.movies.show',
-            compact('movie', 'groupedShowtimes', 'selectedDate', 'availableDates')
+            compact('movie', 'showtimesGrouped', 'selectedDate', 'availableDates')
         );
     }
 }

@@ -73,6 +73,10 @@ Route::middleware('customer')->group(function () {
     Route::get('/booking/showtime/{showtime_id}/checkout', [App\Http\Controllers\Customer\BookingController::class, 'checkout'])->name('booking.checkout');
     Route::post('/booking/showtime/{showtime_id}/confirm', [App\Http\Controllers\Customer\BookingController::class, 'confirm'])->name('booking.confirm');
     Route::get('/booking/success/{booking_id}', [App\Http\Controllers\Customer\BookingController::class, 'success'])->name('booking.success');
+
+    // Voucher / Mã khuyến mãi
+    Route::post('/booking/showtime/{showtime_id}/voucher/apply', [App\Http\Controllers\Customer\VoucherController::class, 'apply'])->name('booking.voucher.apply');
+    Route::post('/booking/showtime/{showtime_id}/voucher/remove', [App\Http\Controllers\Customer\VoucherController::class, 'remove'])->name('booking.voucher.remove');
 });
 
 // Toàn bộ các đường dẫn thuộc hệ thống Admin

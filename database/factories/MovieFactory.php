@@ -25,11 +25,7 @@ class MovieFactory extends Factory
             'Đào, Phở và Piano', 'Tháng Năm Rực Rỡ', 'Hồn Papa Da Con Gái'
         ];
 
-        // Nếu hết danh sách titles thì fallback
-        $title = fake()->unique()->randomElement($titles);
-        if (!$title) {
-            $title = fake()->sentence(3);
-        }
+        $title = fake()->randomElement($titles);
         $slug = Str::slug($title) . '-' . fake()->unique()->numberBetween(100, 999);
 
         return [

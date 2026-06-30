@@ -3,339 +3,441 @@
 @section('title', 'Thanh Toán - FilmGo')
 
 @section('content')
-    <div class="bg-neutral-50 w-full min-h-screen font-sans text-neutral-800 antialiased py-12 selection:bg-indigo-500 selection:text-white">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+<div class="min-h-screen bg-[#0F0F0F] text-white font-sans antialiased py-10">
+    <div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
 
-            <!-- Progress Bar -->
-            <div class="max-w-3xl mx-auto mb-10">
-                <div class="flex items-center justify-between relative">
-                    <!-- Lines -->
-                    <div class="absolute left-0 right-0 top-1/2 -translate-y-1/2 h-1 bg-slate-200 z-0"></div>
-                    <div class="absolute left-0 right-0 top-1/2 -translate-y-1/2 h-1 bg-indigo-600 z-0"></div>
-                    
-                    <!-- Step 1 -->
-                    <div class="z-10 flex flex-col items-center">
-                        <div class="w-10 h-10 rounded-full bg-indigo-600 text-white flex items-center justify-center font-bold shadow-lg shadow-indigo-600/30">
-                            <span class="material-symbols-outlined text-sm">check</span>
+        {{-- ── Progress Steps ── --}}
+        <div class="max-w-lg mx-auto mb-10">
+            <div class="flex items-center justify-between relative">
+                <div class="absolute inset-x-0 top-5 h-0.5 bg-zinc-700 z-0"></div>
+                <div class="absolute left-0 right-[25%] top-5 h-0.5 bg-brand-primary z-0"></div>
+
+                @php
+                    $steps = ['Chọn Phim','Chọn Ghế','Bắp Nước','Thanh Toán'];
+                    $currentStep = 4;
+                @endphp
+                @foreach($steps as $i => $label)
+                    <div class="z-10 flex flex-col items-center gap-2">
+                        <div class="w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm border-2
+                            {{ ($i + 1) < $currentStep ? 'bg-brand-primary border-brand-primary text-white' : '' }}
+                            {{ ($i + 1) === $currentStep ? 'bg-brand-primary border-brand-primary text-white ring-4 ring-brand-primary/30' : '' }}
+                            {{ ($i + 1) > $currentStep ? 'bg-zinc-800 border-zinc-600 text-zinc-400' : '' }}">
+                            @if(($i + 1) < $currentStep)
+                                <span class="material-symbols-outlined text-base">check</span>
+                            @else
+                                {{ $i + 1 }}
+                            @endif
                         </div>
-                        <span class="text-xs font-bold text-indigo-600 mt-2">Chọn Ghế</span>
+                        <span class="text-[10px] font-bold uppercase tracking-widest
+                            {{ ($i + 1) === $currentStep ? 'text-brand-primary' : 'text-zinc-500' }}">
+                            {{ $label }}
+                        </span>
                     </div>
-                    <!-- Step 2 -->
-                    <div class="z-10 flex flex-col items-center">
-                        <div class="w-10 h-10 rounded-full bg-indigo-600 text-white flex items-center justify-center font-bold shadow-lg shadow-indigo-600/30">
-                            <span class="material-symbols-outlined text-sm">check</span>
+                @endforeach
+            </div>
+        </div>
+
+        {{-- ── Main Grid ── --}}
+        <div class="grid grid-cols-1 lg:grid-cols-5 gap-6">
+
+            {{-- ═══ LEFT — Vé Điện Tử ═══ --}}
+            <div class="lg:col-span-2">
+                <div class="bg-[#1A1A1A] border border-zinc-800 rounded-2xl overflow-hidden">
+                    {{-- Header --}}
+                    <div class="bg-brand-primary px-5 py-3">
+                        <h3 class="text-xs font-black uppercase tracking-widest text-white flex items-center gap-2">
+                            <span class="material-symbols-outlined text-sm">confirmation_number</span>
+                            Vé Điện Tử
+                        </h3>
+                    </div>
+
+                    <div class="p-5 space-y-4 text-sm">
+                        {{-- Film info --}}
+                        <div>
+                            <p class="text-[10px] font-bold text-zinc-500 uppercase tracking-widest mb-1">Phim</p>
+                            <p class="font-black text-white text-base leading-tight">{{ $showtime->movie->title }}</p>
+                            <div class="flex items-center gap-2 mt-1">
+                                <span class="px-2 py-0.5 text-[9px] font-black bg-brand-primary/20 text-brand-primary rounded border border-brand-primary/30 uppercase">
+                                    {{ $showtime->movie->age_limit }}
+                                </span>
+                                <span class="text-[10px] text-zinc-500">{{ $showtime->movie->duration }} Phút</span>
+                            </div>
                         </div>
-                        <span class="text-xs font-bold text-indigo-600 mt-2">Chọn Combo</span>
-                    </div>
-                    <!-- Step 3 -->
-                    <div class="z-10 flex flex-col items-center">
-                        <div class="w-10 h-10 rounded-full bg-indigo-600 text-white flex items-center justify-center font-bold shadow-lg shadow-indigo-600/30">3</div>
-                        <span class="text-xs font-bold text-indigo-600 mt-2">Thanh Toán</span>
+
+                        <div class="border-t border-zinc-800 pt-4 grid grid-cols-2 gap-3">
+                            <div>
+                                <p class="text-[10px] font-bold text-zinc-500 uppercase tracking-widest mb-1">Rạp</p>
+                                <p class="font-bold text-white text-xs">{{ $showtime->room->cinema->name }}</p>
+                            </div>
+                            <div>
+                                <p class="text-[10px] font-bold text-zinc-500 uppercase tracking-widest mb-1">Thời Gian</p>
+                                <p class="font-bold text-brand-primary text-xs">
+                                    {{ \Carbon\Carbon::parse($showtime->start_time)->format('H:i') }} •
+                                    {{ $showtime->show_date->format('d/m/Y') }}
+                                </p>
+                            </div>
+                            <div>
+                                <p class="text-[10px] font-bold text-zinc-500 uppercase tracking-widest mb-1">Phòng Chiếu</p>
+                                <p class="font-bold text-white text-xs">{{ $showtime->room->room_name }} ({{ $showtime->room->room_type }})</p>
+                            </div>
+                            <div>
+                                <p class="text-[10px] font-bold text-zinc-500 uppercase tracking-widest mb-1">Ghế</p>
+                                <p class="font-bold text-white text-xs">
+                                    {{ $selectedSeats->map(fn($s) => $s->seat->seat_row . $s->seat->seat_number)->join(', ') }}
+                                </p>
+                            </div>
+                        </div>
+
+                        {{-- Combos --}}
+                        @if(count($selectedCombos) > 0)
+                        <div class="border-t border-zinc-800 pt-4">
+                            <p class="text-[10px] font-bold text-zinc-500 uppercase tracking-widest mb-2">Dịch Vụ Kèm Theo</p>
+                            @foreach($selectedCombos as $sc)
+                                <div class="flex justify-between items-center text-xs mb-1">
+                                    <span class="text-zinc-300">{{ $sc['combo']->combo_name }} <span class="text-zinc-500">×{{ $sc['quantity'] }}</span></span>
+                                    <span class="font-bold text-white">{{ number_format($sc['subtotal']) }}đ</span>
+                                </div>
+                            @endforeach
+                        </div>
+                        @endif
+
+                        {{-- Divider dashed --}}
+                        <div class="border-t border-dashed border-zinc-700 pt-4 space-y-2">
+                            <div class="flex justify-between text-xs text-zinc-400">
+                                <span>Tiền ghế</span>
+                                <span>{{ number_format($totalSeatPrice) }}đ</span>
+                            </div>
+                            @if($totalComboPrice > 0)
+                            <div class="flex justify-between text-xs text-zinc-400">
+                                <span>Bắp nước</span>
+                                <span>{{ number_format($totalComboPrice) }}đ</span>
+                            </div>
+                            @endif
+                            @if($discountAmount > 0)
+                            <div class="flex justify-between text-xs text-emerald-400 font-semibold" id="discountRow">
+                                <span>Giảm giá (<span id="appliedCodeLabel">{{ $appliedVoucher['code'] ?? '' }}</span>)</span>
+                                <span id="discountLabel">-{{ number_format($discountAmount) }}đ</span>
+                            </div>
+                            @else
+                            <div class="hidden flex justify-between text-xs text-emerald-400 font-semibold" id="discountRow">
+                                <span>Giảm giá (<span id="appliedCodeLabel"></span>)</span>
+                                <span id="discountLabel"></span>
+                            </div>
+                            @endif
+                        </div>
+
+                        {{-- Grand total --}}
+                        <div class="border-t border-zinc-700 pt-4 flex justify-between items-center">
+                            <span class="text-xs font-bold text-zinc-400 uppercase tracking-widest">Tổng Cộng</span>
+                            <span class="text-2xl font-black text-brand-primary" id="grandTotalLabel">
+                                {{ number_format($finalTotal) }}đ
+                            </span>
+                        </div>
                     </div>
                 </div>
             </div>
 
-            <!-- Main Content Layout Grid -->
-            <div class="max-w-4xl mx-auto">
-                <div class="bg-white rounded-[32px] border border-slate-200/60 shadow-sm overflow-hidden p-6 md:p-8">
-                    
-                    <!-- Header Title -->
-                    <div class="border-b border-slate-100 pb-4 mb-6">
-                        <h2 class="text-xl font-bold text-neutral-900 uppercase tracking-tight flex items-center gap-2">
-                            <span class="material-symbols-outlined text-indigo-600">receipt_long</span>
-                            Xác Nhận Đơn Hàng & Thanh Toán
-                        </h2>
-                        <p class="text-xs text-neutral-400 font-medium mt-1">Vui lòng kiểm tra kỹ lại toàn bộ thông tin đơn hàng trước khi xác nhận đặt vé.</p>
+            {{-- ═══ RIGHT — Voucher + Thanh toán ═══ --}}
+            <div class="lg:col-span-3 space-y-5">
+
+                {{-- ── Mã Khuyến Mãi ── --}}
+                <div class="bg-[#1A1A1A] border border-zinc-800 rounded-2xl p-5">
+                    <h4 class="text-xs font-black text-zinc-400 uppercase tracking-widest mb-4 flex items-center gap-2">
+                        <span class="material-symbols-outlined text-sm text-brand-primary">sell</span>
+                        Mã Khuyến Mãi
+                    </h4>
+
+                    {{-- Alert box --}}
+                    <div id="voucherAlert" class="hidden mb-3 px-4 py-3 rounded-xl text-xs font-semibold flex items-start gap-2"></div>
+
+                    <div class="flex gap-2">
+                        <input
+                            type="text"
+                            id="voucherInput"
+                            placeholder="Nhập mã tại đây..."
+                            value="{{ $appliedVoucher['code'] ?? '' }}"
+                            maxlength="50"
+                            class="flex-1 bg-zinc-900 border border-zinc-700 text-white placeholder-zinc-600 text-sm px-4 py-3 rounded-xl focus:outline-none focus:border-brand-primary focus:ring-1 focus:ring-brand-primary/50 uppercase tracking-wider transition-colors"
+                        >
+                        <button
+                            type="button"
+                            id="applyVoucherBtn"
+                            class="px-5 py-3 bg-zinc-800 hover:bg-brand-primary text-white text-xs font-black uppercase tracking-widest rounded-xl transition-all duration-200 border border-zinc-700 hover:border-brand-primary whitespace-nowrap">
+                            Áp Dụng
+                        </button>
                     </div>
 
-                    <!-- Layout: Showtime & Items Info -->
-                    <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
-                        
-                        <!-- Movie Details Poster & Info (1/3 width) -->
-                        <div class="md:col-span-1 border-r border-slate-100 pr-0 md:pr-8 flex flex-col gap-4">
-                            <div class="w-full aspect-[2/3] rounded-2xl overflow-hidden bg-slate-100 shadow-sm">
-                                <img src="{{ $showtime->movie->poster ? asset('storage/' . $showtime->movie->poster) : asset('images/no-image.jpg') }}" 
-                                     alt="" 
-                                     class="w-full h-full object-cover">
-                            </div>
-                            <div class="space-y-1">
-                                <span class="px-2.5 py-0.5 text-[9px] font-black bg-indigo-600 text-white rounded-md uppercase tracking-wider">{{ $showtime->movie->age_limit }}</span>
-                                <h3 class="font-extrabold text-neutral-800 text-base uppercase mt-1 leading-tight">{{ $showtime->movie->title }}</h3>
-                            </div>
-                            
-                            <div class="space-y-3 pt-3 border-t border-slate-100 text-xs">
-                                <div>
-                                    <span class="block text-neutral-400 font-medium mb-0.5">Rạp Chiếu</span>
-                                    <span class="font-bold text-neutral-800">{{ $showtime->room->cinema->name }}</span>
-                                </div>
-                                <div>
-                                    <span class="block text-neutral-400 font-medium mb-0.5">Phòng / Loại Suất</span>
-                                    <span class="font-bold text-neutral-800">{{ $showtime->room->room_name }} ({{ $showtime->room->room_type }})</span>
-                                </div>
-                                <div>
-                                    <span class="block text-neutral-400 font-medium mb-0.5">Thời Gian Chiếu</span>
-                                    <span class="font-bold text-indigo-600">{{ \Carbon\Carbon::parse($showtime->start_time)->format('H:i') }} | {{ $showtime->show_date->format('d/m/Y') }}</span>
-                                </div>
+                    {{-- Applied badge --}}
+                    <div id="appliedBadge" class="{{ $appliedVoucher ? 'flex' : 'hidden' }} items-center justify-between mt-3 px-4 py-2.5 bg-emerald-500/10 border border-emerald-500/30 rounded-xl">
+                        <div class="flex items-center gap-2">
+                            <span class="material-symbols-outlined text-emerald-400 text-base">check_circle</span>
+                            <div>
+                                <p class="text-xs font-black text-emerald-400">
+                                    Đã áp dụng: <span id="badgeCode">{{ $appliedVoucher['code'] ?? '' }}</span>
+                                </p>
+                                <p class="text-[10px] text-emerald-500/70" id="badgeDesc">
+                                    @if($appliedVoucher)
+                                        Giảm {{ $appliedVoucher['discount_type'] === 'percent' ? $appliedVoucher['discount_value'].'%' : number_format($appliedVoucher['discount_value']).'đ' }}
+                                    @endif
+                                </p>
                             </div>
                         </div>
+                        <button type="button" id="removeVoucherBtn"
+                                class="text-zinc-500 hover:text-red-400 transition-colors">
+                            <span class="material-symbols-outlined text-base">close</span>
+                        </button>
+                    </div>
+                </div>
 
-                        <!-- Ticket details breakdown (2/3 width) -->
-                        <div class="md:col-span-2 space-y-6">
-                            <!-- Selected Seats Table -->
-                            <div>
-                                <h4 class="text-xs font-black text-neutral-400 uppercase tracking-widest mb-3">Thông Tin Vé Ghế</h4>
-                                <div class="bg-neutral-50 border border-slate-150 rounded-2xl overflow-hidden p-4 space-y-3">
-                                    <table class="w-full text-xs">
-                                        <thead>
-                                            <tr class="text-neutral-400 font-bold border-b border-slate-200/60 pb-2">
-                                                <th class="text-left pb-2">Vị Trí</th>
-                                                <th class="text-left pb-2">Loại Ghế</th>
-                                                <th class="text-right pb-2">Giá Vé</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            @foreach($selectedSeats as $ss)
-                                                <tr class="text-neutral-800 font-semibold border-b border-slate-100/50 last:border-0">
-                                                    <td class="py-2.5">
-                                                        <span class="bg-indigo-600 text-white px-2 py-0.5 rounded font-black">{{ $ss->seat->seat_row . $ss->seat->seat_number }}</span>
-                                                    </td>
-                                                    <td class="py-2.5 text-neutral-500">
-                                                        {{ $ss->seat->seatType->name }}
-                                                    </td>
-                                                    <td class="py-2.5 text-right font-bold">
-                                                        {{ number_format($showtime->base_price + ($ss->seat->seatType->surcharge_price ?? 0)) }}đ
-                                                    </td>
-                                                </tr>
-                                            @endforeach
-                                        </tbody>
-                                    </table>
-                                    <div class="flex justify-between items-center pt-2 border-t border-slate-200 text-xs">
-                                        <span class="font-bold text-neutral-400">Tổng tiền ghế</span>
-                                        <span class="font-black text-neutral-800">{{ number_format($totalSeatPrice) }}đ</span>
-                                    </div>
-                                </div>
-                            </div>
+                {{-- ── Phương thức thanh toán ── --}}
+                <div class="bg-[#1A1A1A] border border-zinc-800 rounded-2xl p-5">
+                    <h4 class="text-xs font-black text-zinc-400 uppercase tracking-widest mb-4 flex items-center gap-2">
+                        <span class="material-symbols-outlined text-sm text-brand-primary">payments</span>
+                        Phương Thức Thanh Toán
+                    </h4>
 
-                            <!-- Selected Combos list -->
-                            <div>
-                                <h4 class="text-xs font-black text-neutral-400 uppercase tracking-widest mb-3">Bắp Nước Đi Kèm</h4>
-                                <div class="bg-neutral-50 border border-slate-150 rounded-2xl overflow-hidden p-4 space-y-3" id="selectedCombosContainer">
-                                    <!-- Sẽ được điền bằng Javascript động -->
-                                </div>
-                            </div>
+                    <div class="space-y-2" id="paymentMethods">
+                        @php
+                            $methods = [
+                                ['id' => 'card',  'icon' => 'credit_card',    'label' => 'Thẻ Tín Dụng / Ghi Nợ',  'sub' => 'Visa, Mastercard, JCB'],
+                                ['id' => 'momo',  'icon' => 'account_balance_wallet', 'label' => 'Ví Điện Tử MoMo',  'sub' => 'Thanh toán qua MoMo'],
+                                ['id' => 'zalopay','icon'=> 'account_balance_wallet', 'label' => 'Ví Điện Tử ZaloPay', 'sub' => 'Thanh toán qua ZaloPay'],
+                                ['id' => 'atm',   'icon' => 'account_balance',  'label' => 'Thẻ ATM Nội Địa',       'sub' => 'Hỗ trợ tất cả ngân hàng VN'],
+                            ];
+                        @endphp
 
-                            <!-- Upsell Combos suggestion -->
-                            @if($allCombos->count() > 0)
-                                <div>
-                                    <h4 class="text-xs font-black text-neutral-400 uppercase tracking-widest mb-3 flex items-center gap-1.5">
-                                        <span class="material-symbols-outlined text-sm text-indigo-600">local_activity</span>
-                                        Gợi ý bắp nước ngon - mua kèm tiết kiệm
-                                    </h4>
-                                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                        @foreach($allCombos as $combo)
-                                            <div class="flex items-center bg-white border border-slate-200 rounded-2xl p-3 gap-3 hover:shadow-md hover:border-indigo-100 transition-all duration-200">
-                                                <!-- image -->
-                                                <div class="w-16 h-16 rounded-xl bg-slate-100 overflow-hidden flex-shrink-0 border border-slate-200">
-                                                    <img src="{{ $combo->image ? asset('storage/' . $combo->image) : asset('images/no-image.jpg') }}" 
-                                                         alt="{{ $combo->combo_name }}" 
-                                                         class="w-full h-full object-cover">
-                                                </div>
-                                                <!-- info -->
-                                                <div class="flex-grow min-w-0">
-                                                    <h5 class="font-bold text-neutral-800 text-xs truncate mb-0.5">{{ $combo->combo_name }}</h5>
-                                                    <p class="text-[10px] text-neutral-400 line-clamp-1 leading-normal mb-1">{{ $combo->description }}</p>
-                                                    <div class="flex justify-between items-center mt-1">
-                                                        <span class="text-xs font-black text-indigo-600">{{ number_format($combo->price) }}đ</span>
-                                                        <!-- qty adjuster -->
-                                                        <div class="flex items-center border border-slate-200 bg-neutral-50 rounded-xl p-0.5">
-                                                            <button type="button" 
-                                                                    class="w-6 h-6 rounded-lg text-neutral-500 hover:bg-slate-200 flex items-center justify-center font-bold text-xs transition-colors btn-upsell-dec" 
-                                                                    data-id="{{ $combo->id }}">-</button>
-                                                            <span class="w-6 text-center text-xs font-black text-neutral-800" 
-                                                                  id="upsell-qty-{{ $combo->id }}">0</span>
-                                                            <button type="button" 
-                                                                    class="w-6 h-6 rounded-lg text-neutral-500 hover:bg-slate-200 flex items-center justify-center font-bold text-xs transition-colors btn-upsell-inc" 
-                                                                    data-id="{{ $combo->id }}">+</button>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        @endforeach
-                                    </div>
-                                </div>
-                            @endif
-
-                            <!-- Grand total payment info -->
-                            <div class="border-t border-slate-150 pt-4 flex justify-between items-center">
-                                <div class="flex flex-col">
-                                    <span class="text-neutral-400 text-xs font-bold uppercase tracking-wider">Tổng Cộng Thanh Toán</span>
-                                    <span class="text-[10px] text-neutral-400 font-semibold mt-0.5">*Đã bao gồm tất cả các thuế phí</span>
-                                </div>
-                                <span class="text-2xl font-black text-indigo-600" id="grandTotalPriceLabel">
-                                    {{ number_format($grandTotal) }}đ
+                        @foreach($methods as $idx => $m)
+                        <label class="payment-option flex items-center gap-4 px-4 py-3.5 rounded-xl border cursor-pointer transition-all duration-200
+                            {{ $idx === 0 ? 'border-brand-primary bg-brand-primary/10' : 'border-zinc-800 bg-zinc-900/50 hover:border-zinc-600' }}"
+                            data-id="{{ $m['id'] }}">
+                            <input type="radio" name="payment_method" value="{{ $m['id'] }}"
+                                   class="hidden" {{ $idx === 0 ? 'checked' : '' }}>
+                            <div class="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0
+                                {{ $idx === 0 ? 'bg-brand-primary/20' : 'bg-zinc-800' }}">
+                                <span class="material-symbols-outlined text-base {{ $idx === 0 ? 'text-brand-primary' : 'text-zinc-400' }}">
+                                    {{ $m['icon'] }}
                                 </span>
                             </div>
-                        </div>
-
+                            <div class="flex-1 min-w-0">
+                                <p class="text-sm font-bold text-white">{{ $m['label'] }}</p>
+                                <p class="text-[10px] text-zinc-500">{{ $m['sub'] }}</p>
+                            </div>
+                            <div class="w-4 h-4 rounded-full border-2 flex items-center justify-center flex-shrink-0
+                                {{ $idx === 0 ? 'border-brand-primary' : 'border-zinc-600' }}" data-radio>
+                                @if($idx === 0)
+                                    <div class="w-2 h-2 rounded-full bg-brand-primary"></div>
+                                @endif
+                            </div>
+                        </label>
+                        @endforeach
                     </div>
-
-                    <!-- Submission buttons panel -->
-                    <div class="flex flex-col sm:flex-row gap-4 mt-10 pt-6 border-t border-slate-100">
-                        <a href="{{ route('booking.select-combos', $showtime->id) }}" 
-                           class="w-full sm:w-1/3 bg-white border border-slate-200 hover:border-indigo-600 hover:text-indigo-600 text-neutral-500 font-bold py-4 rounded-2xl flex items-center justify-center transition-all duration-200 text-sm uppercase tracking-wider">
-                            <span class="material-symbols-outlined text-base mr-1">arrow_back</span>
-                            Quay Lại
-                        </a>
-                        
-                        <form action="{{ route('booking.confirm', $showtime->id) }}" method="POST" class="w-full sm:w-2/3" id="confirmForm">
-                            @csrf
-                            <div id="hiddenCombosContainer"></div>
-                            <button type="submit" 
-                                    class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-4 rounded-2xl shadow-lg shadow-indigo-600/25 transition-all duration-200 flex items-center justify-center gap-2 uppercase tracking-wider text-sm">
-                                <span class="material-symbols-outlined text-sm">payments</span>
-                                Xác Nhận & Đặt Vé
-                            </button>
-                        </form>
-                    </div>
-
                 </div>
+
+                {{-- ── Confirm Form ── --}}
+                <form action="{{ route('booking.confirm', $showtime->id) }}" method="POST" id="confirmForm">
+                    @csrf
+                    <input type="hidden" name="payment_method" id="paymentMethodInput" value="card">
+                    <div id="hiddenCombosContainer"></div>
+
+                    <button type="submit"
+                            class="w-full bg-brand-primary hover:bg-red-700 text-white font-black py-4 rounded-2xl shadow-lg shadow-brand-primary/25 transition-all duration-200 flex items-center justify-center gap-2 text-base uppercase tracking-wider">
+                        Thanh Toán Ngay
+                        <span class="material-symbols-outlined text-lg">arrow_forward</span>
+                    </button>
+
+                    <p class="text-center text-[10px] text-zinc-600 mt-3">
+                        Bằng việc bấm nút Thanh Toán, bạn đồng ý với
+                        <a href="#" class="text-zinc-400 underline">Điều khoản giao dịch</a> của chúng tôi.
+                    </p>
+                </form>
+
+                {{-- Back --}}
+                <a href="{{ route('booking.select-combos', $showtime->id) }}"
+                   class="flex items-center justify-center gap-1 text-xs text-zinc-500 hover:text-white transition-colors py-2">
+                    <span class="material-symbols-outlined text-sm">arrow_back</span>
+                    Quay lại chọn bắp nước
+                </a>
             </div>
-            
+
         </div>
     </div>
+</div>
 
-    <!-- Script điều khiển luồng Upsell bắp nước động tại Checkout -->
-    <script>
-        document.addEventListener('DOMContentLoaded', function () {
-            // Khởi tạo trạng thái combo từ backend pre-populated
-            const combosState = {
-                @foreach($allCombos as $combo)
-                    @php
-                        $qty = 0;
-                        if (!empty($selectedCombos)) {
-                            foreach ($selectedCombos as $sc) {
-                                if ($sc['combo']->id === $combo->id) {
-                                    $qty = $sc['quantity'];
-                                    break;
-                                }
-                            }
-                        }
-                    @endphp
-                    "{{ $combo->id }}": {
-                        id: "{{ $combo->id }}",
-                        name: "{{ $combo->combo_name }}",
-                        price: {{ $combo->price }},
-                        qty: {{ $qty }}
-                    },
-                @endforeach
-            };
+@section('scripts')
+<script>
+document.addEventListener('DOMContentLoaded', function () {
 
-            // Hàm cập nhật giao diện
-            function updateUI() {
-                let comboTotal = 0;
-                let tableBodyHtml = '';
-                let hasCombos = false;
+    // ─── Config từ PHP ───────────────────────────────────────────
+    const SHOWTIME_ID  = {{ $showtime->id }};
+    const APPLY_URL    = "{{ route('booking.voucher.apply', $showtime->id) }}";
+    const REMOVE_URL   = "{{ route('booking.voucher.remove', $showtime->id) }}";
+    const CSRF         = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
 
-                for (const id in combosState) {
-                    const item = combosState[id];
-                    
-                    // Cập nhật số lượng trên nhãn thẻ gợi ý
-                    const label = document.getElementById('upsell-qty-' + id);
-                    if (label) {
-                        label.textContent = item.qty;
-                    }
+    let seatTotal      = {{ $totalSeatPrice }};
+    let comboTotal     = {{ $totalComboPrice }};
+    let discountAmount = {{ $discountAmount }};
 
-                    // Nếu số lượng > 0 thì thêm vào danh sách đã chọn
-                    if (item.qty > 0) {
-                        hasCombos = true;
-                        const subtotal = item.price * item.qty;
-                        comboTotal += subtotal;
+    // Trạng thái combo (upsell ở bước trước đã được xử lý qua session)
+    const combosState = {
+        @foreach($allCombos ?? [] as $combo)
+        "{{ $combo->id }}": {
+            id: "{{ $combo->id }}",
+            price: {{ $combo->price }},
+            qty: {{ collect($selectedCombos)->firstWhere('combo.id', $combo->id)['quantity'] ?? 0 }}
+        },
+        @endforeach
+    };
 
-                        tableBodyHtml += `
-                            <tr class="text-neutral-800 font-semibold border-b border-slate-100/50 last:border-0">
-                                <td class="py-2.5 max-w-[150px] truncate">${item.name}</td>
-                                <td class="py-2.5 text-center font-bold">x${item.qty}</td>
-                                <td class="py-2.5 text-right font-bold">${new Intl.NumberFormat('vi-VN').format(subtotal)}đ</td>
-                            </tr>
-                        `;
-                    }
-                }
+    // ─── Cập nhật tổng tiền UI ───────────────────────────────────
+    function updateTotals(newDiscount, code) {
+        discountAmount = newDiscount;
+        const grand = Math.max(0, seatTotal + comboTotal - discountAmount);
 
-                // Cập nhật bảng bắp nước đã chọn
-                const tableContainer = document.getElementById('selectedCombosContainer');
-                if (hasCombos) {
-                    tableContainer.innerHTML = `
-                        <table class="w-full text-xs">
-                            <thead>
-                                <tr class="text-neutral-400 font-bold border-b border-slate-200/60 pb-2">
-                                    <th class="text-left pb-2">Combo</th>
-                                    <th class="text-center pb-2">Số Lượng</th>
-                                    <th class="text-right pb-2">Thành Tiền</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                ${tableBodyHtml}
-                            </tbody>
-                        </table>
-                        <div class="flex justify-between items-center pt-2 border-t border-slate-200 text-xs">
-                            <span class="font-bold text-neutral-400">Tổng tiền combo</span>
-                            <span class="font-black text-neutral-800">${new Intl.NumberFormat('vi-VN').format(comboTotal)}đ</span>
-                        </div>
-                    `;
-                } else {
-                    tableContainer.innerHTML = `
-                        <div class="text-center py-4 text-xs font-semibold text-neutral-400">
-                            Không đặt mua Combo bắp nước nào.
-                        </div>
-                    `;
-                }
+        document.getElementById('grandTotalLabel').textContent =
+            new Intl.NumberFormat('vi-VN').format(grand) + 'đ';
 
-                // Cập nhật tổng cộng thanh toán
-                const seatTotal = {{ $totalSeatPrice }};
-                const grandTotal = seatTotal + comboTotal;
-                const grandTotalLabel = document.getElementById('grandTotalPriceLabel');
-                if (grandTotalLabel) {
-                    grandTotalLabel.textContent = new Intl.NumberFormat('vi-VN').format(grandTotal) + 'đ';
-                }
+        const discountRow = document.getElementById('discountRow');
+        const discountLabel = document.getElementById('discountLabel');
+        const appliedCodeLabel = document.getElementById('appliedCodeLabel');
 
-                // Cập nhật các input ẩn của form submit
-                const hiddenContainer = document.getElementById('hiddenCombosContainer');
-                if (hiddenContainer) {
-                    let inputsHtml = '';
-                    for (const id in combosState) {
-                        const item = combosState[id];
-                        if (item.qty > 0) {
-                            inputsHtml += `<input type="hidden" name="combos[${id}]" value="${item.qty}">`;
-                        }
-                    }
-                    hiddenContainer.innerHTML = inputsHtml;
-                }
+        if (discountAmount > 0 && code) {
+            discountRow.classList.remove('hidden');
+            discountRow.classList.add('flex');
+            discountLabel.textContent = '-' + new Intl.NumberFormat('vi-VN').format(discountAmount) + 'đ';
+            appliedCodeLabel.textContent = code;
+        } else {
+            discountRow.classList.add('hidden');
+            discountRow.classList.remove('flex');
+        }
+    }
+
+    // ─── Hiển thị alert ──────────────────────────────────────────
+    function showAlert(message, type) {
+        const el = document.getElementById('voucherAlert');
+        el.className = 'mb-3 px-4 py-3 rounded-xl text-xs font-semibold flex items-start gap-2 ';
+        if (type === 'success') {
+            el.className += 'bg-emerald-500/10 border border-emerald-500/30 text-emerald-400';
+            el.innerHTML = '<span class="material-symbols-outlined text-sm flex-shrink-0">check_circle</span><span>' + message + '</span>';
+        } else {
+            el.className += 'bg-red-500/10 border border-red-500/30 text-red-400';
+            el.innerHTML = '<span class="material-symbols-outlined text-sm flex-shrink-0">error</span><span>' + message + '</span>';
+        }
+        el.classList.remove('hidden');
+        setTimeout(() => el.classList.add('hidden'), 5000);
+    }
+
+    // ─── Áp dụng voucher ─────────────────────────────────────────
+    document.getElementById('applyVoucherBtn').addEventListener('click', function () {
+        const code = document.getElementById('voucherInput').value.trim();
+        if (!code) { showAlert('Vui lòng nhập mã giảm giá.', 'error'); return; }
+
+        const subtotal = seatTotal + comboTotal;
+        const btn = this;
+        btn.disabled = true;
+        btn.textContent = 'Đang kiểm tra...';
+
+        fetch(APPLY_URL, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': CSRF,
+                'Accept': 'application/json',
+            },
+            body: JSON.stringify({ voucher_code: code, subtotal: subtotal })
+        })
+        .then(r => r.json())
+        .then(data => {
+            if (data.success) {
+                showAlert(data.message, 'success');
+                updateTotals(data.discount_amount, data.code);
+
+                // Cập nhật badge
+                const badge = document.getElementById('appliedBadge');
+                document.getElementById('badgeCode').textContent = data.code;
+                document.getElementById('badgeDesc').textContent =
+                    'Giảm ' + (data.discount_type === 'percent'
+                        ? data.discount_value + '%'
+                        : new Intl.NumberFormat('vi-VN').format(data.discount_value) + 'đ');
+                badge.classList.remove('hidden');
+                badge.classList.add('flex');
+
+                document.getElementById('voucherInput').value = data.code;
+            } else {
+                showAlert(data.message, 'error');
+                updateTotals(0, null);
+                document.getElementById('appliedBadge').classList.add('hidden');
+                document.getElementById('appliedBadge').classList.remove('flex');
             }
-
-            // Gắn sự kiện nút giảm
-            document.querySelectorAll('.btn-upsell-dec').forEach(btn => {
-                btn.addEventListener('click', function () {
-                    const id = this.dataset.id;
-                    if (combosState[id] && combosState[id].qty > 0) {
-                        combosState[id].qty--;
-                        updateUI();
-                    }
-                });
-            });
-
-            // Gắn sự kiện nút tăng
-            document.querySelectorAll('.btn-upsell-inc').forEach(btn => {
-                btn.addEventListener('click', function () {
-                    const id = this.dataset.id;
-                    if (combosState[id] && combosState[id].qty < 99) {
-                        combosState[id].qty++;
-                        updateUI();
-                    }
-                });
-            });
-
-            // Gọi cập nhật lần đầu
-            updateUI();
+        })
+        .catch(() => showAlert('Có lỗi kết nối. Vui lòng thử lại.', 'error'))
+        .finally(() => {
+            btn.disabled = false;
+            btn.textContent = 'Áp Dụng';
         });
-    </script>
+    });
+
+    // Enter key trên input
+    document.getElementById('voucherInput').addEventListener('keydown', function(e) {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            document.getElementById('applyVoucherBtn').click();
+        }
+    });
+
+    // ─── Xóa voucher ─────────────────────────────────────────────
+    document.getElementById('removeVoucherBtn').addEventListener('click', function () {
+        fetch(REMOVE_URL, {
+            method: 'POST',
+            headers: { 'X-CSRF-TOKEN': CSRF, 'Accept': 'application/json' }
+        })
+        .then(r => r.json())
+        .then(() => {
+            updateTotals(0, null);
+            document.getElementById('voucherInput').value = '';
+            document.getElementById('appliedBadge').classList.add('hidden');
+            document.getElementById('appliedBadge').classList.remove('flex');
+            showAlert('Đã xóa mã giảm giá.', 'success');
+        });
+    });
+
+    // ─── Chọn phương thức thanh toán ─────────────────────────────
+    document.querySelectorAll('.payment-option').forEach(label => {
+        label.addEventListener('click', function () {
+            document.querySelectorAll('.payment-option').forEach(l => {
+                l.classList.remove('border-brand-primary', 'bg-brand-primary/10');
+                l.classList.add('border-zinc-800', 'bg-zinc-900/50');
+                const dot = l.querySelector('[data-radio]');
+                dot.classList.remove('border-brand-primary');
+                dot.classList.add('border-zinc-600');
+                dot.innerHTML = '';
+            });
+
+            this.classList.add('border-brand-primary', 'bg-brand-primary/10');
+            this.classList.remove('border-zinc-800', 'bg-zinc-900/50');
+            const dot = this.querySelector('[data-radio]');
+            dot.classList.add('border-brand-primary');
+            dot.classList.remove('border-zinc-600');
+            dot.innerHTML = '<div class="w-2 h-2 rounded-full bg-brand-primary"></div>';
+
+            const val = this.dataset.id;
+            document.getElementById('paymentMethodInput').value = val;
+            this.querySelector('input[type=radio]').checked = true;
+        });
+    });
+
+    // ─── Sync hidden combos vào form ─────────────────────────────
+    function syncHiddenCombos() {
+        const container = document.getElementById('hiddenCombosContainer');
+        let html = '';
+        for (const id in combosState) {
+            if (combosState[id].qty > 0) {
+                html += `<input type="hidden" name="combos[${id}]" value="${combosState[id].qty}">`;
+            }
+        }
+        container.innerHTML = html;
+    }
+    syncHiddenCombos();
+});
+</script>
+@endsection
 @endsection
