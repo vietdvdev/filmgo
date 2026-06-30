@@ -139,10 +139,15 @@
           :key="'row-' + rowIdx"
           class="flex items-center gap-1.5"
         >
-          <!-- Nhãn hàng bên trái (A, B, C ...) -->
-          <div class="w-6 flex items-center justify-center text-xs font-black text-slate-500">
+          <!-- Nhãn hàng bên trái (Clickable để tô nhanh cả hàng) -->
+          <button
+            type="button"
+            @click="handleRowClick(rowIdx)"
+            title="Nhấp để tô nhanh toàn bộ hàng ghế này"
+            class="w-6 h-9 flex items-center justify-center text-xs font-black text-slate-500 hover:bg-slate-100 hover:text-blue-600 transition-colors cursor-pointer select-none rounded-none"
+          >
             {{ rowLabel(rowIdx) }}
-          </div>
+          </button>
 
           <!-- Các ô ghế trong hàng -->
           <div
@@ -172,10 +177,15 @@
             </template>
           </div>
 
-          <!-- Nhãn hàng bên phải -->
-          <div class="w-6 flex items-center justify-center text-xs font-black text-slate-500">
+          <!-- Nhãn hàng bên phải (Clickable để tô nhanh cả hàng) -->
+          <button
+            type="button"
+            @click="handleRowClick(rowIdx)"
+            title="Nhấp để tô nhanh toàn bộ hàng ghế này"
+            class="w-6 h-9 flex items-center justify-center text-xs font-black text-slate-500 hover:bg-slate-100 hover:text-blue-600 transition-colors cursor-pointer select-none rounded-none"
+          >
             {{ rowLabel(rowIdx) }}
-          </div>
+          </button>
         </div>
 
       </div>
@@ -417,6 +427,36 @@ function handleSeatClick(rowIdx, colIdx) {
   } else {
     // Đang là loại ghế khác → chuyển sang loại ghế đang chọn
     seat.state = brushState
+  }
+}
+
+// ─── Logic click nhãn hàng (Tô/Tạo nhanh cả hàng ghế cùng lúc) ───────────────
+function handleRowClick(rowIdx) {
+  const rowSeats = grid.value[rowIdx]
+  
+  if (activeBrush.value === null) {
+    // Nếu đang chọn cọ "Lối đi" (null) → xóa sạch tất cả ghế trong hàng (chuyển về lối đi)
+    rowSeats.forEach(seat => {
+      seat.state = null
+    })
+    return
+  }
+
+  const brushState = seatTypeToState(activeBrush.value)
+
+  // Kiểm tra xem TOÀN BỘ ghế trong hàng đã được tô theo cọ này chưa
+  const allMatched = rowSeats.every(seat => seat.state === brushState)
+
+  if (allMatched) {
+    // Nếu tất cả đã đúng loại cọ này -> chuyển toàn bộ sang bảo trì
+    rowSeats.forEach(seat => {
+      seat.state = STATES.MAINTENANCE
+    })
+  } else {
+    // Nếu chưa (có ô lối đi, bảo trì hoặc loại ghế khác) -> tô toàn bộ thành loại ghế của cọ đang chọn
+    rowSeats.forEach(seat => {
+      seat.state = brushState
+    })
   }
 }
 
