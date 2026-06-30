@@ -21,8 +21,11 @@ class Booking extends Model
         'user_id',
         'showtime_id',
         'booking_code',
+        'subtotal',
+        'promotion_id',
         'total_amount',
         'discount_amount',
+        'final_total',
         'payment_status',
         'booking_status',
         'expired_at',
@@ -34,13 +37,16 @@ class Booking extends Model
      * @var array<string, string>
      */
     protected $casts = [
-        'user_id' => 'integer',
-        'showtime_id' => 'integer',
-        'total_amount' => 'integer',
+        'user_id'        => 'integer',
+        'showtime_id'    => 'integer',
+        'subtotal'       => 'integer',
+        'promotion_id'   => 'integer',
+        'total_amount'   => 'integer',
         'discount_amount' => 'integer',
+        'final_total'    => 'integer',
         'payment_status' => 'string',
         'booking_status' => 'string',
-        'expired_at' => 'datetime',
+        'expired_at'     => 'datetime',
     ];
 
     /**
@@ -55,6 +61,14 @@ class Booking extends Model
     public function showtime(): BelongsTo
     {
         return $this->belongsTo(Showtime::class, 'showtime_id');
+    }
+
+    /**
+     * Mã khuyến mãi đã được áp dụng (snapshot FK).
+     */
+    public function promotion(): BelongsTo
+    {
+        return $this->belongsTo(Promotion::class, 'promotion_id');
     }
 
     public function bookingDetails(): HasMany
