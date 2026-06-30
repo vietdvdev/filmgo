@@ -9,6 +9,7 @@ use App\Models\Cinema;
 use App\Models\Movie;
 use App\Models\Room;
 use App\Models\Seat;
+use App\Models\SeatType;
 use App\Models\Showtime;
 use App\Models\ShowtimeSeat;
 use Carbon\Carbon;
@@ -134,28 +135,46 @@ class ManagerShowtimeController extends Controller
         DB::beginTransaction();
         try {
             $showtime = Showtime::create([
-                'movie_id'   => $movie->id,
-                'room_id'    => $room->id,
-                'show_date'  => $showDateStr,
-                'start_time' => $startStr,
-                'end_time'   => $endStr,
-                'base_price' => $request->integer('base_price'),
-                'status'     => 'upcoming',
+                'movie_id'         => $movie->id,
+                'room_id'          => $room->id,
+                'show_date'        => $showDateStr,
+                'start_time'       => $startStr,
+                'end_time'         => $endStr,
+                'base_price'       => $request->integer('base_price'),
+                'status'           => 'upcoming',
+                // [v2.0] Đánh dấu suất được tạo THỦ CÔNG bởi Manager
+                'is_auto_generated' => false,
             ]);
 
+            // [v2.0] Pre-load toàn bộ SeatType vào một map [id => surcharge_price] để tránh N+1 query.
+            // Dùng surcharge_price từ Model thay vì hardcode để Admin có thể tùy chỉnh sau này.
+            // Công thức: showtime_seat.price = showtime.base_price + seat_type.surcharge_price
+            $surchargeMap = SeatType::all()->pluck('surcharge_price', 'id'); // [seatTypeId => surcharge]
+            $basePrice    = $showtime->base_price;
+
             $showtimeSeatsData = [];
-            Seat::where('room_id', $room->id)->select('id')->chunk(500, function ($seats) use ($showtime, &$showtimeSeatsData) {
-                foreach ($seats as $seat) {
-                    $showtimeSeatsData[] = [
-                        'showtime_id' => $showtime->id,
-                        'seat_id'     => $seat->id,
-                        'user_id'     => null,
-                        'status'      => 'available',
-                        'locked_at'   => null,
-                        'expires_at'  => null,
-                    ];
-                }
-            });
+
+            // Eager-load seatType để tránh N+1 query trong vòng lặp chunk
+            Seat::where('room_id', $room->id)
+                ->with('seatType:id,surcharge_price')
+                ->select('id', 'seat_type_id')
+                ->chunk(500, function ($seats) use ($showtime, $basePrice, $surchargeMap, &$showtimeSeatsData) {
+                    foreach ($seats as $seat) {
+                        // Đọc surcharge_price từ relation; fallback = 0 nếu ghế chưa gán type
+                        $surcharge = (int) ($surchargeMap[$seat->seat_type_id] ?? 0);
+
+                        $showtimeSeatsData[] = [
+                            'showtime_id' => $showtime->id,
+                            'seat_id'     => $seat->id,
+                            'user_id'     => null,
+                            'status'      => 'available',
+                            // [v2.0] Snapshot giá = base_price suất + surcharge_price loại ghế
+                            'price'       => $basePrice + $surcharge,
+                            'locked_at'   => null,
+                            'expires_at'  => null,
+                        ];
+                    }
+                });
 
             if (empty($showtimeSeatsData)) {
                 DB::rollBack();
