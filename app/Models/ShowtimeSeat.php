@@ -35,6 +35,7 @@ class ShowtimeSeat extends Model
         'seat_id',
         'user_id',
         'status',
+        'price',
         'locked_at',
         'expires_at',
     ];
@@ -46,11 +47,12 @@ class ShowtimeSeat extends Model
      */
     protected $casts = [
         'showtime_id' => 'integer',
-        'seat_id' => 'integer',
-        'user_id' => 'integer',
-        'status' => 'string',
-        'locked_at' => 'datetime',
-        'expires_at' => 'datetime',
+        'seat_id'     => 'integer',
+        'user_id'     => 'integer',
+        'status'      => 'string',
+        'price'       => 'integer',
+        'locked_at'   => 'datetime',
+        'expires_at'  => 'datetime',
     ];
 
     /**

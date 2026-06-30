@@ -7,6 +7,7 @@ use App\Models\Cinema;
 use App\Models\Movie;
 use App\Models\Room;
 use App\Models\Seat;
+use App\Models\SeatType;
 use App\Models\Showtime;
 use App\Models\ShowtimeSeat;
 use App\Models\Holiday;
@@ -141,15 +142,17 @@ class AutoGenerateController extends Controller
                 $actualPrice = $this->applyPriceRules($standardPrice, $proposedStart);
 
                 $validShowtimes[] = [
-                    'movie_id'   => $movieId,
-                    'room_id'    => $roomId,
-                    'show_date'  => $showDate,
-                    'start_time' => $proposedStart->format('H:i:s'),
-                    'end_time'   => $proposedEnd->format('H:i:s'),
-                    'base_price' => $actualPrice,
-                    'status'     => 'upcoming',
-                    'created_at' => now(),
-                    'updated_at' => now(),
+                    'movie_id'          => $movieId,
+                    'room_id'           => $roomId,
+                    'show_date'         => $showDate,
+                    'start_time'        => $proposedStart->format('H:i:s'),
+                    'end_time'          => $proposedEnd->format('H:i:s'),
+                    'base_price'        => $actualPrice,
+                    'status'            => 'upcoming',
+                    // [v2.0] Đánh dấu suất do hệ thống TỰ ĐỘNG sinh (phân biệt với tạo tay)
+                    'is_auto_generated' => true,
+                    'created_at'        => now(),
+                    'updated_at'        => now(),
                 ];
 
                 // Di chuyển pointer thời gian: (Thời điểm kết thúc suất đề xuất + Thời gian dọn dẹp)
@@ -181,9 +184,13 @@ class AutoGenerateController extends Controller
                 ->toArray();
 
             // Lấy toàn bộ danh sách ghế đang hoạt động của phòng chiếu này
-            $seats = Seat::where('room_id', $roomId)->pluck('id')->toArray();
+            // [v2.0] Eager-load seatType để lấy slug phục vụ tính giá mà không gây N+1 query
+            $seats = Seat::where('room_id', $roomId)
+                ->with('seatType:id,slug')
+                ->select('id', 'seat_type_id')
+                ->get();
 
-            if (empty($seats)) {
+            if ($seats->isEmpty()) {
                 DB::rollBack();
                 return response()->json([
                     'success' => false,
@@ -191,27 +198,48 @@ class AutoGenerateController extends Controller
                 ], 400);
             }
 
-            // Tạo danh sách liên kết Ghế - Suất chiếu
-            // Lưu ý: Bảng showtime_seats KHÔNG có cột timestamps (created_at/updated_at)
-            $showtimeSeatsData = [];
-            foreach ($newShowtimeIds as $showtimeId) {
-                foreach ($seats as $seatId) {
-                    $showtimeSeatsData[] = [
-                        'showtime_id' => $showtimeId,
-                        'seat_id'     => $seatId,
-                        'user_id'     => null,
-                        'status'      => 'available',
-                        'locked_at'   => null,
-                        'expires_at'  => null,
-                    ];
-                }
-            }
+            // [v2.0] Pre-load toàn bộ SeatType vào map [id => surcharge_price] — chỉ 1 query duy nhất
+            // Dùng surcharge_price từ Model để Admin có thể tùy chỉnh giá phụ thu mà không cần sửa code
+            // Công thức: showtime_seat.price = showtime.base_price + seat_type.surcharge_price
+            $surchargeMap = SeatType::all()->pluck('surcharge_price', 'id'); // Collection: [typeId => surcharge]
 
-            // Thực hiện insert bulk theo từng chunk 500 bản ghi nhằm tránh lỗi vượt quá dung lượng gói của MySQL
-            $chunks = array_chunk($showtimeSeatsData, 500);
-            foreach ($chunks as $chunk) {
-                ShowtimeSeat::insert($chunk);
-            }
+            // [v2.0] Lấy map showtime_id → base_price để tránh query lặp lại trong vòng lặp
+            // Ví dụ: [101 => 80000, 102 => 95000, 103 => 80000]
+            $showtimeBasePrices = Showtime::whereIn('id', $newShowtimeIds)
+                ->pluck('base_price', 'id'); // Collection: [id => base_price]
+
+            // [v2.0] Tạo danh sách liên kết Ghế-Suất chiếu bằng Collection flatMap (thay thế double foreach)
+            // Ưu điểm: mạch lạc, dễ đọc; Collection lazy flatten() thay cho nối mảng thủ công
+            $showtimeSeatsData = collect($newShowtimeIds)
+                ->flatMap(function (int $showtimeId) use ($seats, $surchargeMap, $showtimeBasePrices) {
+                    // Lấy base_price của suất chiếu này (fallback = 0 nếu không tìm thấy)
+                    $basePrice = (int) ($showtimeBasePrices[$showtimeId] ?? 0);
+
+                    return $seats->map(function ($seat) use ($showtimeId, $basePrice, $surchargeMap) {
+                        // Đọc surcharge_price từ map đã pre-load; fallback = 0 nếu ghế chưa gán type
+                        $surcharge = (int) ($surchargeMap[$seat->seat_type_id] ?? 0);
+
+                        return [
+                            'showtime_id' => $showtimeId,
+                            'seat_id'     => $seat->id,
+                            'user_id'     => null,
+                            'status'      => 'available',
+                            // [v2.0] Snapshot giá tại thời điểm tạo suất: base_price + surcharge_price loại ghế
+                            // Backend sau này chỉ cần SUM(price) để tính tổng giỏ hàng mà không tính lại công thức
+                            'price'       => $basePrice + $surcharge,
+                            'locked_at'   => null,
+                            'expires_at'  => null,
+                        ];
+                    });
+                })
+                ->values()  // Re-index trước khi chunk
+                ->toArray();
+
+            // Thực hiện insert bulk theo từng chunk 500 bản ghi
+            // Tránh lỗi MySQL "max_allowed_packet" khi có hàng ngàn ghế × nhiều suất chiếu
+            collect($showtimeSeatsData)
+                ->chunk(500)
+                ->each(fn ($chunk) => ShowtimeSeat::insert($chunk->values()->toArray()));
 
             DB::commit();
 

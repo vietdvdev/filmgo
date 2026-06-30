@@ -25,6 +25,7 @@ class Showtime extends Model
         'end_time',
         'base_price',
         'status',
+        'is_auto_generated',
     ];
 
     /**
@@ -36,8 +37,9 @@ class Showtime extends Model
         'movie_id' => 'integer',
         'room_id' => 'integer',
         'show_date' => 'date',
-        'base_price' => 'integer',
-        'status' => 'string',
+        'base_price'       => 'integer',
+        'status'           => 'string',
+        'is_auto_generated' => 'boolean',
     ];
 
     /**
