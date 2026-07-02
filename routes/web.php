@@ -73,11 +73,18 @@ Route::middleware('customer')->group(function () {
     Route::get('/booking/showtime/{showtime_id}/checkout', [App\Http\Controllers\Customer\BookingController::class, 'checkout'])->name('booking.checkout');
     Route::post('/booking/showtime/{showtime_id}/confirm', [App\Http\Controllers\Customer\BookingController::class, 'confirm'])->name('booking.confirm');
     Route::get('/booking/success/{booking_id}', [App\Http\Controllers\Customer\BookingController::class, 'success'])->name('booking.success');
+    Route::get('/booking/payment/qr/{booking_id}/{provider}', [App\Http\Controllers\Customer\BookingController::class, 'paymentQrPage'])->name('booking.payment.qr');
+    Route::get('/booking/payment/demo/{booking_id}/{provider}', [App\Http\Controllers\Customer\BookingController::class, 'demoPaymentPage'])->name('booking.payment.demo');
+    Route::post('/booking/payment/demo/{booking_id}/{provider}/complete', [App\Http\Controllers\Customer\BookingController::class, 'demoPaymentComplete'])->name('booking.payment.demo.complete');
 
     // Voucher / Mã khuyến mãi
     Route::post('/booking/showtime/{showtime_id}/voucher/apply', [App\Http\Controllers\Customer\VoucherController::class, 'apply'])->name('booking.voucher.apply');
     Route::post('/booking/showtime/{showtime_id}/voucher/remove', [App\Http\Controllers\Customer\VoucherController::class, 'remove'])->name('booking.voucher.remove');
 });
+
+// Thanh toán callback route không yêu cầu auth để nhận redirect/IPN từ đối tác
+Route::match(['get', 'post'], '/booking/vnpay-callback', [App\Http\Controllers\Customer\BookingController::class, 'vnpayCallback'])->name('booking.vnpay.callback');
+Route::match(['get', 'post'], '/booking/momo-callback', [App\Http\Controllers\Customer\BookingController::class, 'momoCallback'])->name('booking.momo.callback');
 
 // Toàn bộ các đường dẫn thuộc hệ thống Admin
 Route::prefix('admin')->group(function () {

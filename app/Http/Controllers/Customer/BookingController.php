@@ -8,17 +8,21 @@ use App\Models\ShowtimeSeat;
 use App\Models\Combo;
 use App\Models\Booking;
 use App\Services\BookingService;
+use App\Services\PaymentService; // Thêm Service xử lý cổng thanh toán
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Exception;
 
 class BookingController extends Controller
 {
     protected $bookingService;
+    protected $paymentService; // Khai báo đối tác thanh toán
 
-    public function __construct(BookingService $bookingService)
+    public function __construct(BookingService $bookingService, PaymentService $paymentService)
     {
         $this->bookingService = $bookingService;
+        $this->paymentService = $paymentService;
     }
 
     /**
@@ -27,7 +31,7 @@ class BookingController extends Controller
     public function selectSeats($showtimeId)
     {
         $showtime = Showtime::with(['movie', 'room.cinema'])->findOrFail($showtimeId);
-        
+
         $showtimeSeats = ShowtimeSeat::with('seat.seatType')
             ->where('showtime_id', $showtimeId)
             ->get()
@@ -85,7 +89,7 @@ class BookingController extends Controller
         }
 
         $showtime = Showtime::with(['movie', 'room.cinema'])->findOrFail($showtimeId);
-        
+
         // Lấy thông tin các ghế để tính toán tiền ghế
         $selectedSeats = ShowtimeSeat::with('seat.seatType')->whereIn('id', $seatIds)->get();
         $totalSeatPrice = $selectedSeats->sum(function ($ss) use ($showtime) {
@@ -171,13 +175,11 @@ class BookingController extends Controller
         $appliedVoucher  = session()->get("booking.{$showtimeId}.voucher");
         $discountAmount  = 0;
         if ($appliedVoucher) {
-            // Tính lại discount theo subtotal hiện tại để tránh giả mạo
             if ($appliedVoucher['discount_type'] === 'percent') {
                 $discountAmount = (int) ($grandTotal * ($appliedVoucher['discount_value'] / 100));
             } else {
                 $discountAmount = min($appliedVoucher['discount_amount'], $grandTotal);
             }
-            // Cập nhật lại discount_amount trong session theo giá trị thực
             $appliedVoucher['discount_amount'] = $discountAmount;
             session()->put("booking.{$showtimeId}.voucher", $appliedVoucher);
         }
@@ -201,16 +203,21 @@ class BookingController extends Controller
     }
 
     /**
-     * Final action: Save booking to DB.
+     * Final action: Save booking to DB (As pending) & Redirect to Payment Gateway.
      */
     public function confirm(Request $request, $showtimeId)
     {
+        // dd(env('VNP_TMN_CODE'), env('VNP_RETURN_URL'));
+        // 1. Kiểm tra phương thức thanh toán hợp lệ từ client gửi lên
+        $request->validate([
+            'payment_method' => 'required|in:vnpay,momo',
+        ]);
+
         $seatIds = session()->get("booking.{$showtimeId}.seat_ids");
         if (empty($seatIds)) {
             return redirect()->route('booking.select-seats', $showtimeId)->with('error', 'Vui lòng chọn ghế ngồi trước.');
         }
 
-        // Nhận dữ liệu combo từ request gửi lên hoặc fallback về session
         $combosInput = $request->input('combos', session()->get("booking.{$showtimeId}.combos", []));
         $combosData = [];
         foreach ($combosInput as $comboId => $qty) {
@@ -224,33 +231,231 @@ class BookingController extends Controller
         $voucherData = session()->get("booking.{$showtimeId}.voucher");
 
         try {
+            DB::beginTransaction();
+
+            // Khởi tạo booking bằng BookingService của bạn nhưng với trạng thái ban đầu là 'pending'
             $booking = $this->bookingService->createBooking($userId, $showtimeId, $seatIds, $combosData, $voucherData);
 
-            session()->forget("booking.{$showtimeId}");
+            // Cập nhật bổ sung hình thức thanh toán cho đơn hàng
+            $booking->update([
+                'payment_method' => $request->payment_method,
+                'status' => 'pending'
+            ]);
 
-            return redirect()->route('booking.success', $booking->id)->with('success', 'Chúc mững bạn đã đặt vé thành công!');
+            DB::commit();
+
+            $demoMode = filter_var(env('PAYMENT_DEMO_MODE', false), FILTER_VALIDATE_BOOLEAN);
+            if ($demoMode) {
+                return redirect()->route('booking.payment.demo', [
+                    'booking_id' => $booking->id,
+                    'provider' => $request->payment_method,
+                ]);
+            }
+
+            // Gọi PaymentService tạo payload bảo mật và lấy link chuyển hướng đối tác
+            if ($request->payment_method === 'vnpay') {
+                try {
+                    $paymentUrl = $this->paymentService->createVnPayUrl($booking->booking_code, $booking->total_amount);
+                } catch (Exception $e) {
+                    logger()->warning('VNPay payment initialization failed', [
+                        'booking_code' => $booking->booking_code,
+                        'error' => $e->getMessage(),
+                    ]);
+                    $paymentUrl = null;
+                }
+
+                return redirect()->route('booking.payment.qr', [
+                    'booking_id' => $booking->id,
+                    'provider' => 'vnpay',
+                    'payment_url' => $paymentUrl ?? env('VNP_FALLBACK_URL', 'https://sandbox.vnpayment.vn/paymentv2/vpcpay.html'),
+                ]);
+            } elseif ($request->payment_method === 'momo') {
+                try {
+                    $paymentUrl = $this->paymentService->createMoMoUrl($booking->booking_code, (int)$booking->total_amount);
+                } catch (Exception $e) {
+                    logger()->warning('MoMo payment initialization failed, using fallback URL', [
+                        'booking_code' => $booking->booking_code,
+                        'error' => $e->getMessage(),
+                    ]);
+
+                    $paymentUrl = env('MOMO_FALLBACK_URL', 'https://momo.vn/');
+                }
+
+                return redirect()->route('booking.payment.qr', [
+                    'booking_id' => $booking->id,
+                    'provider' => 'momo',
+                    'payment_url' => $paymentUrl,
+                ]);
+            }
         } catch (Exception $e) {
-            return redirect()->route('booking.select-seats', $showtimeId)->with('error', 'Đặt vé thất bại: ' . $e->getMessage());
+            DB::rollBack();
+
+            logger()->error('Payment initialization failed', [
+                'showtime_id' => $showtimeId,
+                'payment_method' => $request->payment_method,
+                'error' => $e->getMessage(),
+            ]);
+
+            return redirect()->route('booking.checkout', $showtimeId)
+                ->with('error', 'Khởi tạo thanh toán thất bại. Vui lòng thử lại sau.');
         }
     }
 
-    /**
-     * Show booking success page.
-     */
+    public function paymentQrPage($bookingId, $provider, Request $request)
+    {
+        $booking = Booking::with(['showtime.movie', 'showtime.room.cinema'])->findOrFail($bookingId);
+        $paymentUrl = $request->query('payment_url', '');
+
+        return view('customer.bookings.payment-qr', compact('booking', 'provider', 'paymentUrl'));
+    }
+
+    public function demoPaymentPage($bookingId, $provider)
+    {
+        $booking = Booking::with(['showtime.movie', 'showtime.room.cinema'])->findOrFail($bookingId);
+
+        return view('customer.bookings.payment-demo', compact('booking', 'provider'));
+    }
+
+    public function demoPaymentComplete($bookingId, $provider)
+    {
+        $booking = Booking::with('bookingDetails')->findOrFail($bookingId);
+        $booking->update(['status' => 'completed', 'paid_at' => now()]);
+
+        ShowtimeSeat::whereIn('id', $booking->bookingDetails->pluck('showtime_seat_id'))->update(['status' => 'booked']);
+        session()->forget("booking.{$booking->showtime_id}");
+
+        return redirect()->route('booking.success', $booking->id)->with('success', 'Thanh toán giả lập thành công.');
+    }
+
     public function success($bookingId)
     {
         $booking = Booking::with([
             'showtime.movie',
             'showtime.room.cinema',
             'bookingDetails.showtimeSeat.seat.seatType',
-            'combos'
+            'combos',
         ])->findOrFail($bookingId);
 
-        // Đảm bảo người dùng chỉ xem được đơn hàng của chính mình
-        if ($booking->user_id !== Auth::id()) {
-            abort(403, 'Bạn không có quyền truy cập trang này.');
+        return view('customer.bookings.success', compact('booking'));
+    }
+
+    /**
+     * VNPay Return Callback URL
+     */
+    public function vnpayCallback(Request $request)
+    {
+        $vnp_HashSecret = env('VNP_HASH_SECRET');
+        $vnp_SecureHash = $request->get('vnp_SecureHash');
+        $inputData = [];
+
+        foreach ($request->all() as $key => $value) {
+            if (substr($key, 0, 4) == "vnp_") {
+                $inputData[$key] = $value;
+            }
         }
 
-        return view('customer.bookings.success', compact('booking'));
+        unset($inputData['vnp_SecureHash']);
+        ksort($inputData);
+        $hashData = "";
+        $i = 0;
+        foreach ($inputData as $key => $value) {
+            if ($i == 1) {
+                $hashData .= '&' . urlencode($key) . "=" . urlencode($value);
+            } else {
+                $hashData .= urlencode($key) . "=" . urlencode($value);
+                $i = 1;
+            }
+        }
+
+        $secureHash = hash_hmac('sha512', $hashData, $vnp_HashSecret);
+
+        // Kiểm tra tính toàn vẹn của chữ ký điện tử gửi về
+        if ($secureHash === $vnp_SecureHash) {
+            $bookingCode = $request->get('vnp_TxnRef');
+            $booking = Booking::where('booking_code', $bookingCode)->firstOrFail();
+
+            if ($request->get('vnp_ResponseCode') == '00') {
+                // Thanh toán thành công: Cập nhật DB và xóa session tiến trình đặt vé
+                $booking->update(['status' => 'completed', 'paid_at' => now()]);
+
+                // Giải phóng ghế sang trạng thái đã đặt
+                ShowtimeSeat::whereIn('id', $booking->bookingDetails->pluck('showtime_seat_id'))->update(['status' => 'booked']);
+
+                session()->forget("booking.{$booking->showtime_id}");
+
+                return redirect()->route('booking.success', $booking->id)->with('success', 'Thanh toán qua VNPay thành công!');
+            } else {
+                // Thanh toán thất bại hoặc người dùng hủy đơn
+                $booking->update(['status' => 'failed']);
+                ShowtimeSeat::whereIn('id', $booking->bookingDetails->pluck('showtime_seat_id'))->update(['status' => 'available']);
+
+                return redirect()->route('booking.checkout', $booking->showtime_id)->with('error', 'Giao dịch không thành công hoặc đã bị hủy.');
+            }
+        }
+
+        return redirect()->route('home')->with('error', 'Chữ ký điện tử không hợp lệ.');
+    }
+
+    /**
+     * MoMo Redirect Callback URL
+     */
+    public function momoCallback(Request $request)
+    {
+        $secretKey = env('MOMO_SECRET_KEY');
+
+        // Nhận các tham số phản hồi từ MoMo để xác thực chữ ký số điện tử
+        $partnerCode = $request->get('partnerCode');
+        $orderId     = $request->get('orderId'); // Định dạng ở Service cũ: {booking_code}_{timestamp}
+        $requestId   = $request->get('requestId');
+        $amount      = $request->get('amount');
+        $orderInfo   = $request->get('orderInfo');
+        $orderType   = $request->get('orderType');
+        $transId     = $request->get('transId');
+
+        $resultCode  = $request->get('resultCode');
+        $message     = $request->get('message'); // Dòng 335 cũ đã được đẩy lên thế chỗ dòng lỗi
+        $localSign   = $request->get('signature');
+        $localSign   = $request->get('signature');
+
+        // 1. Tạo chuỗi ký tự để kiểm tra chữ ký (Raw hash theo đúng thứ tự tài liệu MoMo cung cấp)
+        $rawHash = "amount=" . $amount .
+            "&message=" . $message .
+            "&orderId=" . $orderId .
+            "&orderInfo=" . $orderInfo .
+            "&orderType=" . $orderType .
+            "&partnerCode=" . $partnerCode .
+            "&requestId=" . $requestId .
+            "&resultCode=" . $resultCode .
+            "&transId=" . $transId;
+
+        $partnerSignature = hash_hmac("sha256", $rawHash, $secretKey);
+
+        // 2. Xác thực tính toàn vẹn dữ liệu
+        if ($partnerSignature === $localSign) {
+            // Tách lấy booking_code gốc nếu orderId có dạng {booking_code}_{timestamp}
+            $bookingCode = explode('_', $orderId)[0];
+            $booking = Booking::where('booking_code', $bookingCode)->firstOrFail();
+
+            if ($resultCode == 0) {
+                // Giao dịch thành công qua MoMo
+                $booking->update(['status' => 'completed', 'paid_at' => now()]);
+
+                // Cập nhật trạng thái ghế sang đã đặt
+                ShowtimeSeat::whereIn('id', $booking->bookingDetails->pluck('showtime_seat_id'))->update(['status' => 'booked']);
+
+                // Xóa session tiến trình đặt vé
+                session()->forget("booking.{$booking->showtime_id}");
+
+                return redirect()->route('booking.success', $booking->id)->with('success', 'Thanh toán qua MoMo thành công!');
+            } else {
+                // Giao dịch thất bại hoặc bị hủy bỏ
+                $booking->update(['status' => 'failed']);
+                ShowtimeSeat::whereIn('id', $booking->bookingDetails->pluck('showtime_seat_id'))->update(['status' => 'available']);
+
+                return redirect()->route('booking.checkout', $booking->showtime_id)->with('error', 'Thanh toán thất bại hoặc đã bị hủy: ' . $message);
+            }
+        }
+
+        return redirect()->route('home')->with('error', 'Chữ ký điện tử MoMo không hợp lệ.');
     }
 }
