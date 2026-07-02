@@ -114,7 +114,7 @@ class ManagerShowtimeController extends Controller
         // Load relations và đếm ghế trống/đặt hiệu năng cao (withCount)
         $showtimes = $query->with([
                 'movie:id,title,duration,age_limit',
-                'room:id,room_name as name,cinema_id',
+                'room:id,room_name,cinema_id',
                 'room.cinema:id,name'
             ])
             ->withCount([
@@ -124,7 +124,14 @@ class ManagerShowtimeController extends Controller
                 }
             ])
             ->orderBy('start_time')
-            ->get();
+            ->get()
+            ->map(function ($showtime) {
+                // Normalize room.name vì Eloquent không hỗ trợ alias trong with() select
+                if ($showtime->room) {
+                    $showtime->room->name = $showtime->room->room_name;
+                }
+                return $showtime;
+            });
 
         return response()->json($showtimes);
     }
