@@ -7,11 +7,6 @@
      Vite bundle cho SeatMapBuilder.vue được nhúng tại đây.
 ═══════════════════════════════════════════════════════════════════════ --}}
 @section('styles')
-    {{--
-        Nhúng Vite bundle: CSS scoped của SeatMapBuilder.vue + Vue runtime.
-        Khi dev: Vite HMR; khi production: file hash từ public/build/manifest.json.
-    --}}
-    @vite(['resources/js/seat-map.js'])
 @endsection
 
 @section('content')
@@ -144,10 +139,5 @@
 @endsection
 
 @section('scripts')
-{{--
-    Không cần thêm gì ở đây vì:
-    - @vite() ở section 'styles' đã tự thêm <script type="module">
-    - CSRF token đã có trong <meta name="csrf-token"> tại layouts/manager.blade.php dòng 6
-    - seat-map.js tự đọc: document.querySelector('meta[name="csrf-token"]').content
---}}
+    @vite(['resources/js/seat-map.js'])
 @endsection

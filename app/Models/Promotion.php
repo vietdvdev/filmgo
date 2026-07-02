@@ -25,16 +25,13 @@ class Promotion extends Model
      */
     protected $fillable = [
         'code',
-        'apply_to',
         'discount_type',
         'discount_value',
-        'max_discount_amount',
         'min_order_amount',
         'max_uses_per_user',
         'start_date',
         'end_date',
-        'usage_limit',
-        'used_count',
+        'quantity',
         'status',
     ];
 
@@ -44,15 +41,13 @@ class Promotion extends Model
      * @var array<string, string>
      */
     protected $casts = [
-        'discount_value'      => 'integer',
-        'max_discount_amount'  => 'integer',
-        'min_order_amount'    => 'integer',
-        'max_uses_per_user'   => 'integer',
-        'start_date'          => 'datetime',
-        'end_date'            => 'datetime',
-        'usage_limit'         => 'integer',
-        'used_count'          => 'integer',
-        'status'              => 'string',
+        'discount_value'    => 'integer',
+        'min_order_amount'  => 'integer',
+        'max_uses_per_user' => 'integer',
+        'quantity'          => 'integer',
+        'start_date'        => 'datetime',
+        'end_date'          => 'datetime',
+        'status'            => 'string',
     ];
 
     /**
