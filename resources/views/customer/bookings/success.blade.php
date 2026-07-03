@@ -7,12 +7,16 @@
         <div class="max-w-3xl mx-auto px-4 sm:px-6">
 
             <div class="bg-white rounded-[32px] border border-slate-200/60 shadow-sm overflow-hidden p-6 md:p-10 text-center">
+                    @if(session('success'))
+                        <div class="mb-4 rounded-3xl bg-emerald-50 border border-emerald-100 text-emerald-700 px-5 py-4 text-sm font-semibold">
+                            {{ session('success') }}
+                        </div>
+                    @endif
                 
-                <!-- Success icon animation wrapper -->
-                <div class="w-20 h-20 bg-emerald-50 border border-emerald-100 text-emerald-500 rounded-full flex items-center justify-center mx-auto mb-6 shadow-inner animate-bounce">
-                    <span class="material-symbols-outlined text-4xl">check_circle</span>
-                </div>
-
+                    <!-- Success icon animation wrapper -->
+                    <div class="w-20 h-20 bg-emerald-50 border border-emerald-100 text-emerald-500 rounded-full flex items-center justify-center mx-auto mb-6 shadow-inner animate-bounce">
+                        <span class="material-symbols-outlined text-4xl">check_circle</span>
+                    </div>
                 <h1 class="text-2xl md:text-3xl font-black text-neutral-900 uppercase tracking-tight mb-2">Đặt Vé Thành Công!</h1>
                 <p class="text-sm text-neutral-400 font-medium max-w-md mx-auto mb-8">Cảm ơn bạn đã lựa chọn FilmGo. Đơn hàng đặt vé của bạn đã được ghi nhận thành công trong hệ thống.</p>
 

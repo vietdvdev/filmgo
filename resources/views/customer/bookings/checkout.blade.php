@@ -52,59 +52,72 @@
                     </div>
 
                     <div class="p-5 space-y-4 text-sm">
-                        {{-- Film info --}}
-                        <div>
-                            <p class="text-[10px] font-bold text-zinc-500 uppercase tracking-widest mb-1">Phim</p>
-                            <p class="font-black text-white text-base leading-tight">{{ $showtime->movie->title }}</p>
-                            <div class="flex items-center gap-2 mt-1">
-                                <span class="px-2 py-0.5 text-[9px] font-black bg-brand-primary/20 text-brand-primary rounded border border-brand-primary/30 uppercase">
-                                    {{ $showtime->movie->age_limit }}
-                                </span>
-                                <span class="text-[10px] text-zinc-500">{{ $showtime->movie->duration }} Phút</span>
+                        {{-- Film poster + info --}}
+                        <div class="flex gap-3">
+                            @if($showtime->movie->poster_url)
+                            <img src="{{ $showtime->movie->poster_url }}" alt="poster"
+                                 class="w-16 h-24 object-cover rounded-lg flex-shrink-0 border border-zinc-700">
+                            @endif
+                            <div class="flex-1 min-w-0">
+                                <p class="font-black text-white text-sm leading-tight line-clamp-2">{{ $showtime->movie->title }}</p>
+                                <div class="flex items-center gap-2 mt-1.5 flex-wrap">
+                                    <span class="px-2 py-0.5 text-[9px] font-black bg-brand-primary/20 text-brand-primary rounded border border-brand-primary/30 uppercase">
+                                        {{ $showtime->movie->age_limit }}
+                                    </span>
+                                    <span class="text-[10px] text-zinc-500">{{ $showtime->movie->duration }} phút</span>
+                                </div>
+                                <p class="text-[10px] text-zinc-400 mt-2 font-semibold">
+                                    {{ $showtime->room->cinema->name }}
+                                </p>
+                                <p class="text-[10px] text-brand-primary font-bold mt-0.5">
+                                    {{ \Carbon\Carbon::parse($showtime->start_time)->format('H:i') }} • {{ $showtime->show_date->format('d/m/Y') }}
+                                </p>
+                                <p class="text-[10px] text-zinc-500 mt-0.5">{{ $showtime->room->room_name }} ({{ $showtime->room->room_type }})</p>
                             </div>
                         </div>
 
-                        <div class="border-t border-zinc-800 pt-4 grid grid-cols-2 gap-3">
-                            <div>
-                                <p class="text-[10px] font-bold text-zinc-500 uppercase tracking-widest mb-1">Rạp</p>
-                                <p class="font-bold text-white text-xs">{{ $showtime->room->cinema->name }}</p>
-                            </div>
-                            <div>
-                                <p class="text-[10px] font-bold text-zinc-500 uppercase tracking-widest mb-1">Thời Gian</p>
-                                <p class="font-bold text-brand-primary text-xs">
-                                    {{ \Carbon\Carbon::parse($showtime->start_time)->format('H:i') }} •
-                                    {{ $showtime->show_date->format('d/m/Y') }}
-                                </p>
-                            </div>
-                            <div>
-                                <p class="text-[10px] font-bold text-zinc-500 uppercase tracking-widest mb-1">Phòng Chiếu</p>
-                                <p class="font-bold text-white text-xs">{{ $showtime->room->room_name }} ({{ $showtime->room->room_type }})</p>
-                            </div>
-                            <div>
-                                <p class="text-[10px] font-bold text-zinc-500 uppercase tracking-widest mb-1">Ghế</p>
-                                <p class="font-bold text-white text-xs">
-                                    {{ $selectedSeats->map(fn($s) => $s->seat->seat_row . $s->seat->seat_number)->join(', ') }}
-                                </p>
+                        {{-- Seats detail --}}
+                        <div class="border-t border-zinc-800 pt-4">
+                            <p class="text-[10px] font-bold text-zinc-500 uppercase tracking-widest mb-2">Chi Tiết Ghế</p>
+                            <div class="space-y-1.5">
+                                @foreach($selectedSeats as $ss)
+                                @php
+                                    $seatPrice = $showtime->base_price + ($ss->seat->seatType->surcharge_price ?? 0);
+                                @endphp
+                                <div class="flex justify-between items-center">
+                                    <div class="flex items-center gap-2">
+                                        <span class="w-7 h-7 rounded-md bg-zinc-800 border border-zinc-700 flex items-center justify-center text-[10px] font-black text-white">
+                                            {{ $ss->seat->seat_row }}{{ $ss->seat->seat_number }}
+                                        </span>
+                                        <span class="text-[10px] text-zinc-400">{{ $ss->seat->seatType->type_name ?? 'Thường' }}</span>
+                                    </div>
+                                    <span class="text-xs font-semibold text-zinc-300">{{ number_format($seatPrice) }}đ</span>
+                                </div>
+                                @endforeach
                             </div>
                         </div>
 
                         {{-- Combos --}}
                         @if(count($selectedCombos) > 0)
                         <div class="border-t border-zinc-800 pt-4">
-                            <p class="text-[10px] font-bold text-zinc-500 uppercase tracking-widest mb-2">Dịch Vụ Kèm Theo</p>
-                            @foreach($selectedCombos as $sc)
-                                <div class="flex justify-between items-center text-xs mb-1">
-                                    <span class="text-zinc-300">{{ $sc['combo']->combo_name }} <span class="text-zinc-500">×{{ $sc['quantity'] }}</span></span>
-                                    <span class="font-bold text-white">{{ number_format($sc['subtotal']) }}đ</span>
+                            <p class="text-[10px] font-bold text-zinc-500 uppercase tracking-widest mb-2">Bắp Nước</p>
+                            <div class="space-y-1.5">
+                                @foreach($selectedCombos as $sc)
+                                <div class="flex justify-between items-center">
+                                    <span class="text-xs text-zinc-300">{{ $sc['combo']->combo_name }}
+                                        <span class="text-zinc-500 ml-1">×{{ $sc['quantity'] }}</span>
+                                    </span>
+                                    <span class="text-xs font-semibold text-zinc-300">{{ number_format($sc['subtotal']) }}đ</span>
                                 </div>
-                            @endforeach
+                                @endforeach
+                            </div>
                         </div>
                         @endif
 
-                        {{-- Divider dashed --}}
+                        {{-- Price breakdown --}}
                         <div class="border-t border-dashed border-zinc-700 pt-4 space-y-2">
                             <div class="flex justify-between text-xs text-zinc-400">
-                                <span>Tiền ghế</span>
+                                <span>Tiền ghế ({{ $selectedSeats->count() }} ghế)</span>
                                 <span>{{ number_format($totalSeatPrice) }}đ</span>
                             </div>
                             @if($totalComboPrice > 0)
@@ -119,7 +132,7 @@
                                 <span id="discountLabel">-{{ number_format($discountAmount) }}đ</span>
                             </div>
                             @else
-                            <div class="hidden flex justify-between text-xs text-emerald-400 font-semibold" id="discountRow">
+                            <div class="hidden justify-between text-xs text-emerald-400 font-semibold" id="discountRow">
                                 <span>Giảm giá (<span id="appliedCodeLabel"></span>)</span>
                                 <span id="discountLabel"></span>
                             </div>
@@ -127,11 +140,18 @@
                         </div>
 
                         {{-- Grand total --}}
-                        <div class="border-t border-zinc-700 pt-4 flex justify-between items-center">
-                            <span class="text-xs font-bold text-zinc-400 uppercase tracking-widest">Tổng Cộng</span>
-                            <span class="text-2xl font-black text-brand-primary" id="grandTotalLabel">
-                                {{ number_format($finalTotal) }}đ
-                            </span>
+                        <div class="border-t border-zinc-700 pt-4">
+                            <div class="flex justify-between items-center">
+                                <span class="text-xs font-bold text-zinc-400 uppercase tracking-widest">Tổng Cộng</span>
+                                <span class="text-2xl font-black text-brand-primary" id="grandTotalLabel">
+                                    {{ number_format($finalTotal) }}đ
+                                </span>
+                            </div>
+                            @if($discountAmount > 0)
+                            <p class="text-right text-[10px] text-zinc-500 mt-1 line-through" id="originalTotalLabel">
+                                {{ number_format($grandTotal) }}đ
+                            </p>
+                            @endif
                         </div>
                     </div>
                 </div>
@@ -199,10 +219,8 @@
                     <div class="space-y-2" id="paymentMethods">
                         @php
                             $methods = [
-                                ['id' => 'card',  'icon' => 'credit_card',    'label' => 'Thẻ Tín Dụng / Ghi Nợ',  'sub' => 'Visa, Mastercard, JCB'],
-                                ['id' => 'momo',  'icon' => 'account_balance_wallet', 'label' => 'Ví Điện Tử MoMo',  'sub' => 'Thanh toán qua MoMo'],
-                                ['id' => 'zalopay','icon'=> 'account_balance_wallet', 'label' => 'Ví Điện Tử ZaloPay', 'sub' => 'Thanh toán qua ZaloPay'],
-                                ['id' => 'atm',   'icon' => 'account_balance',  'label' => 'Thẻ ATM Nội Địa',       'sub' => 'Hỗ trợ tất cả ngân hàng VN'],
+                                ['id' => 'vnpay', 'icon' => 'credit_card',             'label' => 'Cổng thanh toán VNPay', 'sub' => 'Thẻ ATM, Thẻ quốc tế, QR Code'],
+                                ['id' => 'momo',  'icon' => 'account_balance_wallet', 'label' => 'Ví Điện Tử MoMo',      'sub' => 'Thanh toán qua ứng dụng MoMo'],
                             ];
                         @endphp
 
@@ -236,10 +254,11 @@
                 {{-- ── Confirm Form ── --}}
                 <form action="{{ route('booking.confirm', $showtime->id) }}" method="POST" id="confirmForm">
                     @csrf
-                    <input type="hidden" name="payment_method" id="paymentMethodInput" value="card">
+                    <input type="hidden" name="payment_method" id="paymentMethodInput" value="vnpay">
                     <div id="hiddenCombosContainer"></div>
 
                     <button type="submit"
+                            id="payNowButton"
                             class="w-full bg-brand-primary hover:bg-red-700 text-white font-black py-4 rounded-2xl shadow-lg shadow-brand-primary/25 transition-all duration-200 flex items-center justify-center gap-2 text-base uppercase tracking-wider">
                         Thanh Toán Ngay
                         <span class="material-symbols-outlined text-lg">arrow_forward</span>
@@ -277,7 +296,6 @@ document.addEventListener('DOMContentLoaded', function () {
     let comboTotal     = {{ $totalComboPrice }};
     let discountAmount = {{ $discountAmount }};
 
-    // Trạng thái combo (upsell ở bước trước đã được xử lý qua session)
     const combosState = {
         @foreach($allCombos ?? [] as $combo)
         "{{ $combo->id }}": {
@@ -351,7 +369,6 @@ document.addEventListener('DOMContentLoaded', function () {
                 showAlert(data.message, 'success');
                 updateTotals(data.discount_amount, data.code);
 
-                // Cập nhật badge
                 const badge = document.getElementById('appliedBadge');
                 document.getElementById('badgeCode').textContent = data.code;
                 document.getElementById('badgeDesc').textContent =
@@ -376,7 +393,6 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     });
 
-    // Enter key trên input
     document.getElementById('voucherInput').addEventListener('keydown', function(e) {
         if (e.key === 'Enter') {
             e.preventDefault();
@@ -402,7 +418,10 @@ document.addEventListener('DOMContentLoaded', function () {
 
     // ─── Chọn phương thức thanh toán ─────────────────────────────
     document.querySelectorAll('.payment-option').forEach(label => {
-        label.addEventListener('click', function () {
+        label.addEventListener('click', function (e) {
+            // SỬA TẠI ĐÂY: Ngăn click đúp của trình duyệt lên thẻ input ẩn
+            e.preventDefault(); 
+
             document.querySelectorAll('.payment-option').forEach(l => {
                 l.classList.remove('border-brand-primary', 'bg-brand-primary/10');
                 l.classList.add('border-zinc-800', 'bg-zinc-900/50');
@@ -437,6 +456,7 @@ document.addEventListener('DOMContentLoaded', function () {
         container.innerHTML = html;
     }
     syncHiddenCombos();
+
 });
 </script>
 @endsection
