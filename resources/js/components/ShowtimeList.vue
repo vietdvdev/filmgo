@@ -236,11 +236,11 @@
                 </div>
               </td>
 
-              <!-- Vị trí (Rạp - Phòng) -->
+              <!-- Vị trí (Phòng) -->
               <td class="p-4">
                 <div class="font-semibold text-slate-700 text-xs flex items-center gap-1">
-                  <span class="material-symbols-outlined text-base text-indigo-500 shrink-0">apartment</span>
-                  <span>{{ showtime.room.cinema.name }} - {{ showtime.room.name }}</span>
+                  <span class="material-symbols-outlined text-base text-indigo-500 shrink-0">meeting_room</span>
+                  <span class="font-bold">{{ showtime.room.name }}</span>
                 </div>
               </td>
 

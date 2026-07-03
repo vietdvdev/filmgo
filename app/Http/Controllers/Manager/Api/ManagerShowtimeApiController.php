@@ -259,6 +259,10 @@ class ManagerShowtimeApiController extends Controller
             ], 422);
         }
 
+        $publishAtInput = $request->input('publish_at');
+        $publishAt = $publishAtInput ? Carbon::parse($publishAtInput, 'Asia/Ho_Chi_Minh')->setTimezone(config('app.timezone')) : null;
+        $status = ($publishAt === null || $publishAt->lte(now())) ? 'active' : 'upcoming';
+
         DB::beginTransaction();
         try {
             $showtime = Showtime::create([
@@ -268,7 +272,8 @@ class ManagerShowtimeApiController extends Controller
                 'start_time' => $startTimeStr,
                 'end_time'   => $endTimeStr,
                 'base_price' => $request->integer('base_price'),
-                'status'     => 'upcoming',
+                'status'     => $status,
+                'publish_at' => $publishAt,
             ]);
 
             $showtimeSeatsData = [];

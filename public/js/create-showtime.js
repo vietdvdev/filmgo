@@ -35,6 +35,36 @@
             const submitting      = ref(false);
             const toasts          = ref([]);
 
+            // ── Cấu hình mở bán ─────────────────────────────────────────
+            const isScheduled  = ref(false);
+            const publishAt    = ref('');
+
+            const padZero = n => String(n).padStart(2, '0');
+            const formatDateTimeLocal = (d) => {
+                return `${d.getFullYear()}-${padZero(d.getMonth()+1)}-${padZero(d.getDate())}T${padZero(d.getHours())}:${padZero(d.getMinutes())}`;
+            };
+
+            const handleScheduleToggle = () => {
+                if (!isScheduled.value) {
+                    publishAt.value = '';
+                } else if (!publishAt.value) {
+                    setScheduleNow();
+                }
+            };
+            const setScheduleNow = () => { publishAt.value = formatDateTimeLocal(new Date()); };
+            const setScheduleTomorrow = () => {
+                const d = new Date(); d.setDate(d.getDate() + 1); d.setHours(9, 0, 0, 0);
+                publishAt.value = formatDateTimeLocal(d);
+            };
+            const setSchedule24hBefore = () => {
+                if (!form.show_date || !form.start_time) {
+                    addToast('Vui lòng chọn Ngày chiếu và Giờ chiếu trước.', 'error'); return;
+                }
+                const sd = new Date(`${form.show_date}T${form.start_time}:00`);
+                sd.setHours(sd.getHours() - 24);
+                publishAt.value = formatDateTimeLocal(sd);
+            };
+
             let overlapTimer = null;
             let priceTimer   = null;
 
@@ -166,7 +196,6 @@
                 Object.keys(fieldErrors).forEach(k => delete fieldErrors[k]);
                 submitting.value = true;
                 try {
-                    // Axios POST request payload bao gồm cả cinema_id, base_price được gán bằng computedActualPrice
                     const res = await axios.post(urls.store, {
                         movie_id:   form.movie_id,
                         cinema_id:  form.cinema_id,
@@ -174,6 +203,7 @@
                         show_date:  form.show_date,
                         start_time: form.start_time,
                         base_price: computedActualPrice.value,
+                        publish_at: isScheduled.value ? (publishAt.value || null) : null,
                     });
                     addToast(res.data.message || 'Tạo suất chiếu thành công!', 'success');
                     setTimeout(() => { window.location.href = res.data.redirect || urls.redirect; }, 1500);
@@ -206,7 +236,9 @@
                 onMovieChange, onCinemaChange, onDateOrTimeChange, triggerOverlapCheck,
                 submitForm, setPrice, addToast, removeToast,
                 loadingCinemas, loadingRooms,
-                standardPrice, surchargeAmt, computedActualPrice
+                standardPrice, surchargeAmt, computedActualPrice,
+                isScheduled, publishAt,
+                handleScheduleToggle, setScheduleNow, setScheduleTomorrow, setSchedule24hBefore
             };
         },
 
@@ -408,6 +440,42 @@
         </div>
       </div>
 
+      <!-- Cấu Hình Mở Bán -->
+      <div class="space-y-3">
+        <h3 class="text-xs font-bold uppercase tracking-wider text-slate-700 border-b border-slate-100 pb-2">Cấu Hình Mở Bán</h3>
+        <div class="p-5 bg-slate-50 border border-slate-200 space-y-4">
+          <label class="flex items-center gap-2.5 cursor-pointer select-none w-max">
+            <input type="checkbox" v-model="isScheduled" @change="handleScheduleToggle"
+              class="w-4 h-4 text-blue-600 border-slate-300 rounded focus:ring-blue-500">
+            <span class="text-sm font-bold uppercase tracking-wider text-slate-700">Hẹn giờ mở bán tự động</span>
+          </label>
+          <transition name="mo-ban-fade">
+            <div v-if="isScheduled" class="space-y-3 pl-6 border-l-2 border-blue-300 ml-1">
+              <div>
+                <label class="block text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-1">Thời gian mở bán</label>
+                <input v-model="publishAt" type="datetime-local"
+                  class="block w-full md:w-1/2 px-3 py-2 border border-slate-300 text-sm focus:outline-none focus:border-blue-600 focus:ring-1 focus:ring-blue-600 bg-white">
+                <p class="mt-1 text-xs text-slate-400">Hệ thống sẽ tự động mở bán đúng giờ bạn chọn.</p>
+              </div>
+              <div class="flex flex-wrap gap-2">
+                <button type="button" @click="setScheduleNow"
+                  class="px-2.5 py-1 bg-white border border-slate-300 hover:border-blue-400 hover:text-blue-600 text-slate-600 text-xs font-semibold transition-colors">
+                  ⚡ Ngay bây giờ
+                </button>
+                <button type="button" @click="setScheduleTomorrow"
+                  class="px-2.5 py-1 bg-white border border-slate-300 hover:border-blue-400 hover:text-blue-600 text-slate-600 text-xs font-semibold transition-colors">
+                  🌅 09:00 Sáng mai
+                </button>
+                <button type="button" @click="setSchedule24hBefore"
+                  class="px-2.5 py-1 bg-white border border-slate-300 hover:border-blue-400 hover:text-blue-600 text-slate-600 text-xs font-semibold transition-colors">
+                  🕐 Trước giờ chiếu 24h
+                </button>
+              </div>
+            </div>
+          </transition>
+        </div>
+      </div>
+
       <!-- Buttons -->
       <div class="flex justify-end gap-3 pt-6 border-t border-slate-100">
         <a :href="urls.cancel"
@@ -431,6 +499,8 @@
   <style>
     .toast-fade-enter-active, .toast-fade-leave-active { transition: all .3s ease; }
     .toast-fade-enter-from, .toast-fade-leave-to { opacity:0; transform:translateY(-12px); }
+    .mo-ban-fade-enter-active, .mo-ban-fade-leave-active { transition: opacity .25s ease, transform .25s ease; }
+    .mo-ban-fade-enter-from, .mo-ban-fade-leave-to { opacity:0; transform:translateY(-6px); }
   </style>
 </div>
         `

@@ -3,7 +3,7 @@
 @section('title', 'Xếp Lịch Chiếu Tự Động - FilmGo')
 
 @section('content')
-<div class="space-y-6 max-w-4xl mx-auto">
+<div id="app" class="space-y-6 max-w-4xl mx-auto">
     <!-- Header -->
     <div class="flex justify-between items-center border-b border-slate-200 pb-4">
         <div>
@@ -17,15 +17,12 @@
     </div>
 
     <!-- Vue App Mount Point -->
-    <div id="auto-generate-app">
-        <!-- Render component — truyền URL qua props để Vue dùng -->
-        <auto-generate-showtime-form
-            my-cinemas-url="{{ route('manager.api.my-cinemas') }}"
-            rooms-url-pattern="{{ str_replace('PLACEHOLDER', ':cinema_id', route('manager.api.rooms-by-cinema', ['cinema_id' => 'PLACEHOLDER'])) }}"
-            auto-generate-url="{{ route('manager.showtimes.api.auto-generate') }}"
-            cancel-url="{{ route('manager.showtimes.index') }}"
-        ></auto-generate-showtime-form>
-    </div>
+    <auto-generate-showtime-form
+        my-cinemas-url="{{ route('manager.api.my-cinemas') }}"
+        rooms-url-pattern="{{ str_replace('PLACEHOLDER', ':cinema_id', route('manager.api.rooms-by-cinema', ['cinema_id' => 'PLACEHOLDER'])) }}"
+        auto-generate-url="{{ route('manager.showtimes.api.auto-generate') }}"
+        cancel-url="{{ route('manager.showtimes.index') }}"
+    ></auto-generate-showtime-form>
 </div>
 
 <!-- Preload data from PHP into JS variables BEFORE Vue loads -->
@@ -35,15 +32,8 @@
         csrfToken: "{{ csrf_token() }}"
     };
 </script>
+@endsection
 
-<!-- Vue 3 CDN -->
-<script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
-<!-- Axios CDN -->
-<script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
-<!-- Register component and Mount App -->
-<script>
-    const { createApp } = Vue;
-    // Import Vue component template and setup from script
-</script>
-<script src="{{ asset('js/auto-generate-showtime.js') }}"></script>
+@section('scripts')
+    @vite(['resources/js/app.js'])
 @endsection

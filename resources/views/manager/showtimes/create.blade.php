@@ -3,7 +3,7 @@
 @section('title', 'Tạo Suất Chiếu Mới - FilmGo')
 
 @section('content')
-<div class="space-y-6 max-w-2xl mx-auto">
+<div id="app" class="space-y-6 max-w-2xl mx-auto">
     <!-- Header -->
     <div class="flex justify-between items-center border-b border-slate-200 pb-4">
         <div>
@@ -16,8 +16,8 @@
         </a>
     </div>
 
-    <!-- Vue App Mount Point — template is fully in the separate <template> tag below -->
-    <div id="showtime-app"></div>
+    <!-- Vue App Mount Point -->
+    <create-showtime-form></create-showtime-form>
 </div>
 
 <!-- Preload data from PHP into JS variables BEFORE Vue loads -->
@@ -36,11 +36,8 @@
         }
     };
 </script>
+@endsection
 
-<!-- Vue 3 CDN -->
-<script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
-<!-- Axios CDN -->
-<script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
-<!-- Vue app logic — no Blade syntax here, purely JS -->
-<script src="{{ asset('js/create-showtime.js') }}"></script>
+@section('scripts')
+    @vite(['resources/js/app.js'])
 @endsection

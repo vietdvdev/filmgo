@@ -26,6 +26,7 @@ class Showtime extends Model
         'base_price',
         'status',
         'is_auto_generated',
+        'publish_at',
     ];
 
     /**
@@ -40,6 +41,7 @@ class Showtime extends Model
         'base_price'       => 'integer',
         'status'           => 'string',
         'is_auto_generated' => 'boolean',
+        'publish_at'       => 'datetime',
     ];
 
     /**

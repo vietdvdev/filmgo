@@ -38,6 +38,7 @@ class AutoGenerateController extends Controller
             'shift_end'      => 'required|date_format:H:i|after:shift_start',
             'cleaning_time'  => 'required|integer|min:0',
             'standard_price' => 'required|integer|min:0',
+            'publish_at'     => 'nullable|date_format:Y-m-d\TH:i',
         ], [
             'shift_end.after'          => 'Giờ đóng ca phải sau giờ mở ca.',
             'show_date.after_or_equal' => 'Ngày chiếu không được là ngày trong quá khứ.',
@@ -57,6 +58,9 @@ class AutoGenerateController extends Controller
         $shiftEndStr   = $request->input('shift_end');
         $cleaningTime  = (int) $request->input('cleaning_time');
         $standardPrice = (int) $request->input('standard_price');
+        $publishAtInput = $request->input('publish_at');
+        $publishAt     = $publishAtInput ? Carbon::parse($publishAtInput, 'Asia/Ho_Chi_Minh')->setTimezone(config('app.timezone')) : null;
+        $status        = ($publishAt === null || $publishAt->lte(now())) ? 'active' : 'upcoming';
 
         try {
             // 2. CORE ALGORITHM: SMART SLOT FINDING
@@ -148,7 +152,8 @@ class AutoGenerateController extends Controller
                     'start_time'        => $proposedStart->format('H:i:s'),
                     'end_time'          => $proposedEnd->format('H:i:s'),
                     'base_price'        => $actualPrice,
-                    'status'            => 'upcoming',
+                    'status'            => $status,
+                    'publish_at'        => $publishAt,
                     // [v2.0] Đánh dấu suất do hệ thống TỰ ĐỘNG sinh (phân biệt với tạo tay)
                     'is_auto_generated' => true,
                     'created_at'        => now(),
@@ -184,9 +189,8 @@ class AutoGenerateController extends Controller
                 ->toArray();
 
             // Lấy toàn bộ danh sách ghế đang hoạt động của phòng chiếu này
-            // [v2.0] Eager-load seatType để lấy slug phục vụ tính giá mà không gây N+1 query
+            // [v2.0] Tối ưu: Lấy danh sách ghế và seat_type_id
             $seats = Seat::where('room_id', $roomId)
-                ->with('seatType:id,slug')
                 ->select('id', 'seat_type_id')
                 ->get();
 
