@@ -91,9 +91,17 @@ class BookingController extends Controller
 
         $showtime = Showtime::with(['movie', 'room.cinema'])->findOrFail($showtimeId);
 
-        // Lấy thông tin các ghế để tính toán tiền ghế
-        $selectedSeats = ShowtimeSeat::whereIn('id', $seatIds)->get();
-        // Tính tổng tiền ghế CỰC NHANH nhờ Flat Pricing đã lưu sẵn ở DB
+        // Lấy thông tin các ghế để tính toán tiền ghế (Eager load seat.seatType để dự phòng fallback)
+        $selectedSeats = ShowtimeSeat::with(['seat.seatType'])->whereIn('id', $seatIds)->get();
+        
+        // Dự phòng Fallback nếu cột price trong DB là null/0 cho các lịch chiếu cũ
+        foreach ($selectedSeats as $ss) {
+            if (empty($ss->price) || $ss->price <= 0) {
+                $ss->price = $showtime->base_price + ($ss->seat->seatType->surcharge_price ?? 0);
+            }
+        }
+        
+        // Tính tổng tiền ghế
         $totalSeatPrice = $selectedSeats->sum('price');
 
         // Lấy danh sách Combo bắp nước đang hoạt động
@@ -167,8 +175,16 @@ class BookingController extends Controller
 
         $showtime = Showtime::with(['movie', 'room.cinema'])->findOrFail($showtimeId);
 
-        // Chi tiết ghế đã chọn (Sử dụng Flat Pricing)
-        $selectedSeats = ShowtimeSeat::whereIn('id', $seatIds)->get();
+        // Chi tiết ghế đã chọn (Eager load seat.seatType để dự phòng fallback)
+        $selectedSeats = ShowtimeSeat::with(['seat.seatType'])->whereIn('id', $seatIds)->get();
+        
+        // Dự phòng Fallback nếu cột price trong DB là null/0 cho các lịch chiếu cũ
+        foreach ($selectedSeats as $ss) {
+            if (empty($ss->price) || $ss->price <= 0) {
+                $ss->price = $showtime->base_price + ($ss->seat->seatType->surcharge_price ?? 0);
+            }
+        }
+        
         $totalSeatPrice = $selectedSeats->sum('price');
 
         // Chi tiết combo đã chọn (Lấy từ Session Snapshot không cần Query DB)
