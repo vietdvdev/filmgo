@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Customer;
 
 use App\Http\Controllers\Controller;
 use App\Models\Movie;
+use App\Models\Genre;
 
 class HomeController extends Controller
 {
@@ -21,9 +22,13 @@ class HomeController extends Controller
             ->take(5)
             ->get();
 
+        // Tất cả thể loại phim có đếm số lượng phim
+        $genres = Genre::withCount('movies')->get();
+
         return view('home', compact(
             'showingMovies',
-            'upcomingMovies'
+            'upcomingMovies',
+            'genres'
         ));
     }
 }

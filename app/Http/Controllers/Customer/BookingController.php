@@ -74,6 +74,7 @@ class BookingController extends Controller
         }
 
         session()->put("booking.{$showtimeId}.seat_ids", $request->seat_ids);
+        session()->put("booking.{$showtimeId}.expires_at", time() + 600); // 10 phút giữ ghế
 
         return redirect()->route('booking.select-combos', $showtimeId);
     }
@@ -91,43 +92,65 @@ class BookingController extends Controller
         $showtime = Showtime::with(['movie', 'room.cinema'])->findOrFail($showtimeId);
 
         // Lấy thông tin các ghế để tính toán tiền ghế
-        $selectedSeats = ShowtimeSeat::with('seat.seatType')->whereIn('id', $seatIds)->get();
-        $totalSeatPrice = $selectedSeats->sum(function ($ss) use ($showtime) {
-            return $showtime->base_price + ($ss->seat->seatType->surcharge_price ?? 0);
-        });
+        $selectedSeats = ShowtimeSeat::whereIn('id', $seatIds)->get();
+        // Tính tổng tiền ghế CỰC NHANH nhờ Flat Pricing đã lưu sẵn ở DB
+        $totalSeatPrice = $selectedSeats->sum('price');
 
         // Lấy danh sách Combo bắp nước đang hoạt động
         $combos = Combo::where('status', 'active')->latest()->get();
 
         // Lấy thông tin combo đã chọn trước đó trong session (nếu có)
-        $savedCombos = session()->get("booking.{$showtimeId}.combos", []);
+        $savedCombosData = session()->get("booking.{$showtimeId}.combos", []);
+        $savedCombos = [];
+        foreach ($savedCombosData as $comboId => $c) {
+            $savedCombos[$comboId] = $c['quantity'] ?? 0;
+        }
+
+        // Lấy thời gian hết hạn giữ ghế
+        $holdExpiresAt = session()->get("booking.{$showtimeId}.expires_at", time() + 600);
 
         return view('customer.bookings.select-combos', compact(
             'showtime',
             'selectedSeats',
             'totalSeatPrice',
             'combos',
-            'savedCombos'
+            'savedCombos',
+            'holdExpiresAt'
         ));
     }
 
     /**
-     * Step 2 Processing: Save selected combos to session.
+     * Step 2 Processing: Save selected combos to session (with Snapshot).
      */
     public function processCombos(Request $request, $showtimeId)
     {
-        $combos = $request->input('combos', []);
+        $comboInputs = $request->input('combos', []);
 
-        // Filter out items with quantity = 0
-        $filteredCombos = [];
-        foreach ($combos as $comboId => $qty) {
+        // Lấy trước danh sách combo từ DB để đối chiếu giá và tên
+        $comboIds = array_keys(array_filter($comboInputs, fn($qty) => intval($qty) > 0));
+        $combosFromDB = Combo::whereIn('id', $comboIds)->where('status', 'active')->get()->keyBy('id');
+
+        $snapshotCombos = [];
+
+        foreach ($comboInputs as $comboId => $qty) {
             $qtyVal = intval($qty);
-            if ($qtyVal > 0) {
-                $filteredCombos[$comboId] = $qtyVal;
+
+            // Nếu số lượng > 0 và Combo đó có tồn tại
+            if ($qtyVal > 0 && isset($combosFromDB[$comboId])) {
+                $combo = $combosFromDB[$comboId];
+
+                // LƯU DẠNG SNAPSHOT CHỐNG ĐỔI GIÁ
+                $snapshotCombos[$comboId] = [
+                    'id' => $combo->id,
+                    'name' => $combo->combo_name,
+                    'price' => $combo->price,          // Giá lúc khách chọn
+                    'quantity' => $qtyVal,
+                    'subtotal' => $combo->price * $qtyVal
+                ];
             }
         }
 
-        session()->put("booking.{$showtimeId}.combos", $filteredCombos);
+        session()->put("booking.{$showtimeId}.combos", $snapshotCombos);
 
         return redirect()->route('booking.checkout', $showtimeId);
     }
@@ -144,29 +167,22 @@ class BookingController extends Controller
 
         $showtime = Showtime::with(['movie', 'room.cinema'])->findOrFail($showtimeId);
 
-        // Chi tiết ghế đã chọn
-        $selectedSeats = ShowtimeSeat::with('seat.seatType')->whereIn('id', $seatIds)->get();
-        $totalSeatPrice = $selectedSeats->sum(function ($ss) use ($showtime) {
-            return $showtime->base_price + ($ss->seat->seatType->surcharge_price ?? 0);
-        });
+        // Chi tiết ghế đã chọn (Sử dụng Flat Pricing)
+        $selectedSeats = ShowtimeSeat::whereIn('id', $seatIds)->get();
+        $totalSeatPrice = $selectedSeats->sum('price');
 
-        // Chi tiết combo đã chọn
+        // Chi tiết combo đã chọn (Lấy từ Session Snapshot không cần Query DB)
         $combosData = session()->get("booking.{$showtimeId}.combos", []);
         $selectedCombos = [];
         $totalComboPrice = 0;
 
-        if (!empty($combosData)) {
-            $combos = Combo::whereIn('id', array_keys($combosData))->get();
-            foreach ($combos as $combo) {
-                $qty = $combosData[$combo->id];
-                $subtotal = $combo->price * $qty;
-                $totalComboPrice += $subtotal;
-                $selectedCombos[] = [
-                    'combo' => $combo,
-                    'quantity' => $qty,
-                    'subtotal' => $subtotal
-                ];
-            }
+        foreach ($combosData as $c) {
+            $totalComboPrice += $c['subtotal'];
+            $selectedCombos[] = [
+                'name' => $c['name'],
+                'quantity' => $c['quantity'],
+                'subtotal' => $c['subtotal']
+            ];
         }
 
         $grandTotal = $totalSeatPrice + $totalComboPrice;
@@ -207,7 +223,6 @@ class BookingController extends Controller
      */
     public function confirm(Request $request, $showtimeId)
     {
-        // dd(env('VNP_TMN_CODE'), env('VNP_RETURN_URL'));
         // 1. Kiểm tra phương thức thanh toán hợp lệ từ client gửi lên
         $request->validate([
             'payment_method' => 'required|in:vnpay,momo',
@@ -218,12 +233,12 @@ class BookingController extends Controller
             return redirect()->route('booking.select-seats', $showtimeId)->with('error', 'Vui lòng chọn ghế ngồi trước.');
         }
 
-        $combosInput = $request->input('combos', session()->get("booking.{$showtimeId}.combos", []));
+        $combosSession = session()->get("booking.{$showtimeId}.combos", []);
         $combosData = [];
-        foreach ($combosInput as $comboId => $qty) {
-            $qtyVal = intval($qty);
-            if ($qtyVal > 0) {
-                $combosData[$comboId] = $qtyVal;
+        foreach ($combosSession as $comboId => $c) {
+            $qty = intval($c['quantity']);
+            if ($qty > 0) {
+                $combosData[$comboId] = $qty;
             }
         }
 
