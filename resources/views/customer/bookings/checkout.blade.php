@@ -6,19 +6,25 @@
 <div class="min-h-screen bg-[#0F0F0F] text-white font-sans antialiased py-10">
     <div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
 
+        {{-- ── Countdown Timer ── --}}
+        <div id="countdown-wrapper" class="fixed top-4 right-4 bg-zinc-900 text-white px-4 py-2 rounded-full font-bold shadow-lg z-50 flex items-center gap-2 border border-zinc-700">
+            <span>⏳ Thời gian giữ ghế:</span>
+            <span id="seat-countdown" class="text-lg">10:00</span>
+        </div>
+
         {{-- ── Progress Steps ── --}}
-        <div class="max-w-lg mx-auto mb-10">
+        <div class="max-w-xl mx-auto mb-10">
             <div class="flex items-center justify-between relative">
                 <div class="absolute inset-x-0 top-5 h-0.5 bg-zinc-700 z-0"></div>
-                <div class="absolute left-0 right-[25%] top-5 h-0.5 bg-brand-primary z-0"></div>
+                <div class="absolute left-0 right-[0%] top-5 h-0.5 bg-brand-primary z-0"></div>
 
                 @php
-                    $steps = ['Chọn Phim','Chọn Ghế','Bắp Nước','Thanh Toán'];
+                    $steps = ['Chọn Phim', 'Chọn Ghế', 'Bắp Nước', 'Thanh Toán'];
                     $currentStep = 4;
                 @endphp
                 @foreach($steps as $i => $label)
                     <div class="z-10 flex flex-col items-center gap-2">
-                        <div class="w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm border-2
+                        <div class="w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm border-2 transition-all duration-200
                             {{ ($i + 1) < $currentStep ? 'bg-brand-primary border-brand-primary text-white' : '' }}
                             {{ ($i + 1) === $currentStep ? 'bg-brand-primary border-brand-primary text-white ring-4 ring-brand-primary/30' : '' }}
                             {{ ($i + 1) > $currentStep ? 'bg-zinc-800 border-zinc-600 text-zinc-400' : '' }}">
@@ -82,7 +88,7 @@
                             <div class="space-y-1.5">
                                 @foreach($selectedSeats as $ss)
                                 @php
-                                    $seatPrice = $showtime->base_price + ($ss->seat->seatType->surcharge_price ?? 0);
+                                    $seatPrice = $ss->price;
                                 @endphp
                                 <div class="flex justify-between items-center">
                                     <div class="flex items-center gap-2">
@@ -104,7 +110,7 @@
                             <div class="space-y-1.5">
                                 @foreach($selectedCombos as $sc)
                                 <div class="flex justify-between items-center">
-                                    <span class="text-xs text-zinc-300">{{ $sc['combo']->combo_name }}
+                                    <span class="text-xs text-zinc-300">{{ $sc['name'] }}
                                         <span class="text-zinc-500 ml-1">×{{ $sc['quantity'] }}</span>
                                     </span>
                                     <span class="text-xs font-semibold text-zinc-300">{{ number_format($sc['subtotal']) }}đ</span>
@@ -456,6 +462,57 @@ document.addEventListener('DOMContentLoaded', function () {
         container.innerHTML = html;
     }
     syncHiddenCombos();
+
+    // ================= COUNTDOWN TIMER LOGIC =================
+    if (typeof Swal === 'undefined') {
+        const script = document.createElement('script');
+        script.src = 'https://cdn.jsdelivr.net/npm/sweetalert2@11';
+        document.head.appendChild(script);
+    }
+
+    const timerWrapper = document.getElementById('countdown-wrapper');
+    const timerDisplay = document.getElementById('seat-countdown');
+    const expireTimestamp = {{ $holdExpiresAt ?? (time() + 600) }} * 1000; 
+
+    const countdownInterval = setInterval(function() {
+        const now = new Date().getTime();
+        const distance = expireTimestamp - now;
+
+        if (distance <= 0) {
+            clearInterval(countdownInterval);
+            if (timerDisplay) timerDisplay.textContent = "00:00";
+            
+            Swal.fire({
+                title: 'Hết thời gian giữ ghế!',
+                text: 'Vui lòng đặt lại từ đầu.',
+                icon: 'warning',
+                allowOutsideClick: false,
+                confirmButtonText: 'Đồng ý',
+                confirmButtonColor: '#EF4444'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    window.location.href = "{{ route('booking.select-seats', $showtime->id ?? 0) }}";
+                }
+            });
+            return;
+        }
+
+        const minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
+        const seconds = Math.floor((distance % (1000 * 60)) / 1000);
+
+        if (timerDisplay) {
+            timerDisplay.textContent = 
+                (minutes < 10 ? "0" + minutes : minutes) + ":" + 
+                (seconds < 10 ? "0" + seconds : seconds);
+        }
+
+        if (distance <= 120000) {
+            if (timerWrapper) {
+                timerWrapper.classList.remove('bg-zinc-900', 'border-zinc-700');
+                timerWrapper.classList.add('bg-red-600', 'border-red-500', 'animate-pulse');
+            }
+        }
+    }, 1000);
 
 });
 </script>
