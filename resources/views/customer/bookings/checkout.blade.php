@@ -216,44 +216,20 @@
                 </div>
 
                 {{-- ── Phương thức thanh toán ── --}}
-                <div class="bg-[#1A1A1A] border border-zinc-800 rounded-2xl p-5">
-                    <h4 class="text-xs font-black text-zinc-400 uppercase tracking-widest mb-4 flex items-center gap-2">
+                <div class="bg-[#1A1A1A] border border-brand-primary/40 rounded-2xl p-5">
+                    <h4 class="text-xs font-black text-zinc-400 uppercase tracking-widest mb-3 flex items-center gap-2">
                         <span class="material-symbols-outlined text-sm text-brand-primary">payments</span>
                         Phương Thức Thanh Toán
                     </h4>
 
-                    <div class="space-y-2" id="paymentMethods">
-                        @php
-                            $methods = [
-                                ['id' => 'vnpay', 'icon' => 'credit_card',             'label' => 'Cổng thanh toán VNPay', 'sub' => 'Thẻ ATM, Thẻ quốc tế, QR Code'],
-                                ['id' => 'momo',  'icon' => 'account_balance_wallet', 'label' => 'Ví Điện Tử MoMo',      'sub' => 'Thanh toán qua ứng dụng MoMo'],
-                            ];
-                        @endphp
-
-                        @foreach($methods as $idx => $m)
-                        <label class="payment-option flex items-center gap-4 px-4 py-3.5 rounded-xl border cursor-pointer transition-all duration-200
-                            {{ $idx === 0 ? 'border-brand-primary bg-brand-primary/10' : 'border-zinc-800 bg-zinc-900/50 hover:border-zinc-600' }}"
-                            data-id="{{ $m['id'] }}">
-                            <input type="radio" name="payment_method" value="{{ $m['id'] }}"
-                                   class="hidden" {{ $idx === 0 ? 'checked' : '' }}>
-                            <div class="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0
-                                {{ $idx === 0 ? 'bg-brand-primary/20' : 'bg-zinc-800' }}">
-                                <span class="material-symbols-outlined text-base {{ $idx === 0 ? 'text-brand-primary' : 'text-zinc-400' }}">
-                                    {{ $m['icon'] }}
-                                </span>
-                            </div>
-                            <div class="flex-1 min-w-0">
-                                <p class="text-sm font-bold text-white">{{ $m['label'] }}</p>
-                                <p class="text-[10px] text-zinc-500">{{ $m['sub'] }}</p>
-                            </div>
-                            <div class="w-4 h-4 rounded-full border-2 flex items-center justify-center flex-shrink-0
-                                {{ $idx === 0 ? 'border-brand-primary' : 'border-zinc-600' }}" data-radio>
-                                @if($idx === 0)
-                                    <div class="w-2 h-2 rounded-full bg-brand-primary"></div>
-                                @endif
-                            </div>
-                        </label>
-                        @endforeach
+                    <div class="rounded-2xl border border-brand-primary/20 bg-brand-primary/10 p-4 flex items-start gap-3">
+                        <div class="w-10 h-10 rounded-xl bg-brand-primary/20 flex items-center justify-center flex-shrink-0">
+                            <span class="material-symbols-outlined text-lg text-brand-primary">credit_card</span>
+                        </div>
+                        <div>
+                            <p class="text-sm font-bold text-white">Thanh toán qua VNPay</p>
+                            <p class="text-[10px] text-zinc-400 mt-1">Chỉ hỗ trợ cổng thanh toán VNPay theo môi trường sandbox. Bạn sẽ chọn ngân hàng rồi chuyển sang trang thanh toán của VNPay.</p>
+                        </div>
                     </div>
                 </div>
 
@@ -261,10 +237,28 @@
                 <form action="{{ route('booking.confirm', $showtime->id) }}" method="POST" id="confirmForm">
                     @csrf
                     <input type="hidden" name="payment_method" id="paymentMethodInput" value="vnpay">
+                    <input type="hidden" name="bank_code" id="bankCodeInput" value="NCB">
                     <div id="hiddenCombosContainer"></div>
+
+                    <div class="mb-4 rounded-2xl border border-zinc-800 bg-zinc-900/60 p-4">
+                        <label for="bankCodeSelect" class="block text-[10px] font-black uppercase tracking-widest text-zinc-500 mb-2">
+                            Chọn ngân hàng thanh toán
+                        </label>
+                        <select id="bankCodeSelect" class="w-full rounded-xl border border-zinc-700 bg-zinc-950 px-4 py-3 text-sm text-white focus:border-brand-primary focus:outline-none">
+                            <option value="NCB">Ngân hàng NCB</option>
+                            <option value="VNPAYQR">VNPAYQR</option>
+                            <option value="VIETCOMBANK">Vietcombank</option>
+                            <option value="VIETINBANK">VietinBank</option>
+                            <option value="BIDV">BIDV</option>
+                            <option value="AGRIBANK">Agribank</option>
+                            <option value="SACOMBANK">Sacombank</option>
+                            <option value="MBBANK">MB Bank</option>
+                        </select>
+                    </div>
 
                     <button type="submit"
                             id="payNowButton"
+                            form="confirmForm"
                             class="w-full bg-brand-primary hover:bg-red-700 text-white font-black py-4 rounded-2xl shadow-lg shadow-brand-primary/25 transition-all duration-200 flex items-center justify-center gap-2 text-base uppercase tracking-wider">
                         Thanh Toán Ngay
                         <span class="material-symbols-outlined text-lg">arrow_forward</span>
@@ -297,6 +291,31 @@ document.addEventListener('DOMContentLoaded', function () {
     const APPLY_URL    = "{{ route('booking.voucher.apply', $showtime->id) }}";
     const REMOVE_URL   = "{{ route('booking.voucher.remove', $showtime->id) }}";
     const CSRF         = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+    const bankSelect   = document.getElementById('bankCodeSelect');
+    const bankInput    = document.getElementById('bankCodeInput');
+
+    if (bankSelect && bankInput) {
+        bankSelect.addEventListener('change', function () {
+            bankInput.value = this.value;
+        });
+    }
+
+    const paymentMethodInput = document.getElementById('paymentMethodInput');
+    if (paymentMethodInput) {
+        paymentMethodInput.value = 'vnpay';
+    }
+
+    const confirmForm = document.getElementById('confirmForm');
+    if (confirmForm) {
+        confirmForm.addEventListener('submit', function (e) {
+            if (paymentMethodInput) {
+                paymentMethodInput.value = 'vnpay';
+            }
+            if (bankInput) {
+                bankInput.value = bankSelect ? bankSelect.value : 'NCB';
+            }
+        });
+    }
 
     let seatTotal      = {{ $totalSeatPrice }};
     let comboTotal     = {{ $totalComboPrice }};
@@ -419,34 +438,6 @@ document.addEventListener('DOMContentLoaded', function () {
             document.getElementById('appliedBadge').classList.add('hidden');
             document.getElementById('appliedBadge').classList.remove('flex');
             showAlert('Đã xóa mã giảm giá.', 'success');
-        });
-    });
-
-    // ─── Chọn phương thức thanh toán ─────────────────────────────
-    document.querySelectorAll('.payment-option').forEach(label => {
-        label.addEventListener('click', function (e) {
-            // SỬA TẠI ĐÂY: Ngăn click đúp của trình duyệt lên thẻ input ẩn
-            e.preventDefault(); 
-
-            document.querySelectorAll('.payment-option').forEach(l => {
-                l.classList.remove('border-brand-primary', 'bg-brand-primary/10');
-                l.classList.add('border-zinc-800', 'bg-zinc-900/50');
-                const dot = l.querySelector('[data-radio]');
-                dot.classList.remove('border-brand-primary');
-                dot.classList.add('border-zinc-600');
-                dot.innerHTML = '';
-            });
-
-            this.classList.add('border-brand-primary', 'bg-brand-primary/10');
-            this.classList.remove('border-zinc-800', 'bg-zinc-900/50');
-            const dot = this.querySelector('[data-radio]');
-            dot.classList.add('border-brand-primary');
-            dot.classList.remove('border-zinc-600');
-            dot.innerHTML = '<div class="w-2 h-2 rounded-full bg-brand-primary"></div>';
-
-            const val = this.dataset.id;
-            document.getElementById('paymentMethodInput').value = val;
-            this.querySelector('input[type=radio]').checked = true;
         });
     });
 

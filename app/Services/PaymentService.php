@@ -7,7 +7,7 @@ class PaymentService
     /**
      * Tạo URL thanh toán VNPay
      */
-    public function createVnPayUrl($bookingCode, $totalAmount)
+    public function createVnPayUrl($bookingCode, $totalAmount, $bankCode = null)
     {
         $vnp_Url = $this->getVnPayUrl();
         $vnp_Returnurl = $this->getVnPayReturnUrl();
@@ -37,6 +37,10 @@ class PaymentService
             "vnp_SecureHashType" => "SHA512",
         ];
 
+        if (!empty($bankCode)) {
+            $inputData['vnp_BankCode'] = $bankCode;
+        }
+
         // Sắp xếp dữ liệu theo alphabet (Bắt buộc đối với VNPay)
         ksort($inputData);
         
@@ -53,11 +57,14 @@ class PaymentService
             $query .= urlencode($key) . "=" . urlencode($value) . '&';
         }
 
+        // Loại bỏ dấu & ở cuối query string
+        $query = rtrim($query, '&');
+        
         $vnp_Url = $vnp_Url . "?" . $query;
         if (isset($vnp_HashSecret)) {
             // Sử dụng trực tiếp chuỗi $hashdata chuẩn để băm SHA512
             $vnpSecureHash = hash_hmac('sha512', $hashdata, $vnp_HashSecret);
-            $vnp_Url .= 'vnp_SecureHash=' . $vnpSecureHash;
+            $vnp_Url .= '&vnp_SecureHash=' . $vnpSecureHash;
         }
 
         return $vnp_Url;
