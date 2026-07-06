@@ -26,8 +26,8 @@
                     <div class="rounded-2xl border border-zinc-800 bg-zinc-900/70 p-5">
                         <h3 class="text-sm font-black uppercase tracking-widest text-zinc-400 mb-3">Hướng dẫn</h3>
                         <ul class="list-disc list-inside text-sm text-zinc-300 space-y-2">
-                            <li>Quét mã QR bằng ứng dụng {{ $provider === 'momo' ? 'MoMo' : 'VNPay' }} trên điện thoại.</li>
-                            <li>Nếu trình duyệt không tự chuyển, bấm nút tiếp tục bên dưới (nếu có).</li>
+                            <li>Đây là mã QR mở liên kết thanh toán từ cổng {{ $provider === 'momo' ? 'MoMo' : 'VNPay' }}.</li>
+                            <li>Nếu trình duyệt không tự chuyển, bấm nút tiếp tục bên dưới.</li>
                             <li>Sau khi thanh toán thành công, hệ thống sẽ tự quay lại trang xác nhận.</li>
                         </ul>
                     </div>
@@ -35,12 +35,9 @@
 
                 <div class="rounded-2xl border border-zinc-800 bg-zinc-900/70 p-6 flex flex-col items-center justify-center gap-4">
                     @php
-                        $qrText = "FilmGo Payment\n" .
+                        $qrText = $paymentUrl ?: "FilmGo Payment\n" .
                             "Mã đơn: {$booking->booking_code}\n" .
-                            "Số tiền: " . number_format($booking->total_amount) . "đ\n";
-                        if ($paymentUrl) {
-                            $qrText .= "Link: " . $paymentUrl;
-                        }
+                            "Số tiền: " . number_format($booking->total_amount) . "đ";
                     @endphp
                     @if($paymentUrl)
                         <div class="w-56 h-56 rounded-2xl bg-white p-4 flex items-center justify-center">
@@ -62,7 +59,7 @@
                             <div class="text-center text-black text-sm font-semibold">
                                 <div class="text-2xl font-black mb-2">{{ $provider === 'momo' ? 'MoMo' : 'VNPay' }}</div>
                                 <div class="text-xs uppercase tracking-[0.25em] text-zinc-500">QR Thanh Toán</div>
-                                <div class="mt-4 text-xs text-zinc-600">Mã QR sẽ được hiển thị tại đây khi cổng thanh toán được cấu hình.</div>
+                                <div class="mt-4 text-xs text-zinc-600">Mã QR sẽ hiển thị khi cổng thanh toán trả về liên kết hợp lệ.</div>
                             </div>
                         </div>
                         <div class="text-sm text-zinc-400">Không có liên kết thanh toán lúc này. Vui lòng thử lại sau.</div>

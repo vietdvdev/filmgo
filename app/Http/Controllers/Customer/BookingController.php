@@ -286,7 +286,8 @@ class BookingController extends Controller
             // Gọi PaymentService tạo payload bảo mật và lấy link chuyển hướng đối tác
             if ($request->payment_method === 'vnpay') {
                 try {
-                    $paymentUrl = $this->paymentService->createVnPayUrl($booking->booking_code, $booking->total_amount);
+                    $bankCode = $request->input('bank_code', 'NCB');
+                    $paymentUrl = $this->paymentService->createVnPayUrl($booking->booking_code, $booking->total_amount, $bankCode);
                 } catch (Exception $e) {
                     logger()->warning('VNPay payment initialization failed', [
                         'booking_code' => $booking->booking_code,
@@ -295,10 +296,14 @@ class BookingController extends Controller
                     $paymentUrl = null;
                 }
 
+                if ($paymentUrl) {
+                    return redirect()->away($paymentUrl);
+                }
+
                 return redirect()->route('booking.payment.qr', [
                     'booking_id' => $booking->id,
                     'provider' => 'vnpay',
-                    'payment_url' => $paymentUrl ?? env('VNP_FALLBACK_URL', 'https://sandbox.vnpayment.vn/paymentv2/vpcpay.html'),
+                    'payment_url' => env('VNP_FALLBACK_URL', 'https://sandbox.vnpayment.vn/paymentv2/vpcpay.html'),
                 ]);
             } elseif ($request->payment_method === 'momo') {
                 try {

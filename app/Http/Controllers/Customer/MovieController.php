@@ -87,7 +87,7 @@ class MovieController extends Controller
 
         $showtimes = Showtime::where('movie_id', $movie->id)
             ->whereDate('show_date', '>=', today()->toDateString())
-            ->whereIn('status', ['upcoming', 'showing'])
+            ->whereIn('status', ['upcoming', 'active', 'showing'])
             ->with(['room', 'room.cinema'])
             ->orderBy('start_time')
             ->get();

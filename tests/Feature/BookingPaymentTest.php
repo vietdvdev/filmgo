@@ -60,7 +60,7 @@ class BookingPaymentTest extends TestCase
         $this->assertStringContainsString('/booking/payment/qr', $response->headers->get('Location'));
     }
 
-    public function test_vnpay_redirects_to_payment_qr_page()
+    public function test_vnpay_redirects_directly_to_sandbox_gateway_with_selected_bank()
     {
         $user = new User();
         $user->id = 2;
@@ -81,7 +81,7 @@ class BookingPaymentTest extends TestCase
         $bookingService->shouldReceive('createBooking')->once()->andReturn($booking);
 
         $paymentService = Mockery::mock(PaymentService::class);
-        $paymentService->shouldReceive('createVnPayUrl')->once()->andReturn('https://sandbox.vnpayment.vn/paymentv2/vpcpay.html');
+        $paymentService->shouldReceive('createVnPayUrl')->once()->with('XYZ789', 200000, 'NCB')->andReturn('https://sandbox.vnpayment.vn/paymentv2/vpcpay.html?bankCode=NCB');
 
         DB::shouldReceive('beginTransaction')->once();
         DB::shouldReceive('commit')->once();
@@ -93,12 +93,14 @@ class BookingPaymentTest extends TestCase
 
         $request = Request::create('/booking/showtime/123/confirm', 'POST', [
             'payment_method' => 'vnpay',
+            'bank_code' => 'NCB',
         ]);
 
         $response = $controller->confirm($request, 123);
 
         $this->assertEquals(302, $response->getStatusCode());
         $this->assertTrue($response->isRedirection());
-        $this->assertStringContainsString('/booking/payment/qr', $response->headers->get('Location'));
+        $this->assertStringContainsString('sandbox.vnpayment.vn', $response->headers->get('Location'));
+        $this->assertStringContainsString('bankCode=NCB', $response->headers->get('Location'));
     }
 }
