@@ -360,7 +360,7 @@ class BookingController extends Controller
         $booking = Booking::with('bookingDetails')->findOrFail($bookingId);
         $booking->update([
             'payment_status' => 'paid',
-            'booking_status' => 'booked',
+            'booking_status' => 'confirmed',
         ]);
 
         ShowtimeSeat::whereIn('id', $booking->bookingDetails->pluck('showtime_seat_id'))->update(['status' => 'booked']);
@@ -625,13 +625,13 @@ class BookingController extends Controller
         DB::transaction(function () use ($booking, $ipnLog, $provider, $transactionCode, $responseCode, $signature): void {
             $booking->refresh();
 
-            if ($booking->payment_status === 'paid' && $booking->booking_status === 'booked') {
+            if ($booking->payment_status === 'paid' && $booking->booking_status === 'confirmed') {
                 return;
             }
 
             $booking->update([
                 'payment_status' => 'paid',
-                'booking_status' => 'booked',
+                'booking_status' => 'confirmed',
             ]);
 
             $booking->payments()->create([
@@ -643,7 +643,7 @@ class BookingController extends Controller
             ]);
 
             $ticketIds = Ticket::whereIn('booking_detail_id', $booking->bookingDetails()->pluck('id'))->pluck('id');
-            Ticket::whereIn('id', $ticketIds)->update(['ticket_status' => 'booked']);
+            Ticket::whereIn('id', $ticketIds)->update(['ticket_status' => 'unused']);
 
             $showtimeSeatIds = $booking->bookingDetails()->pluck('showtime_seat_id');
             ShowtimeSeat::whereIn('id', $showtimeSeatIds)->update(['status' => 'booked']);
