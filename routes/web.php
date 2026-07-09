@@ -132,6 +132,7 @@ Route::prefix('admin')->group(function () {
 
         // 10. Quản lý mã khuyến mãi (Promotions)
         Route::resource('promotions', PromotionController::class)->names('admin.promotions');
+
     });
 });
 
@@ -223,5 +224,21 @@ Route::prefix('manager')->group(function () {
 Route::middleware(['auth', 'manager'])->group(function () {
     Route::get('/api/admin/my-cinemas', [App\Http\Controllers\Manager\Api\ManagerShowtimeApiController::class, 'myCinemas'])->name('api.admin.my-cinemas');
     Route::get('/api/admin/cinemas/{cinema_id}/rooms', [App\Http\Controllers\Manager\Api\ManagerShowtimeApiController::class, 'roomsByCinema'])->name('api.admin.cinemas.rooms');
+});
+
+// ── Staff Portal ─────────────────────────────────────────────────────────────
+Route::prefix('staff')->group(function () {
+
+    // Trang đăng nhập (chỉ khách chưa đăng nhập)
+    Route::middleware('guest')->group(function () {
+        Route::get('/login', [App\Http\Controllers\Staff\StaffAuthController::class, 'showLoginForm'])->name('staff.login');
+        Route::post('/login', [App\Http\Controllers\Staff\StaffAuthController::class, 'login'])->name('staff.login.submit');
+    });
+
+    // Các trang yêu cầu đăng nhập và vai trò staff
+    Route::middleware(['auth', 'staff'])->group(function () {
+        Route::post('/logout', [App\Http\Controllers\Staff\StaffAuthController::class, 'logout'])->name('staff.logout');
+        Route::get('/showtimes', [App\Http\Controllers\Admin\StaffShowtimeController::class, 'index'])->name('staff.showtimes.index');
+    });
 });
 

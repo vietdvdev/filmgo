@@ -18,6 +18,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'admin'    => \App\Http\Middleware\AdminMiddleware::class,
             'manager'  => \App\Http\Middleware\ManagerMiddleware::class,
             'customer' => \App\Http\Middleware\CustomerMiddleware::class,
+            'staff'    => \App\Http\Middleware\StaffMiddleware::class,
             'guest'    => \App\Http\Middleware\RedirectIfAuthenticated::class,
         ]);
     })
