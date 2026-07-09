@@ -3,16 +3,19 @@
 namespace App\Http\Controllers\Customer;
 
 use App\Http\Controllers\Controller;
-use App\Models\Showtime;
-use App\Models\ShowtimeSeat;
 use App\Models\Combo;
 use App\Models\Booking;
+use App\Models\IpnLog;
+use App\Models\Payment;
+use App\Models\Showtime;
+use App\Models\ShowtimeSeat;
+use App\Models\Ticket;
 use App\Services\BookingService;
 use App\Services\PaymentService; // Thêm Service xử lý cổng thanh toán
+use Exception;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
-use Exception;
 
 class BookingController extends Controller
 {
@@ -269,8 +272,8 @@ class BookingController extends Controller
 
             // Cập nhật bổ sung hình thức thanh toán cho đơn hàng
             $booking->update([
-                'payment_method' => $request->payment_method,
-                'status' => 'pending'
+                'payment_status' => 'pending',
+                'booking_status' => 'pending',
             ]);
 
             DB::commit();
@@ -355,7 +358,10 @@ class BookingController extends Controller
     public function demoPaymentComplete($bookingId, $provider)
     {
         $booking = Booking::with('bookingDetails')->findOrFail($bookingId);
-        $booking->update(['status' => 'completed', 'paid_at' => now()]);
+        $booking->update([
+            'payment_status' => 'paid',
+            'booking_status' => 'booked',
+        ]);
 
         ShowtimeSeat::whereIn('id', $booking->bookingDetails->pluck('showtime_seat_id'))->update(['status' => 'booked']);
         session()->forget("booking.{$booking->showtime_id}");
@@ -376,122 +382,326 @@ class BookingController extends Controller
     }
 
     /**
-     * VNPay Return Callback URL
+     * VNPay Return Callback URL / IPN handler.
+     * Ghi log toàn bộ payload, kiểm tra chữ ký, cập nhật đơn hàng và trả JSON cho cổng thanh toán.
      */
     public function vnpayCallback(Request $request)
     {
-        $vnp_HashSecret = env('VNP_HASH_SECRET');
-        $vnp_SecureHash = $request->get('vnp_SecureHash');
+        $payload = $request->all();
+        $ipnLog = $this->createIpnLog('vnpay', 'callback', $payload, $request->get('vnp_SecureHash'));
+
+        try {
+            $isSignatureValid = $this->verifyVnPaySignature($request);
+
+            if (! $isSignatureValid) {
+                $ipnLog->update([
+                    'signature_status' => 'invalid',
+                    'processing_status' => 'failed',
+                    'response_code' => $request->get('vnp_ResponseCode'),
+                    'message' => 'Chữ ký VNPay không hợp lệ.',
+                ]);
+
+                return $this->respondGatewayResult($request, [
+                    'RspCode' => '97',
+                    'Message' => 'Invalid signature',
+                ]);
+            }
+
+            $bookingCode = $request->get('vnp_TxnRef');
+            $booking = Booking::where('booking_code', $bookingCode)->first();
+
+            if (! $booking) {
+                $ipnLog->update([
+                    'signature_status' => 'valid',
+                    'processing_status' => 'failed',
+                    'booking_code' => $bookingCode,
+                    'response_code' => $request->get('vnp_ResponseCode'),
+                    'message' => 'Không tìm thấy đơn hàng tương ứng.',
+                ]);
+
+                return $this->respondGatewayResult($request, [
+                    'RspCode' => '01',
+                    'Message' => 'Order not found',
+                ]);
+            }
+
+            $ipnLog->update([
+                'booking_id' => $booking->id,
+                'booking_code' => $booking->booking_code,
+                'transaction_code' => $request->get('vnp_TransactionNo'),
+                'gateway_reference' => $request->get('vnp_TraceNo'),
+            ]);
+
+            $responseCode = (string) $request->get('vnp_ResponseCode');
+            $isSuccess = $responseCode === '00';
+
+            if ($isSuccess) {
+                $this->finalizeSuccessfulPayment($booking, $ipnLog, 'vnpay', $request->get('vnp_TransactionNo'), $responseCode, $request->get('vnp_SecureHash'));
+
+                return $this->respondGatewayResult($request, [
+                    'RspCode' => '00',
+                    'Message' => 'Confirm Success',
+                ]);
+            }
+
+            $this->finalizeFailedPayment($booking, $ipnLog, 'vnpay', $request->get('vnp_TransactionNo'), $responseCode, 'Giao dịch thất bại hoặc đã bị hủy.');
+
+            return $this->respondGatewayResult($request, [
+                'RspCode' => '00',
+                'Message' => 'Confirm Success',
+            ]);
+        } catch (Exception $e) {
+            $ipnLog->update([
+                'signature_status' => 'valid',
+                'processing_status' => 'failed',
+                'message' => $e->getMessage(),
+            ]);
+
+            return $this->respondGatewayResult($request, [
+                'RspCode' => '99',
+                'Message' => 'Unknown error',
+            ], 500);
+        }
+    }
+
+    /**
+     * MoMo Redirect Callback URL / IPN handler.
+     */
+    public function momoCallback(Request $request)
+    {
+        $payload = $request->all();
+        $ipnLog = $this->createIpnLog('momo', 'callback', $payload, $request->get('signature'));
+
+        try {
+            $secretKey = env('MOMO_SECRET_KEY');
+
+            $partnerCode = $request->get('partnerCode');
+            $orderId = $request->get('orderId');
+            $requestId = $request->get('requestId');
+            $amount = $request->get('amount');
+            $orderInfo = $request->get('orderInfo');
+            $orderType = $request->get('orderType');
+            $transId = $request->get('transId');
+            $resultCode = $request->get('resultCode');
+            $message = $request->get('message');
+            $localSign = $request->get('signature');
+
+            $rawHash = 'amount=' . $amount
+                . '&message=' . $message
+                . '&orderId=' . $orderId
+                . '&orderInfo=' . $orderInfo
+                . '&orderType=' . $orderType
+                . '&partnerCode=' . $partnerCode
+                . '&requestId=' . $requestId
+                . '&resultCode=' . $resultCode
+                . '&transId=' . $transId;
+
+            $partnerSignature = hash_hmac('sha256', $rawHash, $secretKey);
+            $isSignatureValid = hash_equals($partnerSignature, $localSign ?? '');
+
+            if (! $isSignatureValid) {
+                $ipnLog->update([
+                    'signature_status' => 'invalid',
+                    'processing_status' => 'failed',
+                    'response_code' => (string) $resultCode,
+                    'message' => 'Chữ ký MoMo không hợp lệ.',
+                ]);
+
+                return $this->respondGatewayResult($request, [
+                    'resultCode' => 97,
+                    'message' => 'Invalid signature',
+                ]);
+            }
+
+            $bookingCode = explode('_', $orderId)[0];
+            $booking = Booking::where('booking_code', $bookingCode)->first();
+
+            if (! $booking) {
+                $ipnLog->update([
+                    'signature_status' => 'valid',
+                    'processing_status' => 'failed',
+                    'booking_code' => $bookingCode,
+                    'response_code' => (string) $resultCode,
+                    'message' => 'Không tìm thấy đơn hàng tương ứng.',
+                ]);
+
+                return $this->respondGatewayResult($request, [
+                    'resultCode' => 01,
+                    'message' => 'Order not found',
+                ]);
+            }
+
+            $ipnLog->update([
+                'booking_id' => $booking->id,
+                'booking_code' => $booking->booking_code,
+                'transaction_code' => (string) $transId,
+                'gateway_reference' => (string) $requestId,
+            ]);
+
+            if ((int) $resultCode === 0) {
+                $this->finalizeSuccessfulPayment($booking, $ipnLog, 'momo', (string) $transId, (string) $resultCode, $localSign);
+
+                return $this->respondGatewayResult($request, [
+                    'resultCode' => 0,
+                    'message' => 'Confirm Success',
+                ]);
+            }
+
+            $this->finalizeFailedPayment($booking, $ipnLog, 'momo', (string) $transId, (string) $resultCode, $message ?? 'Thanh toán thất bại hoặc đã bị hủy.');
+
+            return $this->respondGatewayResult($request, [
+                'resultCode' => (int) $resultCode,
+                'message' => 'Confirm Success',
+            ]);
+        } catch (Exception $e) {
+            $ipnLog->update([
+                'signature_status' => 'valid',
+                'processing_status' => 'failed',
+                'message' => $e->getMessage(),
+            ]);
+
+            return $this->respondGatewayResult($request, [
+                'resultCode' => 99,
+                'message' => 'Unknown error',
+            ], 500);
+        }
+    }
+
+    /**
+     * Tạo bản ghi log callback/IPN trước khi xử lý để đảm bảo mọi payload đều được ghi nhận.
+     */
+    private function createIpnLog(string $provider, string $eventType, array $payload, ?string $signature): IpnLog
+    {
+        return IpnLog::create([
+            'provider' => $provider,
+            'event_type' => $eventType,
+            'payload' => $payload,
+            'signature' => $signature,
+            'signature_status' => 'unknown',
+            'processing_status' => 'pending',
+            'message' => 'Đang chờ xử lý callback/IPN.',
+        ]);
+    }
+
+    /**
+     * Xác thực chữ ký VNPay bằng HMAC SHA-512 theo đúng chuẩn của cổng thanh toán.
+     */
+    private function verifyVnPaySignature(Request $request): bool
+    {
+        $vnpHashSecret = env('VNP_HASH_SECRET');
+        $vnpSecureHash = $request->get('vnp_SecureHash');
         $inputData = [];
 
         foreach ($request->all() as $key => $value) {
-            if (substr($key, 0, 4) == "vnp_") {
+            if (substr($key, 0, 4) === 'vnp_') {
                 $inputData[$key] = $value;
             }
         }
 
-        unset($inputData['vnp_SecureHash']);
+        unset($inputData['vnp_SecureHash'], $inputData['vnp_SecureHashType']);
         ksort($inputData);
-        $hashData = "";
-        $i = 0;
+
+        $hashData = '';
+        $isFirst = true;
         foreach ($inputData as $key => $value) {
-            if ($i == 1) {
-                $hashData .= '&' . urlencode($key) . "=" . urlencode($value);
+            if ($isFirst) {
+                $hashData .= urlencode($key) . '=' . urlencode($value);
+                $isFirst = false;
             } else {
-                $hashData .= urlencode($key) . "=" . urlencode($value);
-                $i = 1;
+                $hashData .= '&' . urlencode($key) . '=' . urlencode($value);
             }
         }
 
-        $secureHash = hash_hmac('sha512', $hashData, $vnp_HashSecret);
+        $secureHash = hash_hmac('sha512', $hashData, $vnpHashSecret);
 
-        // Kiểm tra tính toàn vẹn của chữ ký điện tử gửi về
-        if ($secureHash === $vnp_SecureHash) {
-            $bookingCode = $request->get('vnp_TxnRef');
-            $booking = Booking::where('booking_code', $bookingCode)->firstOrFail();
-
-            if ($request->get('vnp_ResponseCode') == '00') {
-                // Thanh toán thành công: Cập nhật DB và xóa session tiến trình đặt vé
-                $booking->update(['status' => 'completed', 'paid_at' => now()]);
-
-                // Giải phóng ghế sang trạng thái đã đặt
-                ShowtimeSeat::whereIn('id', $booking->bookingDetails->pluck('showtime_seat_id'))->update(['status' => 'booked']);
-
-                session()->forget("booking.{$booking->showtime_id}");
-
-                return redirect()->route('booking.success', $booking->id)->with('success', 'Thanh toán qua VNPay thành công!');
-            } else {
-                // Thanh toán thất bại hoặc người dùng hủy đơn
-                $booking->update(['status' => 'failed']);
-                ShowtimeSeat::whereIn('id', $booking->bookingDetails->pluck('showtime_seat_id'))->update(['status' => 'available']);
-
-                return redirect()->route('booking.checkout', $booking->showtime_id)->with('error', 'Giao dịch không thành công hoặc đã bị hủy.');
-            }
-        }
-
-        return redirect()->route('home')->with('error', 'Chữ ký điện tử không hợp lệ.');
+        return hash_equals($secureHash, $vnpSecureHash ?? '');
     }
 
     /**
-     * MoMo Redirect Callback URL
+     * Xử lý thanh toán thành công trong một transaction duy nhất để đảm bảo dữ liệu không bị lệch.
      */
-    public function momoCallback(Request $request)
+    private function finalizeSuccessfulPayment(Booking $booking, IpnLog $ipnLog, string $provider, ?string $transactionCode, ?string $responseCode, ?string $signature): void
     {
-        $secretKey = env('MOMO_SECRET_KEY');
+        DB::transaction(function () use ($booking, $ipnLog, $provider, $transactionCode, $responseCode, $signature): void {
+            $booking->refresh();
 
-        // Nhận các tham số phản hồi từ MoMo để xác thực chữ ký số điện tử
-        $partnerCode = $request->get('partnerCode');
-        $orderId     = $request->get('orderId'); // Định dạng ở Service cũ: {booking_code}_{timestamp}
-        $requestId   = $request->get('requestId');
-        $amount      = $request->get('amount');
-        $orderInfo   = $request->get('orderInfo');
-        $orderType   = $request->get('orderType');
-        $transId     = $request->get('transId');
-
-        $resultCode  = $request->get('resultCode');
-        $message     = $request->get('message'); // Dòng 335 cũ đã được đẩy lên thế chỗ dòng lỗi
-        $localSign   = $request->get('signature');
-        $localSign   = $request->get('signature');
-
-        // 1. Tạo chuỗi ký tự để kiểm tra chữ ký (Raw hash theo đúng thứ tự tài liệu MoMo cung cấp)
-        $rawHash = "amount=" . $amount .
-            "&message=" . $message .
-            "&orderId=" . $orderId .
-            "&orderInfo=" . $orderInfo .
-            "&orderType=" . $orderType .
-            "&partnerCode=" . $partnerCode .
-            "&requestId=" . $requestId .
-            "&resultCode=" . $resultCode .
-            "&transId=" . $transId;
-
-        $partnerSignature = hash_hmac("sha256", $rawHash, $secretKey);
-
-        // 2. Xác thực tính toàn vẹn dữ liệu
-        if ($partnerSignature === $localSign) {
-            // Tách lấy booking_code gốc nếu orderId có dạng {booking_code}_{timestamp}
-            $bookingCode = explode('_', $orderId)[0];
-            $booking = Booking::where('booking_code', $bookingCode)->firstOrFail();
-
-            if ($resultCode == 0) {
-                // Giao dịch thành công qua MoMo
-                $booking->update(['status' => 'completed', 'paid_at' => now()]);
-
-                // Cập nhật trạng thái ghế sang đã đặt
-                ShowtimeSeat::whereIn('id', $booking->bookingDetails->pluck('showtime_seat_id'))->update(['status' => 'booked']);
-
-                // Xóa session tiến trình đặt vé
-                session()->forget("booking.{$booking->showtime_id}");
-
-                return redirect()->route('booking.success', $booking->id)->with('success', 'Thanh toán qua MoMo thành công!');
-            } else {
-                // Giao dịch thất bại hoặc bị hủy bỏ
-                $booking->update(['status' => 'failed']);
-                ShowtimeSeat::whereIn('id', $booking->bookingDetails->pluck('showtime_seat_id'))->update(['status' => 'available']);
-
-                return redirect()->route('booking.checkout', $booking->showtime_id)->with('error', 'Thanh toán thất bại hoặc đã bị hủy: ' . $message);
+            if ($booking->payment_status === 'paid' && $booking->booking_status === 'booked') {
+                return;
             }
+
+            $booking->update([
+                'payment_status' => 'paid',
+                'booking_status' => 'booked',
+            ]);
+
+            $booking->payments()->create([
+                'transaction_code' => $transactionCode,
+                'amount' => $booking->total_amount,
+                'payment_method' => $provider,
+                'payment_status' => 'success',
+                'paid_at' => now(),
+            ]);
+
+            $ticketIds = Ticket::whereIn('booking_detail_id', $booking->bookingDetails()->pluck('id'))->pluck('id');
+            Ticket::whereIn('id', $ticketIds)->update(['ticket_status' => 'booked']);
+
+            $showtimeSeatIds = $booking->bookingDetails()->pluck('showtime_seat_id');
+            ShowtimeSeat::whereIn('id', $showtimeSeatIds)->update(['status' => 'booked']);
+
+            session()->forget("booking.{$booking->showtime_id}");
+        });
+
+        $ipnLog->update([
+            'signature_status' => 'valid',
+            'processing_status' => 'success',
+            'response_code' => $responseCode,
+            'message' => 'Thanh toán thành công và đã cập nhật trạng thái vé.',
+        ]);
+    }
+
+    /**
+     * Xử lý thanh toán thất bại hoặc bị hủy, đồng thời rollback trạng thái ghế và vé về trạng thái ban đầu.
+     */
+    private function finalizeFailedPayment(Booking $booking, IpnLog $ipnLog, string $provider, ?string $transactionCode, ?string $responseCode, string $message): void
+    {
+        DB::transaction(function () use ($booking, $ipnLog, $provider, $transactionCode, $responseCode, $message): void {
+            $booking->update([
+                'payment_status' => 'failed',
+                'booking_status' => 'cancelled',
+            ]);
+
+            $booking->payments()->create([
+                'transaction_code' => $transactionCode,
+                'amount' => $booking->total_amount,
+                'payment_method' => $provider,
+                'payment_status' => 'failed',
+                'paid_at' => null,
+            ]);
+
+            $ticketIds = Ticket::whereIn('booking_detail_id', $booking->bookingDetails()->pluck('id'))->pluck('id');
+            Ticket::whereIn('id', $ticketIds)->update(['ticket_status' => 'cancelled']);
+
+            $showtimeSeatIds = $booking->bookingDetails()->pluck('showtime_seat_id');
+            ShowtimeSeat::whereIn('id', $showtimeSeatIds)->update(['status' => 'available']);
+        });
+
+        $ipnLog->update([
+            'signature_status' => 'valid',
+            'processing_status' => 'failed',
+            'response_code' => $responseCode,
+            'message' => $message,
+        ]);
+    }
+
+    /**
+     * Trả về phản hồi theo đúng định dạng mà cổng thanh toán cần để xác nhận đã xử lý request.
+     */
+    private function respondGatewayResult(Request $request, array $payload, int $statusCode = 200)
+    {
+        if ($request->isMethod('post') || $request->expectsJson()) {
+            return response()->json($payload, $statusCode);
         }
 
-        return redirect()->route('home')->with('error', 'Chữ ký điện tử MoMo không hợp lệ.');
+        return redirect()->route('home')->with('success', 'Đã xử lý callback thanh toán.');
     }
 }
