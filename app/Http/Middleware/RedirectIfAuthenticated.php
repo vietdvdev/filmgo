@@ -28,6 +28,11 @@ class RedirectIfAuthenticated
                 return redirect()->route('manager.dashboard');
             }
 
+            // Staff → Staff Portal
+            if ($user->roles()->where('name', 'staff')->exists()) {
+                return redirect()->route('staff.showtimes.index');
+            }
+
             // Customer hoặc các role khác → Trang chủ
             return redirect()->route('home');
         }
