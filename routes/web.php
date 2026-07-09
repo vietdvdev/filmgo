@@ -238,7 +238,25 @@ Route::prefix('staff')->group(function () {
     // Các trang yêu cầu đăng nhập và vai trò staff
     Route::middleware(['auth', 'staff'])->group(function () {
         Route::post('/logout', [App\Http\Controllers\Staff\StaffAuthController::class, 'logout'])->name('staff.logout');
+
+        // Lịch chiếu hôm nay
         Route::get('/showtimes', [App\Http\Controllers\Admin\StaffShowtimeController::class, 'index'])->name('staff.showtimes.index');
+
+        // ── Phân hệ POS — Bán vé tại quầy ─────────────────────────────────
+        // Trang giao diện POS chính (One-page SPA)
+        Route::get('/pos', [App\Http\Controllers\Staff\PosController::class, 'index'])->name('staff.pos.index');
+
+        // API: Lấy danh sách suất chiếu theo ngày
+        Route::get('/pos/api/showtimes', [App\Http\Controllers\Staff\PosController::class, 'apiGetShowtimes'])->name('staff.pos.api.showtimes');
+
+        // API: Sơ đồ ghế real-time theo suất chiếu
+        Route::get('/pos/api/seat-map/{showtime_id}', [App\Http\Controllers\Staff\PosController::class, 'apiGetSeatMap'])->name('staff.pos.api.seat-map');
+
+        // API: Xác minh mã voucher
+        Route::post('/pos/api/voucher', [App\Http\Controllers\Staff\PosController::class, 'apiCheckVoucher'])->name('staff.pos.api.voucher');
+
+        // API: Checkout — tạo đơn + thanh toán ngay lập tức
+        Route::post('/pos/api/checkout', [App\Http\Controllers\Staff\PosController::class, 'apiCheckout'])->name('staff.pos.api.checkout');
     });
 });
 

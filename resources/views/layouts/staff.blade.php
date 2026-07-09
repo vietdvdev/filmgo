@@ -62,6 +62,7 @@
         .material-symbols-outlined { font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24; }
         .shadow-ambient-sm { box-shadow: 0px 4px 12px rgba(0,0,0,0.03); }
     </style>
+    @stack('styles')
 </head>
 <body class="bg-background text-on-surface h-screen overflow-hidden flex antialiased">
 
@@ -95,6 +96,15 @@
                 <span class="material-symbols-outlined"
                       style="font-variation-settings: 'FILL' {{ request()->routeIs('staff.showtimes.*') ? 1 : 0 }}">today</span>
                 <span class="text-label-md">Lịch Chiếu Hôm Nay</span>
+            </a>
+
+            {{-- POS — Bán vé tại quầy --}}
+            <a href="{{ route('staff.pos.index') }}"
+               class="flex items-center gap-3 px-4 py-3 rounded-lg transition-colors duration-200
+                      {{ request()->routeIs('staff.pos.*') ? 'bg-primary/10 text-primary font-bold' : 'text-on-surface-variant hover:bg-surface-container-low' }}">
+                <span class="material-symbols-outlined"
+                      style="font-variation-settings: 'FILL' {{ request()->routeIs('staff.pos.*') ? 1 : 0 }}">point_of_sale</span>
+                <span class="text-label-md">Bán Vé Tại Quầy (POS)</span>
             </a>
         </nav>
 
@@ -142,5 +152,6 @@
         </main>
     </div>
 
+@stack('scripts')
 </body>
 </html>
