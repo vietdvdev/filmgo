@@ -65,19 +65,44 @@ class BookingController extends Controller
             'seat_ids.required' => 'Vui lòng chọn ít nhất một vị trí ghế ngồi.',
         ]);
 
-        // Cần đảm bảo các ghế này đều ở trạng thái available trong DB (hoặc do chính mình giữ)
-        $seats = ShowtimeSeat::where('showtime_id', $showtimeId)
-            ->whereIn('id', $request->seat_ids)
-            ->get();
+        $expiresAt = now()->addMinutes(10);
 
-        foreach ($seats as $seat) {
-            if ($seat->status !== 'available') {
-                return redirect()->back()->withInput()->with('error', 'Một số ghế bạn chọn đã có người đặt trước đó. Vui lòng chọn ghế khác.');
+        // Dùng transaction + lockForUpdate để tránh race condition
+        $result = DB::transaction(function () use ($showtimeId, $request, $expiresAt) {
+            $seats = ShowtimeSeat::where('showtime_id', $showtimeId)
+                ->whereIn('id', $request->seat_ids)
+                ->lockForUpdate()
+                ->get();
+
+            foreach ($seats as $seat) {
+                // Chấp nhận ghế mà chính user này đang giữ (holding)
+                if ($seat->status === 'holding' && $seat->user_id === Auth::id()) {
+                    continue;
+                }
+                if ($seat->status !== 'available') {
+                    return 'taken';
+                }
             }
+
+            // Khóa ghế sang trạng thái holding ngay lập tức
+            ShowtimeSeat::where('showtime_id', $showtimeId)
+                ->whereIn('id', $request->seat_ids)
+                ->update([
+                    'status'     => 'holding',
+                    'user_id'    => Auth::id(),
+                    'locked_at'  => now(),
+                    'expires_at' => $expiresAt,
+                ]);
+
+            return 'ok';
+        });
+
+        if ($result === 'taken') {
+            return redirect()->back()->withInput()->with('error', 'Một số ghế bạn chọn đã có người đặt trước đó. Vui lòng chọn ghế khác.');
         }
 
         session()->put("booking.{$showtimeId}.seat_ids", $request->seat_ids);
-        session()->put("booking.{$showtimeId}.expires_at", time() + 600); // 10 phút giữ ghế
+        session()->put("booking.{$showtimeId}.expires_at", $expiresAt->timestamp);
 
         return redirect()->route('booking.select-combos', $showtimeId);
     }
@@ -251,6 +276,18 @@ class BookingController extends Controller
         if (empty($seatIds)) {
             return redirect()->route('booking.select-seats', $showtimeId)->with('error', 'Vui lòng chọn ghế ngồi trước.');
         }
+
+        // 2. Kiểm tra suất chiếu còn hợp lệ để đặt vé
+        $showtime = Showtime::find($showtimeId);
+        if (!$showtime || !in_array($showtime->status, ['upcoming', 'showing', 'active'])) {
+            // Nhả ghế holding về available
+            ShowtimeSeat::whereIn('id', $seatIds)->where('user_id', Auth::id())->update([
+                'status' => 'available', 'user_id' => null, 'locked_at' => null, 'expires_at' => null,
+            ]);
+            session()->forget("booking.{$showtimeId}");
+            return redirect()->route('home')->with('error', 'Suất chiếu này đã kết thúc hoặc bị hủy. Vui lòng chọn suất chiếu khác.');
+        }
+
 
         $combosSession = session()->get("booking.{$showtimeId}.combos", []);
         $combosData = [];

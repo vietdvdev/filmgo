@@ -49,16 +49,23 @@ class BookingService
             }
 
             foreach ($showtimeSeats as $ss) {
+                // Chấp nhận ghế do chính user này đang giữ (holding)
+                if ($ss->status === 'holding' && $ss->user_id === $userId) {
+                    continue;
+                }
                 if ($ss->status !== 'available') {
                     throw new Exception("Ghế " . $ss->seat->seat_row . $ss->seat->seat_number . " đã bị người khác đặt hoặc đang bị khóa.");
                 }
             }
 
-            // 3. Tính tiền ghế
+            // 3. Tính tiền ghế — ưu tiên dùng giá snapshot trong cột showtime_seats.price
             $totalSeatPrice = 0;
             $seatsPricing   = [];
             foreach ($showtimeSeats as $ss) {
-                $seatPrice = $showtime->base_price + ($ss->seat->seatType->surcharge_price ?? 0);
+                // Dùng giá đã được tính sẵn khi tạo suất chiếu (snapshot), fallback sang tính lại nếu chưa có
+                $seatPrice = (isset($ss->price) && $ss->price > 0)
+                    ? $ss->price
+                    : $showtime->base_price + ($ss->seat->seatType->surcharge_price ?? 0);
                 $totalSeatPrice += $seatPrice;
                 $seatsPricing[$ss->id] = $seatPrice;
             }
@@ -91,20 +98,40 @@ class BookingService
                 $bookingCode = 'FG-' . strtoupper(Str::random(8));
             } while (Booking::where('booking_code', $bookingCode)->exists());
 
-            // 6. Xử lý voucher — tính discount_amount và xác minh lại promotion
+            // 6. Xử lý voucher — xác minh lại toàn diện promotion tại thời điểm confirm
             $discountAmount = 0;
             $promotionId    = null;
 
             if (!empty($voucherData) && isset($voucherData['promotion_id'])) {
                 $promotion = Promotion::find($voucherData['promotion_id']);
+                $now       = now();
 
-                if ($promotion && $promotion->status === 'active') {
+                $isValid = $promotion
+                    && $promotion->status === 'active'
+                    && ($promotion->start_date === null || $now->gte($promotion->start_date))
+                    && ($promotion->end_date === null || $now->lte($promotion->end_date));
+
+                if ($isValid && $promotion->quantity !== null) {
+                    $totalUsed = $promotion->bookings()->count();
+                    if ($totalUsed >= $promotion->quantity) {
+                        $isValid = false;
+                    }
+                }
+
+                if ($isValid && $promotion->max_uses_per_user !== null) {
+                    $usedByUser = $promotion->bookings()->where('user_id', $userId)->count();
+                    if ($usedByUser >= $promotion->max_uses_per_user) {
+                        $isValid = false;
+                    }
+                }
+
+                if ($isValid) {
                     $subtotalForDiscount = $totalSeatPrice + $totalComboPrice;
 
-                    if ($voucherData['discount_type'] === 'percent') {
-                        $discountAmount = (int) ($subtotalForDiscount * ($voucherData['discount_value'] / 100));
+                    if ($promotion->discount_type === 'percent') {
+                        $discountAmount = (int) ($subtotalForDiscount * ($promotion->discount_value / 100));
                     } else {
-                        $discountAmount = min($voucherData['discount_value'], $subtotalForDiscount);
+                        $discountAmount = min($promotion->discount_value, $subtotalForDiscount);
                     }
 
                     $promotionId = $promotion->id;
@@ -139,7 +166,8 @@ class BookingService
                     'ticket_status'     => 'unused',
                 ]);
 
-                $ss->update(['status' => 'booked', 'user_id' => $userId]);
+                // Giữ ghế ở trạng thái 'holding' cho đến khi thanh toán xác nhận thành công
+                $ss->update(['status' => 'holding', 'user_id' => $userId]);
             }
 
             // 9. Lưu combo đã đặt
