@@ -35,7 +35,10 @@
 
                 <form action="{{ route('admin.users.update', $user) }}" method="POST" enctype="multipart/form-data"
                     class="space-y-6">
-                    @csrf @method('PUT')
+                    @csrf
+                    @method('PUT')
+
+                    <input type="hidden" name="return" value="{{ request('return') }}">
 
                     <!-- Ảnh Đại Diện -->
                     <div class="flex items-center gap-4">

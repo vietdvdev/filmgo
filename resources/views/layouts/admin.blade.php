@@ -112,7 +112,7 @@
         .chart-gradient { fill: url(#chartGrad); }
     </style>
 </head>
-<body class="bg-background text-on-surface h-screen overflow-hidden flex antialiased">
+{{-- <body class="bg-background text-on-surface h-screen overflow-hidden flex antialiased">
 
     <!-- Shared Component: SideNavBar -->
     @include('layouts.partials.sidebar')
@@ -123,6 +123,19 @@
         @include('layouts.partials.header')
 
         <!-- Scrollable Canvas -->
+        @yield('content')
+    </div>
+
+</body> --}}
+
+<body class="bg-background text-on-surface h-screen overflow-hidden flex antialiased">
+
+    @include('layouts.partials.sidebar')
+
+    <div class="flex-1 min-w-0 w-0 flex flex-col h-full overflow-hidden pl-[280px]">
+        
+        @include('layouts.partials.header')
+
         @yield('content')
     </div>
 

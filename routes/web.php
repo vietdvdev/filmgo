@@ -12,6 +12,7 @@ use App\Http\Controllers\Admin\UserController;
 use App\Http\Controllers\Admin\ComboController;
 use App\Http\Controllers\Admin\ManagementAuthController;
 use App\Http\Controllers\Admin\PromotionController;
+use App\Http\Controllers\Admin\BookingController;
 use App\Http\Controllers\Customer\CustomerAuthController;
 use App\Http\Controllers\Customer\CustomerForgotPasswordController;
 use App\Http\Controllers\Customer\CustomerProfileController;
@@ -132,6 +133,12 @@ Route::prefix('admin')->group(function () {
 
         // 10. Quản lý mã khuyến mãi (Promotions)
         Route::resource('promotions', PromotionController::class)->names('admin.promotions');
+
+        // 11. Quản lý Vé & Đơn Hàng
+        Route::get('bookings', [BookingController::class, 'index'])->name('admin.bookings.index');
+        Route::get('bookings/{id}', [BookingController::class, 'show'])->name('admin.bookings.show');
+        Route::patch('bookings/{id}/confirm', [BookingController::class, 'confirm'])->name('admin.bookings.confirm');
+        Route::patch('bookings/{id}/cancel', [BookingController::class, 'cancel'])->name('admin.bookings.cancel');
     });
 });
 
