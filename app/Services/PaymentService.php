@@ -34,7 +34,6 @@ class PaymentService
             "vnp_OrderType" => $vnp_OrderType,
             "vnp_ReturnUrl" => $vnp_Returnurl,
             "vnp_TxnRef" => $vnp_TxnRef,
-            "vnp_SecureHashType" => "SHA512",
         ];
 
         if (!empty($bankCode)) {
