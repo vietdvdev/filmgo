@@ -20,25 +20,7 @@
                 </div>
             </div>
 
-            {{-- Status actions --}}
-            <div class="flex items-center gap-2">
-                @if($booking->booking_status === 'pending')
-                    <form method="POST" action="{{ route('admin.bookings.confirm', $booking->id) }}">
-                        @csrf @method('PATCH')
-                        <button type="submit" class="flex items-center gap-2 bg-emerald-600 text-white font-label-md text-label-md px-4 py-2.5 rounded-lg hover:bg-emerald-700 hover:shadow-md transition-all duration-200">
-                            <span class="material-symbols-outlined" style="font-size:18px;">check_circle</span>
-                            Xác nhận đơn
-                        </button>
-                    </form>
-                    <form method="POST" action="{{ route('admin.bookings.cancel', $booking->id) }}" onsubmit="return confirm('Bạn chắc chắn muốn hủy đơn hàng này?')">
-                        @csrf @method('PATCH')
-                        <button type="submit" class="flex items-center gap-2 bg-red-500 text-white font-label-md text-label-md px-4 py-2.5 rounded-lg hover:bg-red-600 hover:shadow-md transition-all duration-200">
-                            <span class="material-symbols-outlined" style="font-size:18px;">cancel</span>
-                            Hủy đơn
-                        </button>
-                    </form>
-                @endif
-            </div>
+            {{-- Status actions: removed, admin view-only --}}
         </div>
 
         {{-- Flash --}}
@@ -49,20 +31,13 @@
             </div>
         @endif
 
-        {{-- Status badges row --}}
+            {{-- Status badges row --}}
         <div class="flex flex-wrap gap-3">
             @php
-                $bs = $booking->booking_status;
-                $bsClass = match($bs) { 'confirmed' => 'bg-emerald-50 text-emerald-700 border-emerald-200', 'pending' => 'bg-amber-50 text-amber-700 border-amber-200', 'cancelled' => 'bg-red-50 text-red-700 border-red-200', default => 'bg-gray-50 text-gray-600 border-gray-200' };
-                $bsLabel = match($bs) { 'confirmed' => 'Đã xác nhận', 'pending' => 'Chờ xác nhận', 'cancelled' => 'Đã hủy', default => $bs };
                 $ps = $booking->payment_status;
                 $psClass = match($ps) { 'paid' => 'bg-emerald-50 text-emerald-700 border-emerald-200', 'pending' => 'bg-amber-50 text-amber-700 border-amber-200', 'failed' => 'bg-red-50 text-red-700 border-red-200', 'refunded' => 'bg-purple-50 text-purple-700 border-purple-200', default => 'bg-gray-50 text-gray-600 border-gray-200' };
                 $psLabel = match($ps) { 'paid' => 'Đã thanh toán', 'pending' => 'Chờ thanh toán', 'failed' => 'Thất bại', 'refunded' => 'Hoàn tiền', default => $ps };
             @endphp
-            <div class="flex items-center gap-2 px-4 py-2 bg-surface-container-lowest rounded-lg border border-outline-variant">
-                <span class="text-xs text-on-surface-variant font-medium">Trạng thái đơn:</span>
-                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold border {{ $bsClass }}">{{ $bsLabel }}</span>
-            </div>
             <div class="flex items-center gap-2 px-4 py-2 bg-surface-container-lowest rounded-lg border border-outline-variant">
                 <span class="text-xs text-on-surface-variant font-medium">Thanh toán:</span>
                 <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold border {{ $psClass }}">{{ $psLabel }}</span>
