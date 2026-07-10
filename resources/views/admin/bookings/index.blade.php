@@ -80,15 +80,7 @@
                             <option value="refunded" @selected(($filters['payment_status'] ?? '') === 'refunded')>Hoàn tiền</option>
                         </select>
                     </div>
-                    <div class="flex-1 min-w-[150px]">
-                        <label class="block text-xs font-medium text-on-surface-variant mb-1">Trạng thái đơn</label>
-                        <select name="booking_status" class="w-full px-3 py-2 bg-surface-container-lowest border border-outline-variant rounded-lg text-sm text-on-surface focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-colors">
-                            <option value="">Tất cả</option>
-                            <option value="pending" @selected(($filters['booking_status'] ?? '') === 'pending')>Chờ xác nhận</option>
-                            <option value="confirmed" @selected(($filters['booking_status'] ?? '') === 'confirmed')>Đã xác nhận</option>
-                            <option value="cancelled" @selected(($filters['booking_status'] ?? '') === 'cancelled')>Đã hủy</option>
-                        </select>
-                    </div>
+
                 </div>
 
                 {{-- Row 3: Date ranges --}}
@@ -149,7 +141,6 @@
                             <th class="py-3.5 px-4 font-semibold whitespace-nowrap">Ghế</th>
                             <th class="py-3.5 px-4 font-semibold whitespace-nowrap">Tổng tiền</th>
                             <th class="py-3.5 px-4 font-semibold whitespace-nowrap">Thanh toán</th>
-                            <th class="py-3.5 px-4 font-semibold whitespace-nowrap">Trạng thái</th>
                             <th class="py-3.5 px-4 font-semibold whitespace-nowrap">Ngày tạo</th>
                             <th class="py-3.5 px-4 font-semibold text-right whitespace-nowrap pr-6">Thao tác</th>
                         </tr>
@@ -208,48 +199,14 @@
                                     @endphp
                                     <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold border {{ $psClass }}">{{ $psLabel }}</span>
                                 </td>
-                                <td class="py-3.5 px-4">
-                                    @php
-                                        $bs = $booking->booking_status;
-                                        $bsClass = match($bs) {
-                                            'confirmed'  => 'bg-emerald-50 text-emerald-700 border-emerald-200',
-                                            'pending'    => 'bg-amber-50 text-amber-700 border-amber-200',
-                                            'cancelled'  => 'bg-red-50 text-red-700 border-red-200',
-                                            default      => 'bg-gray-50 text-gray-600 border-gray-200',
-                                        };
-                                        $bsLabel = match($bs) {
-                                            'confirmed'  => 'Đã xác nhận',
-                                            'pending'    => 'Chờ xác nhận',
-                                            'cancelled'  => 'Đã hủy',
-                                            default      => $bs,
-                                        };
-                                    @endphp
-                                    <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold border {{ $bsClass }}">{{ $bsLabel }}</span>
-                                </td>
                                 <td class="py-3.5 px-4 whitespace-nowrap text-sm text-on-surface-variant">
                                     {{ $booking->created_at->format('d/m/Y H:i') }}
                                 </td>
                                 <td class="py-3.5 px-4 text-right pr-6">
-                                    <div class="flex justify-end items-center gap-1">
-                                        <a href="{{ route('admin.bookings.show', $booking->id) }}"
-                                            class="inline-flex items-center justify-center w-8 h-8 rounded-lg text-primary hover:bg-primary/10 transition-colors" title="Xem chi tiết">
-                                            <span class="material-symbols-outlined" style="font-size:18px;">visibility</span>
-                                        </a>
-                                        @if($booking->booking_status === 'pending')
-                                            <form method="POST" action="{{ route('admin.bookings.confirm', $booking->id) }}">
-                                                @csrf @method('PATCH')
-                                                <button type="submit" class="inline-flex items-center justify-center w-8 h-8 rounded-lg text-emerald-600 hover:bg-emerald-50 transition-colors" title="Xác nhận">
-                                                    <span class="material-symbols-outlined" style="font-size:18px;">check_circle</span>
-                                                </button>
-                                            </form>
-                                            <form method="POST" action="{{ route('admin.bookings.cancel', $booking->id) }}" onsubmit="return confirm('Hủy đơn hàng này?')">
-                                                @csrf @method('PATCH')
-                                                <button type="submit" class="inline-flex items-center justify-center w-8 h-8 rounded-lg text-red-500 hover:bg-red-50 transition-colors" title="Hủy đơn">
-                                                    <span class="material-symbols-outlined" style="font-size:18px;">cancel</span>
-                                                </button>
-                                            </form>
-                                        @endif
-                                    </div>
+                                    <a href="{{ route('admin.bookings.show', $booking->id) }}"
+                                        class="inline-flex items-center justify-center w-8 h-8 rounded-lg text-primary hover:bg-primary/10 transition-colors" title="Xem chi tiết">
+                                        <span class="material-symbols-outlined" style="font-size:18px;">visibility</span>
+                                    </a>
                                 </td>
                             </tr>
                         @endforeach

@@ -138,8 +138,6 @@ Route::prefix('admin')->group(function () {
         // 11. Quản lý Vé & Đơn Hàng
         Route::get('bookings', [BookingController::class, 'index'])->name('admin.bookings.index');
         Route::get('bookings/{id}', [BookingController::class, 'show'])->name('admin.bookings.show');
-        Route::patch('bookings/{id}/confirm', [BookingController::class, 'confirm'])->name('admin.bookings.confirm');
-        Route::patch('bookings/{id}/cancel', [BookingController::class, 'cancel'])->name('admin.bookings.cancel');
 
 
     });

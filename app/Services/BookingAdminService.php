@@ -41,10 +41,6 @@ class BookingAdminService
             $query->where('payment_status', $filters['payment_status']);
         }
 
-        if (!empty($filters['booking_status'])) {
-            $query->where('booking_status', $filters['booking_status']);
-        }
-
         if (!empty($filters['show_date_from'])) {
             $query->whereHas('showtime', fn($q) => $q->where('show_date', '>=', $filters['show_date_from']));
         }
@@ -83,13 +79,6 @@ class BookingAdminService
             'promotion',
             'payments',
         ])->findOrFail($id);
-    }
-
-    public function updateStatus(int $id, string $status): Booking
-    {
-        $booking = Booking::findOrFail($id);
-        $booking->update(['booking_status' => $status]);
-        return $booking;
     }
 
     public function getCinemas()
