@@ -174,16 +174,26 @@
                                             {{ $user->created_at?->format('d/m/Y') }}</td>
                                         <td class="py-4 px-6 text-right whitespace-nowrap">
                                             <div class="flex gap-2 items-center justify-end whitespace-nowrap">
-                                                <a href="{{ route('admin.users.edit', $user) }}"
+                                                <a href="{{ route('admin.users.edit', [
+                                                    'user' => $user,
+                                                    'return' => urlencode(request()->fullUrl()),
+                                                ]) }}"
                                                     class="inline-flex items-center gap-1.5 text-xs font-bold px-3 py-2 rounded-lg bg-blue-50 text-blue-600 hover:bg-blue-600 hover:text-white hover:shadow-sm transition-all duration-200 whitespace-nowrap">
                                                     <span class="material-symbols-outlined"
                                                         style="font-size: 15px;">edit</span> Sửa
                                                 </a>
                                                 <button type="button"
-                                                    onclick="openDeleteModal('{{ route('admin.users.destroy', $user) }}', '{{ addslashes($user->full_name) }}')"
+                                                    onclick="openDeleteModal(
+                                                        '{{ route('admin.users.destroy', [
+                                                            'user' => $user,
+                                                            'return' => urlencode(request()->fullUrl()),
+                                                        ]) }}',
+                                                        '{{ addslashes($user->full_name) }}'
+                                                    )"
                                                     class="inline-flex items-center gap-1.5 text-xs font-bold px-3 py-2 rounded-lg bg-red-50 text-red-600 hover:bg-red-600 hover:text-white hover:shadow-sm transition-all duration-200 whitespace-nowrap">
                                                     <span class="material-symbols-outlined"
-                                                        style="font-size: 15px;">delete</span> Xóa
+                                                        style="font-size: 15px;">delete</span>
+                                                    Xóa
                                                 </button>
                                             </div>
                                         </td>

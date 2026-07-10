@@ -123,7 +123,13 @@ class UserController extends Controller
         $user->update($validated);
         $user->roles()->sync($validated['roles'] ?? []);
 
-        return redirect()->route('admin.users.index')
+        if ($request->filled('return')) {
+            return redirect(urldecode($request->return))
+                ->with('success', 'Cập nhật người dùng thành công.');
+        }
+
+        return redirect()
+            ->route('admin.users.index')
             ->with('success', 'Cập nhật người dùng thành công.');
     }
 
