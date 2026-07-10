@@ -24,13 +24,29 @@
     /* ── Screen indicator ─── */
     .screen-bar { height: 6px; background: linear-gradient(90deg, #93c5fd, #3b82f6, #93c5fd); border-radius: 4px; }
 
-    /* ── Print styles ─── */
+    /* ── Print styles — Máy in nhiệt 80mm ─── */
     @media print {
-        body > *:not(#print-area) { display: none !important; }
-        #print-area { display: block !important; }
-        .no-print { display: none !important; }
+        /* Ẩn toàn bộ giao diện POS, chỉ hiện khu vực vé */
+        body > *         { display: none !important; }
+        #print-ticket-area { display: block !important; }
+        .no-print        { display: none !important; }
+
+        /* Chuẩn khổ giấy 80mm cho máy in nhiệt */
+        @page {
+            size: 80mm auto;
+            margin: 0;
+        }
+        #print-ticket-area {
+            width: 72mm;        /* 80mm trừ lề 2 bên 4mm */
+            margin: 0 auto;
+            padding: 4mm 2mm;
+            font-family: 'Courier New', Courier, monospace;
+            font-size: 11pt;
+            color: #000;
+        }
     }
-    #print-area { display: none; }
+    /* Ẩn trong giao diện thường */
+    #print-ticket-area { display: none; }
 </style>
 @endpush
 
@@ -289,21 +305,175 @@
 </div>
 
 {{-- ════════════════════════════════════════════════════════════
-     KHU VỰC IN VÉ (ẩn, chỉ hiện khi print)
+     PHẦN 2: KHU VỰC IN VÉ NHIỆT 80mm (ẩn trong giao diện, hiện khi print)
 ════════════════════════════════════════════════════════════ --}}
-<div id="print-area">
-    <div style="font-family: monospace; font-size: 12px; padding: 16px; max-width: 300px;">
-        <div style="text-align:center; margin-bottom:12px;">
-            <h1 style="font-size:18px; font-weight:900; margin:0;">FilmGo</h1>
-            <p style="margin:2px 0; font-size:11px;" id="print-cinema"></p>
-            <p style="margin:2px 0; font-size:11px;">Hotline: 1900 xxxx</p>
-            <hr style="border:1px dashed #000; margin:8px 0">
+<div id="print-ticket-area">
+    {{-- Header rạp --}}
+    <div style="text-align:center; border-bottom:2px solid #000; padding-bottom:6px; margin-bottom:8px;">
+        <div style="font-size:20pt; font-weight:900; letter-spacing:2px;">★ FilmGo ★</div>
+        <div id="pt-cinema" style="font-size:10pt; margin-top:2px;"></div>
+        <div style="font-size:9pt; color:#444;">Hotline: 1900 xxxx</div>
+    </div>
+
+    {{-- Thông tin vé --}}
+    <div style="margin-bottom:8px;">
+        <div style="font-size:9pt; text-align:center; letter-spacing:1px; color:#555; margin-bottom:4px;">── VÉ XEM PHIM ──</div>
+        <table style="width:100%; font-size:10pt; border-collapse:collapse;">
+            <tr><td style="width:35%; color:#555;">Mã vé:</td>   <td id="pt-code"  style="font-weight:900;"></td></tr>
+            <tr><td style="color:#555;">Phim:</td>               <td id="pt-movie" style="font-weight:700;"></td></tr>
+            <tr><td style="color:#555;">Ngày:</td>               <td id="pt-date"></td></tr>
+            <tr><td style="color:#555;">Giờ:</td>                <td id="pt-time"  style="font-weight:700;"></td></tr>
+            <tr><td style="color:#555;">Phòng:</td>              <td id="pt-room"></td></tr>
+        </table>
+    </div>
+
+    {{-- Ghế --}}
+    <div style="border-top:1px dashed #000; border-bottom:1px dashed #000; padding:6px 0; margin-bottom:8px;">
+        <div style="font-size:9pt; font-weight:700; margin-bottom:4px;">GHẾ NGỒI</div>
+        <div id="pt-seats" style="font-size:10pt;"></div>
+    </div>
+
+    {{-- Combo F&B --}}
+    <div id="pt-combo-wrap" style="border-bottom:1px dashed #000; padding-bottom:6px; margin-bottom:8px; display:none;">
+        <div style="font-size:9pt; font-weight:700; margin-bottom:4px;">BẮP NƯỚC (F&B)</div>
+        <div id="pt-combos" style="font-size:10pt;"></div>
+    </div>
+
+    {{-- Tổng tiền --}}
+    <div style="margin-bottom:8px;">
+        <table style="width:100%; font-size:10pt;">
+            <tr id="pt-discount-row" style="display:none; color:#e53e3e;">
+                <td>Giảm giá:</td><td id="pt-discount" style="text-align:right;"></td>
+            </tr>
+            <tr style="font-size:13pt; font-weight:900; border-top:1px solid #000;">
+                <td>TỔNG CỘNG:</td><td id="pt-total" style="text-align:right;"></td>
+            </tr>
+            <tr style="font-size:9pt; color:#555;">
+                <td>Thanh toán:</td><td id="pt-method" style="text-align:right;"></td>
+            </tr>
+        </table>
+    </div>
+
+    {{-- Mã QR vé điện tử --}}
+    <div style="text-align:center; border-top:1px dashed #000; padding-top:8px;">
+        <div style="font-size:9pt; color:#555; margin-bottom:4px;">Quét mã để nhận vé điện tử</div>
+        <div id="pt-qr-print" style="display:inline-block;"></div>
+        <div id="pt-qr-text" style="font-size:8pt; color:#555; margin-top:4px; word-break:break-all;"></div>
+    </div>
+
+    {{-- Footer --}}
+    <div style="text-align:center; border-top:2px solid #000; margin-top:10px; padding-top:6px; font-size:9pt; color:#555;">
+        <p style="margin:2px 0;">Cảm ơn quý khách đã đến FilmGo!</p>
+        <p style="margin:2px 0;">Vui lòng giữ vé khi vào rạp.</p>
+        <p style="margin:4px 0; font-size:8pt;">★ Chúc quý khách xem phim vui vẻ ★</p>
+    </div>
+</div>
+
+{{-- ════════════════════════════════════════════════════════════
+     PHẦN 1: MODAL THÀNH CÔNG SAU THANH TOÁN
+     Hiển thị sau khi confirmCheckout() thành công
+════════════════════════════════════════════════════════════ --}}
+<div id="success-modal"
+     class="hidden fixed inset-0 z-[60] flex items-center justify-center no-print"
+     role="dialog" aria-modal="true" aria-labelledby="success-modal-title">
+
+    {{-- Overlay đen mờ --}}
+    <div class="absolute inset-0 bg-black/60 backdrop-blur-sm"></div>
+
+    {{-- Card nội dung --}}
+    <div class="relative bg-white rounded-2xl shadow-2xl w-full max-w-md mx-4 overflow-hidden
+                transform transition-all duration-300 scale-100">
+
+        {{-- ── Phần header: Checkmark + Booking Code ── --}}
+        <div class="bg-gradient-to-br from-green-500 to-emerald-600 px-6 pt-8 pb-6 text-center">
+            {{-- Animated checkmark --}}
+            <div class="w-20 h-20 bg-white/20 rounded-full flex items-center justify-center mx-auto mb-4
+                        ring-4 ring-white/30 animate-pulse">
+                <span class="material-symbols-outlined text-white" style="font-size:48px; font-variation-settings:'FILL' 1;">check_circle</span>
+            </div>
+            <h2 id="success-modal-title" class="text-2xl font-black text-white tracking-wide">Thanh Toán Thành Công!</h2>
+            <p class="text-green-100 text-sm mt-1">Giao dịch đã được xác nhận</p>
+            {{-- Booking code badge --}}
+            <div class="mt-4 inline-flex items-center gap-2 bg-white/20 border border-white/30
+                        rounded-full px-5 py-2">
+                <span class="material-symbols-outlined text-white text-base">confirmation_number</span>
+                <span class="text-white font-mono font-black text-lg tracking-widest"
+                      id="success-booking-code">—</span>
+            </div>
         </div>
-        <div id="print-content"></div>
-        <div style="text-align:center; margin-top:12px;">
-            <hr style="border:1px dashed #000; margin:8px 0">
-            <p style="font-size:10px; color:#666;">Cảm ơn quý khách đã sử dụng dịch vụ!</p>
-            <p style="font-size:10px; color:#666;">Vui lòng giữ vé để kiểm soát vé vào rạp.</p>
+
+        {{-- ── Thông tin tóm tắt ── --}}
+        <div class="px-6 py-4 bg-gray-50 border-b border-gray-100 text-sm">
+            <div class="grid grid-cols-2 gap-2">
+                <div>
+                    <p class="text-xs text-gray-500 uppercase tracking-wider font-semibold">Phim</p>
+                    <p id="success-movie" class="font-bold text-gray-900 mt-0.5 leading-tight"></p>
+                </div>
+                <div>
+                    <p class="text-xs text-gray-500 uppercase tracking-wider font-semibold">Suất chiếu</p>
+                    <p id="success-time" class="font-bold text-gray-900 mt-0.5"></p>
+                </div>
+                <div>
+                    <p class="text-xs text-gray-500 uppercase tracking-wider font-semibold">Ghế</p>
+                    <p id="success-seats" class="font-bold text-gray-900 mt-0.5"></p>
+                </div>
+                <div>
+                    <p class="text-xs text-gray-500 uppercase tracking-wider font-semibold">Tổng tiền</p>
+                    <p id="success-total" class="font-black text-green-600 text-base mt-0.5"></p>
+                </div>
+            </div>
+        </div>
+
+        {{-- ── Khu vực hiển thị mã QR điện tử (mặc định ẩn) ── --}}
+        <div id="qr-display-area" class="hidden px-6 py-4 border-b border-gray-100 text-center">
+            <p class="text-xs text-gray-500 font-semibold uppercase tracking-wider mb-3">
+                Khách quét để nhận vé điện tử
+            </p>
+            <div id="qr-code-container" class="flex justify-center mb-2"></div>
+            <p id="qr-booking-code-label" class="text-[10px] font-mono text-gray-400"></p>
+        </div>
+
+        {{-- ── 3 nút hành động ── --}}
+        <div class="px-6 py-4 space-y-3">
+            <div class="grid grid-cols-2 gap-3">
+                {{-- Nút 1: In vé giấy --}}
+                <button id="btn-print-ticket"
+                        onclick="POS.handlePrintTicket()"
+                        class="flex flex-col items-center gap-1.5 px-4 py-3.5
+                               border-2 border-blue-600 text-blue-700 bg-blue-50
+                               rounded-xl font-bold text-sm
+                               hover:bg-blue-100 hover:border-blue-700
+                               active:scale-95 transition-all duration-150">
+                    <span class="material-symbols-outlined text-blue-600" style="font-size:26px;">print</span>
+                    <span>In Vé Giấy</span>
+                    <span class="text-[10px] font-normal text-blue-500">Máy in 80mm</span>
+                </button>
+
+                {{-- Nút 2: Quét mã QR --}}
+                <button id="btn-show-qr"
+                        onclick="POS.handleShowQR()"
+                        class="flex flex-col items-center gap-1.5 px-4 py-3.5
+                               bg-blue-700 text-white
+                               rounded-xl font-bold text-sm
+                               hover:bg-blue-800
+                               active:scale-95 transition-all duration-150">
+                    <span class="material-symbols-outlined" style="font-size:26px;">qr_code_scanner</span>
+                    <span>Vé Điện Tử</span>
+                    <span class="text-[10px] font-normal text-blue-200">Khách quét QR</span>
+                </button>
+            </div>
+
+            {{-- Nút 3: Hoàn tất & Tạo đơn mới --}}
+            <button id="btn-new-order"
+                    onclick="POS.resetPOS()"
+                    class="w-full flex items-center justify-center gap-2
+                           py-3.5 bg-gray-900 hover:bg-gray-700
+                           text-white font-black text-sm rounded-xl
+                           active:scale-[0.98] transition-all duration-150">
+                <span class="material-symbols-outlined" style="font-size:20px;">add_circle</span>
+                Hoàn Tất & Tạo Đơn Mới
+                <kbd class="ml-1 px-1.5 py-0.5 text-[9px] bg-white/20 rounded font-mono">F2</kbd>
+            </button>
         </div>
     </div>
 </div>
@@ -315,20 +485,23 @@
 @endsection
 
 @push('scripts')
+{{-- Thư viện tạo mã QR điện tử --}}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <script>
 const POS = (() => {
     'use strict';
 
     // ── State ─────────────────────────────────────────────────────────────────
     const state = {
-        cinemaId:      {{ $cinemaId }},
-        selectedSeats: [], // [{showtime_seat_id, label, type, price}, ...]
-        combos:        {}, // {combo_id: qty}
-        comboInfo:     {}, // {combo_id: {name, price}}
-        voucher:       null, // {code, discount_type, discount_value}
+        cinemaId:        {{ $cinemaId }},
+        selectedSeats:   [], // [{showtime_seat_id, label, type, price}, ...]
+        combos:          {}, // {combo_id: qty}
+        comboInfo:       {}, // {combo_id: {name, price}}
+        voucher:         null, // {code, discount_type, discount_value}
         currentShowtime: null,
-        paymentMethod: 'cash',
-        csrfToken:     document.querySelector('meta[name="csrf-token"]').content,
+        currentBooking:  null, // lưu booking sau khi checkout thành công
+        paymentMethod:   'cash',
+        csrfToken:       document.querySelector('meta[name="csrf-token"]').content,
     };
 
     // ── API helpers ───────────────────────────────────────────────────────────
@@ -723,24 +896,13 @@ const POS = (() => {
             if (!data.success) throw new Error(data.message);
 
             closeCheckout();
-            toast('Bán vé thành công! Đang in vé...', 'success');
 
-            // In vé
-            printReceipt(data.booking);
+            // ── Hiển thị modal thành công — thay vì in ngay lập tức ──
+            openSuccessModal(data.booking);
 
-            // Reset state
-            state.selectedSeats = [];
-            state.combos = {};
-            state.comboInfo = {};
-            state.voucher = null;
-            removeVoucher();
-            // Reset combo qty displays
-            document.querySelectorAll('[id^="combo-qty-"]').forEach(el => el.textContent = '0');
-            updateCart();
-
-            // Reload seat map để cập nhật trạng thái ghế
+            // Reload seat map (chạy nền, không cần chờ)
             if (state.currentShowtime) {
-                setTimeout(() => loadSeatMap(state.currentShowtime.id), 1000);
+                setTimeout(() => loadSeatMap(state.currentShowtime.id), 800);
             }
 
         } catch (err) {
@@ -751,48 +913,149 @@ const POS = (() => {
         }
     }
 
-    // ── In vé ─────────────────────────────────────────────────────────────
-    function printReceipt(booking) {
-        document.getElementById('print-cinema').textContent = booking.showtime?.cinema || '';
+    // printReceipt() cũ đã được thay bằng handlePrintTicket() dùng layout in mới (pt-*)
+    // Giữ lại dòng trống để tránh lệch số dòng khi diff
 
-        const seatsHtml = booking.seats.map(s => `
-            <div style="margin-bottom:6px; padding-bottom:6px; border-bottom:1px dashed #eee;">
-                <b>Ghế ${s.label}</b> (${s.type})<br>
-                Giá: ${formatMoney(s.price)}<br>
-                QR: <code style="font-size:10px">${s.qr}</code>
-            </div>
-        `).join('');
+    // ── Giao diện & Logic sau thanh toán thành công ────────────────────────
+    function openSuccessModal(booking) {
+        state.currentBooking = booking;
 
-        const combosHtml = booking.combos.length
-            ? booking.combos.map(c => `<div>${c.name} x${c.quantity}: ${formatMoney(c.subtotal)}</div>`).join('')
-            : '';
+        // Cập nhật thông tin cơ bản lên modal
+        document.getElementById('success-booking-code').textContent = booking.booking_code;
+        document.getElementById('success-movie').textContent = booking.showtime?.movie || '';
+        document.getElementById('success-time').textContent = `${booking.showtime?.show_date || ''} ${booking.showtime?.start_time || ''}`;
+        
+        const seatLabels = booking.seats ? booking.seats.map(s => s.label).join(', ') : '';
+        document.getElementById('success-seats').textContent = seatLabels;
+        document.getElementById('success-total').textContent = formatMoney(booking.final_total ?? booking.total_amount);
 
-        document.getElementById('print-content').innerHTML = `
-            <div style="margin-bottom:8px;">
-                <b>Mã đặt vé:</b> ${booking.booking_code}<br>
-                <b>Phim:</b> ${booking.showtime?.movie}<br>
-                <b>Ngày:</b> ${booking.showtime?.show_date}<br>
-                <b>Giờ:</b> ${booking.showtime?.start_time}<br>
-                <b>Phòng:</b> ${booking.showtime?.room}<br>
-            </div>
-            <hr style="border:1px dashed #000; margin:8px 0">
-            ${seatsHtml}
-            ${combosHtml ? `<hr style="border:1px dashed #000; margin:8px 0"><b>Combo:</b><br>${combosHtml}` : ''}
-            <hr style="border:1px dashed #000; margin:8px 0">
-            <div style="font-size:13px;">
-                <div style="display:flex; justify-content:space-between;">
-                    <b>Giảm giá:</b><span>-${formatMoney(booking.discount_amount || 0)}</span>
+        // Ẩn vùng hiển thị QR code cũ
+        document.getElementById('qr-display-area').classList.add('hidden');
+        document.getElementById('qr-code-container').innerHTML = '';
+
+        // Hiển thị modal thành công
+        document.getElementById('success-modal').classList.remove('hidden');
+    }
+
+    function handlePrintTicket() {
+        const booking = state.currentBooking;
+        if (!booking) return;
+
+        // Điền thông tin vào khu vực in vé
+        document.getElementById('pt-cinema').textContent = booking.showtime?.cinema || '';
+        document.getElementById('pt-code').textContent = booking.booking_code;
+        document.getElementById('pt-movie').textContent = booking.showtime?.movie || '';
+        document.getElementById('pt-date').textContent = booking.showtime?.show_date || '';
+        document.getElementById('pt-time').textContent = booking.showtime?.start_time || '';
+        document.getElementById('pt-room').textContent = booking.showtime?.room || '';
+
+        const seatLabels = booking.seats ? booking.seats.map(s => `${s.label} (${s.type})`).join(', ') : '';
+        document.getElementById('pt-seats').textContent = seatLabels;
+
+        const comboWrap = document.getElementById('pt-combo-wrap');
+        const combosDiv = document.getElementById('pt-combos');
+        if (booking.combos && booking.combos.length > 0) {
+            comboWrap.style.display = 'block';
+            combosDiv.innerHTML = booking.combos.map(c => `
+                <div style="display:flex; justify-content:space-between; margin-bottom: 2px;">
+                    <span>${c.name} x${c.quantity}</span>
+                    <span>${formatMoney(c.subtotal)}</span>
                 </div>
-                <div style="display:flex; justify-content:space-between; font-size:15px; margin-top:4px;">
-                    <b>TỔNG CỘNG:</b><b>${formatMoney(booking.total_amount)}</b>
-                </div>
-                <div style="font-size:11px; margin-top:4px;">
-                    Thanh toán: ${booking.payment_method === 'cash' ? 'Tiền mặt' : 'Chuyển khoản'}
-                </div>
-            </div>
-        `;
+            `).join('');
+        } else {
+            comboWrap.style.display = 'none';
+        }
 
-        setTimeout(() => window.print(), 300);
+        const discountRow = document.getElementById('pt-discount-row');
+        if (booking.discount_amount > 0) {
+            discountRow.style.display = 'table-row';
+            document.getElementById('pt-discount').textContent = '-' + formatMoney(booking.discount_amount);
+        } else {
+            discountRow.style.display = 'none';
+        }
+
+        document.getElementById('pt-total').textContent = formatMoney(booking.final_total ?? booking.total_amount);
+        document.getElementById('pt-method').textContent = booking.payment_method === 'cash' ? 'Tiền mặt' : 'Chuyển khoản';
+
+        // Tạo mã QR Code trên bản in
+        const qrPrintDiv = document.getElementById('pt-qr-print');
+        qrPrintDiv.innerHTML = '';
+        const qrContent = booking.seats && booking.seats[0] ? booking.seats[0].qr : booking.booking_code;
+        
+        if (typeof QRCode !== 'undefined') {
+            new QRCode(qrPrintDiv, {
+                text: qrContent,
+                width: 90,
+                height: 90,
+                correctLevel: QRCode.CorrectLevel.M
+            });
+        }
+        document.getElementById('pt-qr-text').textContent = booking.booking_code;
+
+        // Gọi lệnh in hệ thống
+        setTimeout(() => {
+            window.print();
+        }, 250);
+    }
+
+    function handleShowQR() {
+        const booking = state.currentBooking;
+        if (!booking) return;
+
+        const qrArea = document.getElementById('qr-display-area');
+        const container = document.getElementById('qr-code-container');
+
+        qrArea.classList.remove('hidden');
+        container.innerHTML = '';
+
+        // Ưu tiên dùng QR của ghế đầu tiên, nếu không dùng mã booking
+        const qrString = booking.seats && booking.seats[0] ? booking.seats[0].qr : `FILMGO-${booking.booking_code}`;
+
+        if (typeof QRCode !== 'undefined') {
+            new QRCode(container, {
+                text: qrString,
+                width: 160,
+                height: 160,
+                colorDark: "#1e3a8a",
+                colorLight: "#ffffff",
+                correctLevel: QRCode.CorrectLevel.H
+            });
+        } else {
+            container.innerHTML = `<span class="text-xs text-red-500">Lỗi: Chưa tải được thư viện QRCode</span>`;
+        }
+
+        document.getElementById('qr-booking-code-label').textContent = `Mã booking: ${booking.booking_code}`;
+        toast("Đã tạo mã QR vé điện tử thành công!", "success");
+    }
+
+    function resetPOS() {
+        // Ẩn modal thành công
+        document.getElementById('success-modal').classList.add('hidden');
+
+        // Reset giỏ hàng và voucher
+        state.selectedSeats = [];
+        state.combos = {};
+        state.voucher = null;
+        state.currentBooking = null;
+
+        // Reset hiển thị số lượng combo về 0
+        document.querySelectorAll('[id^="combo-qty-"]').forEach(el => {
+            el.textContent = '0';
+        });
+
+        // Reset các trường nhập liệu
+        document.getElementById('voucher-input').value = '';
+        const voucherInfo = document.getElementById('voucher-info');
+        if (voucherInfo) voucherInfo.classList.add('hidden');
+        document.getElementById('customer-phone').value = '';
+
+        // Tải lại sơ đồ ghế để giải phóng/cập nhật trạng thái mới nhất
+        if (state.currentShowtime) {
+            loadSeatMap(state.currentShowtime.id);
+        }
+
+        updateCart();
+        toast("Đã sẵn sàng đón khách tiếp theo!", "success");
     }
 
     // ── Format tiền ──────────────────────────────────────────────────────
@@ -804,10 +1067,27 @@ const POS = (() => {
     function init() {
         loadMovies();
         document.getElementById('pos-date').addEventListener('change', loadMovies);
+
+        // Phím tắt F2: Tạo đơn mới nhanh khi đang hiển thị modal thành công
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'F2') {
+                e.preventDefault();
+                if (!document.getElementById('success-modal').classList.contains('hidden')) {
+                    resetPOS();
+                }
+            }
+        });
     }
 
     // Public API
-    return { init, loadMovies, loadSeatMap, toggleSeat, changeCombo, applyVoucher, removeVoucher, openCheckout, closeCheckout, selectPayment, calcChange, confirmCheckout };
+    return {
+        init, loadMovies, loadSeatMap, toggleSeat,
+        changeCombo, applyVoucher, removeVoucher,
+        openCheckout, closeCheckout, selectPayment, calcChange,
+        confirmCheckout,
+        openSuccessModal,
+        handlePrintTicket, handleShowQR, resetPOS,
+    };
 })();
 
 document.addEventListener('DOMContentLoaded', POS.init);

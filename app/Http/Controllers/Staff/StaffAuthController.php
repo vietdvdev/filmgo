@@ -14,7 +14,7 @@ class StaffAuthController extends Controller
         if (Auth::check()) {
             $user = Auth::user();
             if ($user->roles()->where('name', 'staff')->exists()) {
-                return redirect()->route('staff.showtimes.index');
+                return redirect()->route('staff.pos.index');
             }
             Auth::logout();
             request()->session()->invalidate();
@@ -57,7 +57,7 @@ class StaffAuthController extends Controller
             }
 
             $request->session()->regenerate();
-            return redirect()->intended(route('staff.showtimes.index'));
+            return redirect()->intended(route('staff.pos.index'));
         }
 
         throw ValidationException::withMessages([
