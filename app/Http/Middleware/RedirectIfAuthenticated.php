@@ -28,9 +28,9 @@ class RedirectIfAuthenticated
                 return redirect()->route('manager.dashboard');
             }
 
-            // Staff → Staff Portal
+            // Staff → Staff POS (màn hình làm việc chính)
             if ($user->roles()->where('name', 'staff')->exists()) {
-                return redirect()->route('staff.showtimes.index');
+                return redirect()->route('staff.pos.index');
             }
 
             // Customer hoặc các role khác → Trang chủ

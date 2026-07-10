@@ -168,17 +168,21 @@ class CounterBookingService
             } while (Booking::where('booking_code', $bookingCode)->exists());
 
             // ── 8. Tạo đơn Booking — hoàn tất ngay, không cần callback ──
+            $subtotal = $totalSeatPrice + $totalComboPrice; // Trước khi giảm giá
+
             $booking = Booking::create([
                 'user_id'         => $customerId,
                 'staff_id'        => $staffId,
                 'showtime_id'     => $showtimeId,
                 'booking_code'    => $bookingCode,
-                'total_amount'    => $totalAmount,
+                'subtotal'        => $subtotal,         // Tổng trước giảm giá
+                'total_amount'    => $subtotal,         // Giá gốc (không áp giảm)
                 'discount_amount' => $discountAmount,
-                'payment_status'  => 'paid',        // Hoàn tất ngay tại quầy
-                'booking_status'  => 'confirmed',   // Xác nhận ngay, không chờ IPN
-                'channel'         => 'counter',     // Kênh tại quầy
-                'expired_at'      => now()->addMinutes(30), // Giữ bản ghi lịch sử
+                'final_total'     => $totalAmount,      // Số tiền thực thu sau giảm giá
+                'payment_status'  => 'paid',            // Hoàn tất ngay tại quầy
+                'booking_status'  => 'confirmed',       // Xác nhận ngay, không chờ IPN
+                'channel'         => 'counter',         // Kênh tại quầy
+                'expired_at'      => now()->addMinutes(30),
             ]);
 
             // ── 9. Tạo Booking Details + Tickets + khóa ghế ─────────────
@@ -197,8 +201,10 @@ class CounterBookingService
                 ]);
 
                 // Chốt ghế = booked ngay (khác với online là để holding)
+                // Ghi lại giá đã giao dịch để audit/báo cáo
                 $ss->update([
                     'status'     => 'booked',
+                    'price'      => $seatsPricing[$ss->id], // Snapshot giá tại thời điểm bán
                     'user_id'    => $customerId ?? $staffId,
                     'locked_at'  => now(),
                     'expires_at' => null,

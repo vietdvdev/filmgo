@@ -493,14 +493,15 @@ const POS = (() => {
 
     // ── State ─────────────────────────────────────────────────────────────────
     const state = {
-        cinemaId:      {{ $cinemaId }},
-        selectedSeats: [], // [{showtime_seat_id, label, type, price}, ...]
-        combos:        {}, // {combo_id: qty}
-        comboInfo:     {}, // {combo_id: {name, price}}
-        voucher:       null, // {code, discount_type, discount_value}
+        cinemaId:        {{ $cinemaId }},
+        selectedSeats:   [], // [{showtime_seat_id, label, type, price}, ...]
+        combos:          {}, // {combo_id: qty}
+        comboInfo:       {}, // {combo_id: {name, price}}
+        voucher:         null, // {code, discount_type, discount_value}
         currentShowtime: null,
-        paymentMethod: 'cash',
-        csrfToken:     document.querySelector('meta[name="csrf-token"]').content,
+        currentBooking:  null, // lưu booking sau khi checkout thành công
+        paymentMethod:   'cash',
+        csrfToken:       document.querySelector('meta[name="csrf-token"]').content,
     };
 
     // ── API helpers ───────────────────────────────────────────────────────────
@@ -912,48 +913,149 @@ const POS = (() => {
         }
     }
 
-    // ── In vé ─────────────────────────────────────────────────────────────
-    function printReceipt(booking) {
-        document.getElementById('print-cinema').textContent = booking.showtime?.cinema || '';
+    // printReceipt() cũ đã được thay bằng handlePrintTicket() dùng layout in mới (pt-*)
+    // Giữ lại dòng trống để tránh lệch số dòng khi diff
 
-        const seatsHtml = booking.seats.map(s => `
-            <div style="margin-bottom:6px; padding-bottom:6px; border-bottom:1px dashed #eee;">
-                <b>Ghế ${s.label}</b> (${s.type})<br>
-                Giá: ${formatMoney(s.price)}<br>
-                QR: <code style="font-size:10px">${s.qr}</code>
-            </div>
-        `).join('');
+    // ── Giao diện & Logic sau thanh toán thành công ────────────────────────
+    function openSuccessModal(booking) {
+        state.currentBooking = booking;
 
-        const combosHtml = booking.combos.length
-            ? booking.combos.map(c => `<div>${c.name} x${c.quantity}: ${formatMoney(c.subtotal)}</div>`).join('')
-            : '';
+        // Cập nhật thông tin cơ bản lên modal
+        document.getElementById('success-booking-code').textContent = booking.booking_code;
+        document.getElementById('success-movie').textContent = booking.showtime?.movie || '';
+        document.getElementById('success-time').textContent = `${booking.showtime?.show_date || ''} ${booking.showtime?.start_time || ''}`;
+        
+        const seatLabels = booking.seats ? booking.seats.map(s => s.label).join(', ') : '';
+        document.getElementById('success-seats').textContent = seatLabels;
+        document.getElementById('success-total').textContent = formatMoney(booking.final_total ?? booking.total_amount);
 
-        document.getElementById('print-content').innerHTML = `
-            <div style="margin-bottom:8px;">
-                <b>Mã đặt vé:</b> ${booking.booking_code}<br>
-                <b>Phim:</b> ${booking.showtime?.movie}<br>
-                <b>Ngày:</b> ${booking.showtime?.show_date}<br>
-                <b>Giờ:</b> ${booking.showtime?.start_time}<br>
-                <b>Phòng:</b> ${booking.showtime?.room}<br>
-            </div>
-            <hr style="border:1px dashed #000; margin:8px 0">
-            ${seatsHtml}
-            ${combosHtml ? `<hr style="border:1px dashed #000; margin:8px 0"><b>Combo:</b><br>${combosHtml}` : ''}
-            <hr style="border:1px dashed #000; margin:8px 0">
-            <div style="font-size:13px;">
-                <div style="display:flex; justify-content:space-between;">
-                    <b>Giảm giá:</b><span>-${formatMoney(booking.discount_amount || 0)}</span>
+        // Ẩn vùng hiển thị QR code cũ
+        document.getElementById('qr-display-area').classList.add('hidden');
+        document.getElementById('qr-code-container').innerHTML = '';
+
+        // Hiển thị modal thành công
+        document.getElementById('success-modal').classList.remove('hidden');
+    }
+
+    function handlePrintTicket() {
+        const booking = state.currentBooking;
+        if (!booking) return;
+
+        // Điền thông tin vào khu vực in vé
+        document.getElementById('pt-cinema').textContent = booking.showtime?.cinema || '';
+        document.getElementById('pt-code').textContent = booking.booking_code;
+        document.getElementById('pt-movie').textContent = booking.showtime?.movie || '';
+        document.getElementById('pt-date').textContent = booking.showtime?.show_date || '';
+        document.getElementById('pt-time').textContent = booking.showtime?.start_time || '';
+        document.getElementById('pt-room').textContent = booking.showtime?.room || '';
+
+        const seatLabels = booking.seats ? booking.seats.map(s => `${s.label} (${s.type})`).join(', ') : '';
+        document.getElementById('pt-seats').textContent = seatLabels;
+
+        const comboWrap = document.getElementById('pt-combo-wrap');
+        const combosDiv = document.getElementById('pt-combos');
+        if (booking.combos && booking.combos.length > 0) {
+            comboWrap.style.display = 'block';
+            combosDiv.innerHTML = booking.combos.map(c => `
+                <div style="display:flex; justify-content:space-between; margin-bottom: 2px;">
+                    <span>${c.name} x${c.quantity}</span>
+                    <span>${formatMoney(c.subtotal)}</span>
                 </div>
-                <div style="display:flex; justify-content:space-between; font-size:15px; margin-top:4px;">
-                    <b>TỔNG CỘNG:</b><b>${formatMoney(booking.total_amount)}</b>
-                </div>
-                <div style="font-size:11px; margin-top:4px;">
-                    Thanh toán: ${booking.payment_method === 'cash' ? 'Tiền mặt' : 'Chuyển khoản'}
-                </div>
-            </div>
-        `;
+            `).join('');
+        } else {
+            comboWrap.style.display = 'none';
+        }
 
-        setTimeout(() => window.print(), 300);
+        const discountRow = document.getElementById('pt-discount-row');
+        if (booking.discount_amount > 0) {
+            discountRow.style.display = 'table-row';
+            document.getElementById('pt-discount').textContent = '-' + formatMoney(booking.discount_amount);
+        } else {
+            discountRow.style.display = 'none';
+        }
+
+        document.getElementById('pt-total').textContent = formatMoney(booking.final_total ?? booking.total_amount);
+        document.getElementById('pt-method').textContent = booking.payment_method === 'cash' ? 'Tiền mặt' : 'Chuyển khoản';
+
+        // Tạo mã QR Code trên bản in
+        const qrPrintDiv = document.getElementById('pt-qr-print');
+        qrPrintDiv.innerHTML = '';
+        const qrContent = booking.seats && booking.seats[0] ? booking.seats[0].qr : booking.booking_code;
+        
+        if (typeof QRCode !== 'undefined') {
+            new QRCode(qrPrintDiv, {
+                text: qrContent,
+                width: 90,
+                height: 90,
+                correctLevel: QRCode.CorrectLevel.M
+            });
+        }
+        document.getElementById('pt-qr-text').textContent = booking.booking_code;
+
+        // Gọi lệnh in hệ thống
+        setTimeout(() => {
+            window.print();
+        }, 250);
+    }
+
+    function handleShowQR() {
+        const booking = state.currentBooking;
+        if (!booking) return;
+
+        const qrArea = document.getElementById('qr-display-area');
+        const container = document.getElementById('qr-code-container');
+
+        qrArea.classList.remove('hidden');
+        container.innerHTML = '';
+
+        // Ưu tiên dùng QR của ghế đầu tiên, nếu không dùng mã booking
+        const qrString = booking.seats && booking.seats[0] ? booking.seats[0].qr : `FILMGO-${booking.booking_code}`;
+
+        if (typeof QRCode !== 'undefined') {
+            new QRCode(container, {
+                text: qrString,
+                width: 160,
+                height: 160,
+                colorDark: "#1e3a8a",
+                colorLight: "#ffffff",
+                correctLevel: QRCode.CorrectLevel.H
+            });
+        } else {
+            container.innerHTML = `<span class="text-xs text-red-500">Lỗi: Chưa tải được thư viện QRCode</span>`;
+        }
+
+        document.getElementById('qr-booking-code-label').textContent = `Mã booking: ${booking.booking_code}`;
+        toast("Đã tạo mã QR vé điện tử thành công!", "success");
+    }
+
+    function resetPOS() {
+        // Ẩn modal thành công
+        document.getElementById('success-modal').classList.add('hidden');
+
+        // Reset giỏ hàng và voucher
+        state.selectedSeats = [];
+        state.combos = {};
+        state.voucher = null;
+        state.currentBooking = null;
+
+        // Reset hiển thị số lượng combo về 0
+        document.querySelectorAll('[id^="combo-qty-"]').forEach(el => {
+            el.textContent = '0';
+        });
+
+        // Reset các trường nhập liệu
+        document.getElementById('voucher-input').value = '';
+        const voucherInfo = document.getElementById('voucher-info');
+        if (voucherInfo) voucherInfo.classList.add('hidden');
+        document.getElementById('customer-phone').value = '';
+
+        // Tải lại sơ đồ ghế để giải phóng/cập nhật trạng thái mới nhất
+        if (state.currentShowtime) {
+            loadSeatMap(state.currentShowtime.id);
+        }
+
+        updateCart();
+        toast("Đã sẵn sàng đón khách tiếp theo!", "success");
     }
 
     // ── Format tiền ──────────────────────────────────────────────────────
@@ -983,6 +1085,7 @@ const POS = (() => {
         changeCombo, applyVoucher, removeVoucher,
         openCheckout, closeCheckout, selectPayment, calcChange,
         confirmCheckout,
+        openSuccessModal,
         handlePrintTicket, handleShowQR, resetPOS,
     };
 })();

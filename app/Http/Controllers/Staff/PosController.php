@@ -210,8 +210,9 @@ class PosController extends Controller
     {
         return [
             'booking_code'    => $booking->booking_code,
-            'total_amount'    => $booking->total_amount,
+            'total_amount'    => $booking->total_amount,    // Giá gốc (trước giảm)
             'discount_amount' => $booking->discount_amount,
+            'final_total'     => $booking->final_total,     // Số tiền thực thu
             'payment_method'  => $booking->payments->first()?->payment_method,
             'showtime'        => [
                 'movie'      => $booking->showtime->movie->title,
