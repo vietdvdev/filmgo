@@ -78,6 +78,15 @@
                     </div>
                 </div>
 
+                <!-- Ticket card section for mobile viewing -->
+                <div class="mb-8">
+                    <div class="mb-3 flex items-center justify-between">
+                        <h4 class="text-xs font-black uppercase tracking-[0.3em] text-neutral-500">Vé điện tử của bạn</h4>
+                        <span class="rounded-full bg-emerald-50 px-3 py-1 text-[10px] font-bold uppercase tracking-[0.25em] text-emerald-600">Đã thanh toán</span>
+                    </div>
+                    @include('customer.bookings.partials.ticket-card', ['booking' => $booking])
+                </div>
+
                 <!-- Guidance and Home Navigation -->
                 <div class="bg-indigo-50/50 border border-indigo-100 rounded-2xl p-4 text-left mb-10">
                     <h4 class="text-xs font-black text-indigo-800 uppercase tracking-wider mb-1 flex items-center gap-1">
