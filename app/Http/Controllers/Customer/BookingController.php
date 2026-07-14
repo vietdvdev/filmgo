@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Customer;
 
 use App\Http\Controllers\Controller;
+use App\Jobs\GenerateTicketQrJob;
 use App\Models\Combo;
 use App\Models\Booking;
 use App\Models\IpnLog;
@@ -681,6 +682,10 @@ class BookingController extends Controller
 
             $ticketIds = Ticket::whereIn('booking_detail_id', $booking->bookingDetails()->pluck('id'))->pluck('id');
             Ticket::whereIn('id', $ticketIds)->update(['ticket_status' => 'unused']);
+
+            foreach ($ticketIds as $ticketId) {
+                GenerateTicketQrJob::dispatch($ticketId);
+            }
 
             $showtimeSeatIds = $booking->bookingDetails()->pluck('showtime_seat_id');
             ShowtimeSeat::whereIn('id', $showtimeSeatIds)->update(['status' => 'booked']);
