@@ -81,6 +81,11 @@ Route::middleware('customer')->group(function () {
     // Voucher / Mã khuyến mãi
     Route::post('/booking/showtime/{showtime_id}/voucher/apply', [App\Http\Controllers\Customer\VoucherController::class, 'apply'])->name('booking.voucher.apply');
     Route::post('/booking/showtime/{showtime_id}/voucher/remove', [App\Http\Controllers\Customer\VoucherController::class, 'remove'])->name('booking.voucher.remove');
+
+    // Lịch sử đặt vé
+    Route::get('/booking/history', [App\Http\Controllers\Customer\BookingHistoryController::class, 'index'])->name('booking.history.index');
+    Route::get('/booking/history/{id}', [App\Http\Controllers\Customer\BookingHistoryController::class, 'show'])->name('booking.history.show');
+    Route::get('/booking/history/{id}/invoice', [App\Http\Controllers\Customer\BookingHistoryController::class, 'invoice'])->name('booking.history.invoice');
 });
 
 // Thanh toán callback route không yêu cầu auth để nhận redirect/IPN từ đối tác
