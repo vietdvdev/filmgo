@@ -69,23 +69,31 @@ class PosController extends Controller
         }])
         ->get(['id', 'title', 'poster', 'duration', 'age_limit']);
 
-        // Định dạng lại để frontend dễ tiêu thụ
+        $now = now();
+
+        // Ẩn những suất chiếu đã qua giờ kết thúc thực tế
         $result = $movies->map(fn($movie) => [
             'id'        => $movie->id,
             'title'     => $movie->title,
             'poster'    => $movie->poster,
             'duration'  => $movie->duration,
             'age_limit' => $movie->age_limit,
-            'showtimes' => $movie->showtimes->map(fn($s) => [
-                'id'         => $s->id,
-                'start_time' => substr($s->start_time, 0, 5),
-                'end_time'   => substr($s->end_time, 0, 5),
-                'room_name'  => $s->room->room_name,
-                'room_type'  => $s->room->room_type,
-                'base_price' => $s->base_price,
-                'status'     => $s->status,
-            ]),
-        ]);
+            'showtimes' => $movie->showtimes
+                ->filter(function ($s) use ($now) {
+                    $showDate = \Carbon\Carbon::parse($s->show_date)->toDateString();
+                    if ($showDate !== today()->toDateString()) return true;
+                    return $now->lt(\Carbon\Carbon::parse($showDate . ' ' . $s->end_time));
+                })
+                ->map(fn($s) => [
+                    'id'         => $s->id,
+                    'start_time' => substr($s->start_time, 0, 5),
+                    'end_time'   => substr($s->end_time, 0, 5),
+                    'room_name'  => $s->room->room_name,
+                    'room_type'  => $s->room->room_type,
+                    'base_price' => $s->base_price,
+                    'status'     => $s->status,
+                ])->values(),
+        ])->filter(fn($m) => $m['showtimes']->isNotEmpty())->values();
 
         return response()->json(['data' => $result]);
     }

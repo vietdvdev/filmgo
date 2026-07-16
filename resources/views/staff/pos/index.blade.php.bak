@@ -25,17 +25,19 @@
     .screen-bar { height: 6px; background: linear-gradient(90deg, #93c5fd, #3b82f6, #93c5fd); border-radius: 4px; }
 
     /* ── Print styles — Máy in nhiệt 80mm ─── */
-    @@media print {
-        #pos-root, #checkout-modal, #success-modal, #pos-toast,
-        aside, header { display: none !important; }
+    @media print {
+        /* Ẩn toàn bộ giao diện POS, chỉ hiện khu vực vé */
+        body > *         { display: none !important; }
         #print-ticket-area { display: block !important; }
+        .no-print        { display: none !important; }
 
-        @@page {
+        /* Chuẩn khổ giấy 80mm cho máy in nhiệt */
+        @page {
             size: 80mm auto;
             margin: 0;
         }
         #print-ticket-area {
-            width: 72mm;
+            width: 72mm;        /* 80mm trừ lề 2 bên 4mm */
             margin: 0 auto;
             padding: 4mm 2mm;
             font-family: 'Courier New', Courier, monospace;
@@ -681,15 +683,9 @@ const POS = (() => {
         if (idx > -1) {
             state.selectedSeats.splice(idx, 1);
         } else {
-            if (state.selectedSeats.length >= 10) {
-                toast('Chỉ được chọn tối đa 10 ghế!', 'error');
-                return;
-            }
             state.selectedSeats.push({
                 showtime_seat_id: s.showtime_seat_id,
                 label: s.label,
-                row: s.row,
-                number: s.number,
                 type: s.type,
                 price: s.price,
             });
@@ -816,33 +812,8 @@ const POS = (() => {
     }
 
     // ── Checkout Modal ───────────────────────────────────────────────────
-    function checkSingleSeatRule() {
-        if (!state.seatData) return null;
-        const rows = {};
-        Object.values(state.seatData).forEach(s => {
-            if (!rows[s.row]) rows[s.row] = [];
-            rows[s.row].push(s);
-        });
-        Object.values(rows).forEach(r => r.sort((a, b) => a.number - b.number));
-
-        for (const [row, seats] of Object.entries(rows)) {
-            for (let i = 1; i < seats.length - 1; i++) {
-                const s = seats[i];
-                const isSelected = sel => state.selectedSeats.some(x => x.showtime_seat_id === sel.showtime_seat_id);
-                const isBlocked = sel => ['booked','holding','maintenance'].includes(sel.status) || sel.seat_status === 'maintenance' || isSelected(sel);
-                if (!isBlocked(s) && isBlocked(seats[i - 1]) && isBlocked(seats[i + 1])) {
-                    return `Ghế ${s.label} sẽ bị bỏ trống cô đơn. Vui lòng chọn thêm hoặc bỏ bớt ghế liền kề.`;
-                }
-            }
-        }
-        return null;
-    }
-
     function openCheckout() {
         if (!state.selectedSeats.length || !state.currentShowtime) return;
-
-        const singleSeatErr = checkSingleSeatRule();
-        if (singleSeatErr) { toast(singleSeatErr, 'error'); return; }
         const totals = calcTotals();
 
         document.getElementById('modal-showtime-info').textContent =
@@ -1021,9 +992,8 @@ const POS = (() => {
         }
         document.getElementById('pt-qr-text').textContent = booking.booking_code;
 
-        // Gọi lệnh in hệ thống, sau khi in xong quay về chọn ghế
+        // Gọi lệnh in hệ thống
         setTimeout(() => {
-            window.onafterprint = () => { window.onafterprint = null; resetPOS(); };
             window.print();
         }, 250);
     }

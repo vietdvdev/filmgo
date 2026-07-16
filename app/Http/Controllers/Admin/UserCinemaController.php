@@ -224,7 +224,19 @@ class UserCinemaController extends Controller
      */
     public function destroy(string $id)
     {
-        $assignment = UserCinema::findOrFail($id);
+        $assignment = UserCinema::with(['user', 'cinema'])->findOrFail($id);
+
+        $hasFutureShowtimes = $assignment->cinema
+            ->rooms()
+            ->whereHas('showtimes', function ($q) {
+                $q->where('start_time', '>', now());
+            })
+            ->exists();
+
+        if ($hasFutureShowtimes) {
+            return back()->with('error',
+                'Không thể hủy phân công vì rạp «' . $assignment->cinema->name . '» đang có suất chiếu trong tương lai.');
+        }
 
         $userName = $assignment->user?->full_name;
         $cinemaName = $assignment->cinema?->name;
@@ -233,9 +245,6 @@ class UserCinemaController extends Controller
 
         return redirect()
             ->route('admin.user-cinemas.index')
-            ->with(
-                'success',
-                "Đã hủy phân công {$userName} khỏi rạp {$cinemaName}."
-            );
+            ->with('success', "Đã hủy phân công {$userName} khỏi rạp {$cinemaName}.");
     }
 }

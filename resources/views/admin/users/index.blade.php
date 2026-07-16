@@ -12,11 +12,21 @@
                     <p class="font-body-md text-body-md text-on-surface-variant mt-1">Quản lý tài khoản khách hàng, nhân viên
                         và quản trị viên trong hệ thống.</p>
                 </div>
-                <a href="{{ route('admin.users.create') }}"
-                    class="bg-primary text-on-primary font-label-md text-label-md px-4 py-2.5 rounded-lg hover:bg-blue-700 hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 flex items-center gap-2">
-                    <span class="material-symbols-outlined" style="font-size: 18px;">person_add</span>
-                    Thêm Người Dùng
-                </a>
+                <div class="flex items-center gap-3">
+                    @if ($trashedCount > 0)
+                        <a href="{{ route('admin.users.trashed') }}"
+                            class="relative inline-flex items-center gap-2 px-4 py-2.5 rounded-lg border border-outline-variant bg-surface-container text-on-surface-variant font-label-md text-label-md hover:bg-surface-container-high transition-all duration-200">
+                            <span class="material-symbols-outlined" style="font-size: 18px;">restore_from_trash</span>
+                            Đã Xóa
+                            <span class="inline-flex items-center justify-center w-5 h-5 rounded-full bg-red-500 text-white text-[10px] font-bold">{{ $trashedCount }}</span>
+                        </a>
+                    @endif
+                    <a href="{{ route('admin.users.create') }}"
+                        class="bg-primary text-on-primary font-label-md text-label-md px-4 py-2.5 rounded-lg hover:bg-blue-700 hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 flex items-center gap-2">
+                        <span class="material-symbols-outlined" style="font-size: 18px;">person_add</span>
+                        Thêm Người Dùng
+                    </a>
+                </div>
             </div>
 
             @if (session('success'))
@@ -216,31 +226,6 @@
                 @endif
             </div>
 
-            <!-- Trashed Users -->
-            @if ($trashedUsers->count() > 0)
-                <div
-                    class="bg-surface-container-lowest rounded-lg border border-outline-variant shadow-ambient-sm overflow-hidden p-stack-lg space-y-3">
-                    <h3 class="font-label-md text-label-md font-bold text-on-surface-variant flex items-center gap-2">
-                        <span class="material-symbols-outlined" style="font-size: 20px;">restore_from_trash</span>
-                        Người Dùng Đã Xóa ({{ $trashedUsers->count() }})
-                    </h3>
-                    <div class="rounded-lg border border-outline-variant/40 divide-y divide-outline-variant/40">
-                        @foreach ($trashedUsers as $trashed)
-                            <div class="flex items-center justify-between px-6 py-3 flex-wrap gap-2">
-                                <div>
-                                    <span class="font-medium text-on-surface text-sm">{{ $trashed->full_name }}</span>
-                                    <span class="text-on-surface-variant text-xs ml-2">{{ $trashed->email }}</span>
-                                </div>
-                                <form action="{{ route('admin.users.restore', $trashed->id) }}" method="POST">
-                                    @csrf
-                                    <button type="submit" class="text-xs font-bold text-primary hover:underline">Khôi
-                                        phục</button>
-                                </form>
-                            </div>
-                        @endforeach
-                    </div>
-                </div>
-            @endif
         </div>
     </main>
 
@@ -263,7 +248,7 @@
                             class="text-red-600 font-semibold"></strong>?
                     </p>
                     <p class="text-xs text-red-500/80 mt-2 italic bg-red-50/50 p-2 rounded border border-red-100">
-                        Lưu ý: Tài khoản sẽ được xóa mềm, bạn có thể khôi phục lại ở phần "Người Dùng Đã Xóa" bên dưới.
+                        Lưu ý: Tài khoản sẽ được xóa mềm, bạn có thể khôi phục lại ở trang "Đã Xóa".
                     </p>
                 </div>
 

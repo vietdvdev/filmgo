@@ -12,6 +12,7 @@ use App\Models\Showtime;
 use App\Models\ShowtimeSeat;
 use App\Models\Ticket;
 use App\Models\User;
+use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Exception;
@@ -58,8 +59,13 @@ class CounterBookingService
             // ── 1. Kiểm tra suất chiếu còn hợp lệ ──────────────────────────
             $showtime = Showtime::with(['room'])->findOrFail($showtimeId);
 
-            if (!in_array($showtime->status, ['upcoming', 'showing', 'active'])) {
-                throw new Exception("Suất chiếu này đã kết thúc hoặc bị hủy ({$showtime->status}).");
+            if (in_array($showtime->status, ['cancelled', 'finished'])) {
+                throw new Exception('Suất chiếu này đã bị hủy hoặc kết thúc.');
+            }
+
+            $showtimeEnd = Carbon::parse($showtime->show_date . ' ' . $showtime->end_time);
+            if (now()->gt($showtimeEnd)) {
+                throw new Exception('Suất chiếu đã kết thúc lúc ' . $showtimeEnd->format('H:i d/m/Y') . '. Không thể bán vé.');
             }
 
             // ── 2. Khoá ghế bằng SELECT FOR UPDATE (tránh race condition) ──

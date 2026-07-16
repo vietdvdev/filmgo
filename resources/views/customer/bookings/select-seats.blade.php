@@ -199,6 +199,11 @@
                             @endforeach
                         </div>
                         
+                        <div id="seat-error-msg" style="display:none" class="mb-3 px-4 py-3 bg-red-500/10 border border-red-500/30 text-red-400 text-sm font-semibold rounded-xl items-center gap-2">
+                            <span class="material-symbols-outlined text-base">error</span>
+                            <span id="seat-error-text"></span>
+                        </div>
+
                         <button type="submit" 
                                 id="submitBtn"
                                 class="w-full bg-brand-primary hover:bg-red-700 text-white font-bold py-4 px-6 rounded-2xl shadow-lg shadow-brand-primary/25 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 text-sm uppercase tracking-wider"
@@ -222,76 +227,56 @@
             const selectedSeatsLabel = document.getElementById('selectedSeatsLabel');
             const totalPriceLabel = document.getElementById('totalPriceLabel');
 
+            // Build map: seatId -> { row, number, status } cho toàn bộ ghế trong phòng
+            const allSeatData = {};
+            document.querySelectorAll('[data-id]').forEach(btn => {
+                allSeatData[btn.dataset.id] = {
+                    row: btn.dataset.row,
+                    number: parseInt(btn.dataset.number),
+                    available: !btn.disabled,
+                };
+            });
+
             let selectedSeats = [];
 
-            // Initialize selectedSeats from existing values in DOM
+            // Khởi tạo từ session (ghế đã chọn trước)
             document.querySelectorAll('.selected-seat').forEach(btn => {
                 selectedSeats.push({
                     id: btn.dataset.id,
                     name: btn.dataset.row + btn.dataset.number,
-                    price: parseInt(btn.dataset.price)
+                    price: parseInt(btn.dataset.price),
+                    row: btn.dataset.row,
+                    number: parseInt(btn.dataset.number),
                 });
             });
             updateSummary();
 
             buttons.forEach(btn => {
                 btn.addEventListener('click', function () {
-                    const seatId = this.dataset.id;
-                    const row = this.dataset.row;
-                    const number = this.dataset.number;
-                    const price = parseInt(this.dataset.price);
-                    const name = row + number;
-
-                    const index = selectedSeats.findIndex(item => item.id === seatId);
+                    const seatId   = this.dataset.id;
+                    const row      = this.dataset.row;
+                    const number   = parseInt(this.dataset.number);
+                    const price    = parseInt(this.dataset.price);
+                    const name     = row + number;
+                    const index    = selectedSeats.findIndex(s => s.id === seatId);
 
                     if (index > -1) {
-                        // Deselect seat
                         selectedSeats.splice(index, 1);
-                        
-                        // Toggle visual class
-                        this.classList.remove('bg-brand-primary', 'border-brand-primary', 'text-white', 'shadow-md', 'shadow-brand-primary/20', 'selected-seat');
-                        
-                        // Restore base visual classes
-                        const type = this.dataset.type;
-                        if (type === 'VIP') {
-                            this.classList.add('bg-red-950/30', 'hover:bg-red-900/30', 'border-red-800/50', 'text-red-400', 'seat-available');
-                        } else if (type === 'Sweetbox') {
-                            this.classList.add('bg-pink-950/30', 'hover:bg-pink-900/30', 'border-pink-800/50', 'text-pink-400', 'seat-available');
-                        } else {
-                            this.classList.add('bg-zinc-900/50', 'hover:bg-zinc-800', 'border-zinc-700', 'text-zinc-300', 'seat-available');
-                        }
-
-                        // Remove hidden input
+                        deselectVisual(this);
                         const input = document.getElementById('input-' + seatId);
                         if (input) input.remove();
                     } else {
-                        // Check limit (max 10 seats)
                         if (selectedSeats.length >= 10) {
-                            alert('Bạn chỉ được chọn tối đa 10 ghế ngồi.');
+                            showError('Bạn chỉ được chọn tối đa 10 ghế.');
                             return;
                         }
-
-                        // Select seat
-                        selectedSeats.push({ id: seatId, name: name, price: price });
-                        
-                        // Toggle visual class
-                        const type = this.dataset.type;
-                        if (type === 'VIP') {
-                            this.classList.remove('bg-red-950/30', 'hover:bg-red-900/30', 'border-red-800/50', 'text-red-400', 'seat-available');
-                        } else if (type === 'Sweetbox') {
-                            this.classList.remove('bg-pink-950/30', 'hover:bg-pink-900/30', 'border-pink-800/50', 'text-pink-400', 'seat-available');
-                        } else {
-                            this.classList.remove('bg-zinc-900/50', 'hover:bg-zinc-800', 'border-zinc-700', 'text-zinc-300', 'seat-available');
-                        }
-
-                        this.classList.add('bg-brand-primary', 'border-brand-primary', 'text-white', 'shadow-md', 'shadow-brand-primary/20', 'selected-seat');
-
-                        // Add hidden input
+                        selectedSeats.push({ id: seatId, name, price, row, number });
+                        selectVisual(this);
                         const input = document.createElement('input');
-                        input.type = 'hidden';
-                        input.name = 'seat_ids[]';
+                        input.type  = 'hidden';
+                        input.name  = 'seat_ids[]';
                         input.value = seatId;
-                        input.id = 'input-' + seatId;
+                        input.id    = 'input-' + seatId;
                         hiddenContainer.appendChild(input);
                     }
 
@@ -299,9 +284,84 @@
                 });
             });
 
+            document.getElementById('bookingForm').addEventListener('submit', function (e) {
+                const err = checkSingleSeatRule(selectedSeats);
+                if (err) {
+                    e.preventDefault();
+                    showError(err);
+                }
+            });
+
+            /**
+             * Thuật toán Single Seat Rule phía client.
+             * Xây dựng mảng trạng thái từng hàng:
+             *   X = không khả dụng (disabled)
+             *   S = đang chọn
+             *   O = trống
+             * Nếu có ghế O bị chặn cả hai bên bởi X hoặc S hoặc biên hàng → lỗi.
+             */
+            function checkSingleSeatRule(testSelected) {
+                // Nhóm toàn bộ ghế theo hàng
+                const rowMap = {};
+                Object.entries(allSeatData).forEach(([id, data]) => {
+                    if (!rowMap[data.row]) rowMap[data.row] = [];
+                    rowMap[data.row].push({ id, number: data.number, available: data.available });
+                });
+
+                const selectedSet = new Set(testSelected.map(s => s.id));
+
+                for (const row in rowMap) {
+                    const seats = rowMap[row].sort((a, b) => a.number - b.number);
+                    const states = seats.map(s => {
+                        if (selectedSet.has(s.id)) return 'S';
+                        if (!s.available) return 'X';
+                        return 'O';
+                    });
+
+                    for (let i = 0; i < states.length; i++) {
+                        if (states[i] !== 'O') continue;
+                        // Ghế ở biên hàng không bao giờ là ghế cô đơn
+                        if (i === 0 || i === states.length - 1) continue;
+                        const leftBlocked  = (states[i-1] === 'X' || states[i-1] === 'S');
+                        const rightBlocked = (states[i+1] === 'X' || states[i+1] === 'S');
+                        if (leftBlocked && rightBlocked) {
+                            return `Lựa chọn của bạn tạo ra ghế trống cô đơn ở hàng ${row}. Vui lòng chọn lại để không bỏ trống 1 ghế đơn lẻ.`;
+                        }
+                    }
+                }
+                return null;
+            }
+
+            function selectVisual(btn) {
+                const type = btn.dataset.type;
+                if (type === 'VIP') {
+                    btn.classList.remove('bg-red-950/30', 'hover:bg-red-900/30', 'border-red-800/50', 'text-red-400', 'seat-available');
+                } else if (type === 'Sweetbox') {
+                    btn.classList.remove('bg-pink-950/30', 'hover:bg-pink-900/30', 'border-pink-800/50', 'text-pink-400', 'seat-available');
+                } else {
+                    btn.classList.remove('bg-zinc-900/50', 'hover:bg-zinc-800', 'border-zinc-700', 'text-zinc-300', 'seat-available');
+                }
+                btn.classList.add('bg-brand-primary', 'border-brand-primary', 'text-white', 'shadow-md', 'shadow-brand-primary/20', 'selected-seat');
+            }
+
+            function deselectVisual(btn) {
+                btn.classList.remove('bg-brand-primary', 'border-brand-primary', 'text-white', 'shadow-md', 'shadow-brand-primary/20', 'selected-seat');
+                const type = btn.dataset.type;
+                if (type === 'VIP') {
+                    btn.classList.add('bg-red-950/30', 'hover:bg-red-900/30', 'border-red-800/50', 'text-red-400', 'seat-available');
+                } else if (type === 'Sweetbox') {
+                    btn.classList.add('bg-pink-950/30', 'hover:bg-pink-900/30', 'border-pink-800/50', 'text-pink-400', 'seat-available');
+                } else {
+                    btn.classList.add('bg-zinc-900/50', 'hover:bg-zinc-800', 'border-zinc-700', 'text-zinc-300', 'seat-available');
+                }
+            }
+
             function updateSummary() {
                 if (selectedSeats.length > 0) {
-                    selectedSeatsLabel.innerHTML = selectedSeats.map(s => `<span class="inline-block bg-brand-primary/10 border border-brand-primary/30 text-brand-primary px-2 py-0.5 rounded font-black ml-1 mb-1">${s.name}</span>`).join('');
+                    selectedSeatsLabel.innerHTML = selectedSeats
+                        .sort((a, b) => a.row.localeCompare(b.row) || a.number - b.number)
+                        .map(s => `<span class="inline-block bg-brand-primary/10 border border-brand-primary/30 text-brand-primary px-2 py-0.5 rounded font-black ml-1 mb-1">${s.name}</span>`)
+                        .join('');
                     const total = selectedSeats.reduce((sum, s) => sum + s.price, 0);
                     totalPriceLabel.textContent = new Intl.NumberFormat('vi-VN').format(total) + 'đ';
                     submitBtn.removeAttribute('disabled');
@@ -310,6 +370,14 @@
                     totalPriceLabel.textContent = '0đ';
                     submitBtn.setAttribute('disabled', 'disabled');
                 }
+            }
+
+            function showError(msg) {
+                const el = document.getElementById('seat-error-msg');
+                document.getElementById('seat-error-text').textContent = msg;
+                el.style.display = 'flex';
+                if (window._errorTimer) clearTimeout(window._errorTimer);
+                window._errorTimer = setTimeout(() => { el.style.display = 'none'; }, 5000);
             }
         });
     </script>

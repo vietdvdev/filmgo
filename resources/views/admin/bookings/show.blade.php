@@ -60,7 +60,7 @@
                 <dl class="space-y-3">
                     <div class="flex justify-between">
                         <dt class="text-sm text-on-surface-variant">Họ tên</dt>
-                        <dd class="text-sm font-semibold text-on-surface">{{ $user->name ?? '—' }}</dd>
+                        <dd class="text-sm font-semibold text-on-surface">{{ $user->full_name ?? '—' }}</dd>
                     </div>
                     <div class="flex justify-between">
                         <dt class="text-sm text-on-surface-variant">Email</dt>

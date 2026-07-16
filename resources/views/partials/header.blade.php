@@ -65,7 +65,7 @@
                                 class="block px-4 py-2.5 text-sm text-gray-300 hover:bg-white/5 hover:text-white flex items-center gap-2">
                                 <span class="material-symbols-outlined text-lg">account_circle</span> Tài khoản
                             </a>
-                            <a href="#"
+                            <a href="{{ route('booking.history.index') }}"
                                 class="block px-4 py-2.5 text-sm text-gray-300 hover:bg-white/5 hover:text-white flex items-center gap-2">
                                 <span class="material-symbols-outlined text-lg">history</span> Lịch sử đặt vé
                             </a>
