@@ -17,42 +17,45 @@ class UserController extends Controller
         $roles = Role::orderBy('name')->get();
 
         $users = User::with('roles')
-
-            // Tìm kiếm
             ->when($request->filled('search'), function ($query) use ($request) {
                 $search = $request->search;
-
                 $query->where(function ($q) use ($search) {
                     $q->where('full_name', 'like', "%{$search}%")
                         ->orWhere('email', 'like', "%{$search}%");
                 });
             })
-
-            // Lọc trạng thái
             ->when($request->filled('status'), function ($query) use ($request) {
                 $query->where('status', $request->status);
             })
-
-            // Lọc nhiều role
             ->when($request->filled('roles'), function ($query) use ($request) {
                 $query->whereHas('roles', function ($q) use ($request) {
                     $q->whereIn('roles.id', $request->roles);
                 });
             })
-
             ->latest()
             ->paginate(15)
             ->withQueryString();
 
-        $trashedUsers = User::onlyTrashed()
-            ->latest()
-            ->get();
+        $trashedCount = User::onlyTrashed()->count();
 
-        return view('admin.users.index', compact(
-            'users',
-            'roles',
-            'trashedUsers'
-        ));
+        return view('admin.users.index', compact('users', 'roles', 'trashedCount'));
+    }
+
+    public function trashed(Request $request)
+    {
+        $trashedUsers = User::onlyTrashed()
+            ->when($request->filled('search'), function ($query) use ($request) {
+                $search = $request->search;
+                $query->where(function ($q) use ($search) {
+                    $q->where('full_name', 'like', "%{$search}%")
+                        ->orWhere('email', 'like', "%{$search}%");
+                });
+            })
+            ->latest('deleted_at')
+            ->paginate(15)
+            ->withQueryString();
+
+        return view('admin.users.trashed', compact('trashedUsers'));
     }
 
     public function create()
@@ -139,10 +142,27 @@ class UserController extends Controller
             return back()->with('error', 'Không thể xóa chính tài khoản đang đăng nhập.');
         }
 
+        if ($user->roles->contains('name', 'admin')) {
+            return back()->with('error', 'Không thể xóa tài khoản có vai trò Admin.');
+        }
+
+        $hasActiveBookings = $user->bookings()
+            ->whereIn('payment_status', ['pending', 'paid'])
+            ->whereIn('booking_status', ['pending', 'confirmed'])
+            ->exists();
+
+        if ($hasActiveBookings) {
+            return back()->with('error', 'Không thể xóa người dùng đang có đơn đặt vé chưa hoàn tất.');
+        }
+
+        if ($user->cinemas()->exists()) {
+            return back()->with('error', 'Không thể xóa người dùng đang được phân công quản lý rạp. Hãy hủy phân công trước.');
+        }
+
         $user->delete();
 
         return redirect()->route('admin.users.index')
-            ->with('success', 'Đã xóa người dùng.');
+            ->with('success', 'Đã xóa người dùng «' . $user->full_name . '».');
     }
 
     public function restore($id)
@@ -150,8 +170,8 @@ class UserController extends Controller
         $user = User::onlyTrashed()->findOrFail($id);
         $user->restore();
 
-        return redirect()->route('admin.users.index')
-            ->with('success', 'Khôi phục người dùng thành công.');
+        return redirect()->route('admin.users.trashed')
+            ->with('success', 'Đã khôi phục người dùng «' . $user->full_name . '».');
     }
 
     /**

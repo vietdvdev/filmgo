@@ -60,6 +60,23 @@ class StaffShowtimeController extends Controller
 
         $showtimes = $query->get();
 
+        // Cập nhật status thực tế dựa theo thời gian hiện tại
+        $now = now();
+        $showtimes->each(function ($showtime) use ($now) {
+            $start = \Carbon\Carbon::parse($showtime->show_date->toDateString() . ' ' . $showtime->start_time);
+            $end   = \Carbon\Carbon::parse($showtime->show_date->toDateString() . ' ' . $showtime->end_time);
+
+            if ($showtime->status === 'cancelled') return;
+
+            if ($now->gt($end)) {
+                $showtime->status = 'finished';
+                $showtime->saveQuietly();
+            } elseif ($now->gte($start)) {
+                $showtime->status = 'showing';
+                $showtime->saveQuietly();
+            }
+        });
+
         return view('admin.staff.showtimes', compact('showtimes', 'rooms'));
     }
 }

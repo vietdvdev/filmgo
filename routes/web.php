@@ -124,6 +124,7 @@ Route::prefix('admin')->group(function () {
         Route::resource('movies', MovieController::class)->names('admin.movies');
 
         // 6. Quản lý người dùng
+        Route::get('users/trashed', [UserController::class, 'trashed'])->name('admin.users.trashed');
         Route::post('users/{id}/restore', [UserController::class, 'restore'])->name('admin.users.restore');
         Route::resource('users', UserController::class)->names('admin.users');
 

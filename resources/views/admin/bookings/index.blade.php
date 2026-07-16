@@ -158,7 +158,7 @@
                                     <span class="font-mono text-sm font-semibold text-primary">{{ $booking->booking_code }}</span>
                                 </td>
                                 <td class="py-3.5 px-4">
-                                    <div class="font-semibold text-on-surface">{{ optional($booking->user)->name ?? '—' }}</div>
+                                    <div class="font-semibold text-on-surface">{{ optional($booking->user)->full_name ?? '—' }}</div>
                                     <div class="text-xs text-on-surface-variant">{{ optional($booking->user)->email ?? '' }}</div>
                                     <div class="text-xs text-on-surface-variant">{{ optional($booking->user)->phone ?? '' }}</div>
                                 </td>

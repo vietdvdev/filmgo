@@ -21,12 +21,14 @@ use Illuminate\Support\Facades\DB;
 class BookingController extends Controller
 {
     protected $bookingService;
-    protected $paymentService; // Khai báo đối tác thanh toán
+    protected $paymentService;
+    protected $seatValidationService;
 
-    public function __construct(BookingService $bookingService, PaymentService $paymentService)
+    public function __construct(BookingService $bookingService, PaymentService $paymentService, \App\Services\SeatValidationService $seatValidationService)
     {
         $this->bookingService = $bookingService;
         $this->paymentService = $paymentService;
+        $this->seatValidationService = $seatValidationService;
     }
 
     /**
@@ -60,47 +62,25 @@ class BookingController extends Controller
     public function processSeats(Request $request, $showtimeId)
     {
         $request->validate([
-            'seat_ids' => 'required|array|min:1',
+            'seat_ids'   => 'required|array|min:1|max:10',
             'seat_ids.*' => 'integer|exists:showtime_seats,id',
         ], [
             'seat_ids.required' => 'Vui lòng chọn ít nhất một vị trí ghế ngồi.',
+            'seat_ids.max'      => 'Bạn chỉ được chọn tối đa 10 ghế.',
         ]);
 
-        $expiresAt = now()->addMinutes(10);
-
-        // Dùng transaction + lockForUpdate để tránh race condition
-        $result = DB::transaction(function () use ($showtimeId, $request, $expiresAt) {
-            $seats = ShowtimeSeat::where('showtime_id', $showtimeId)
-                ->whereIn('id', $request->seat_ids)
-                ->lockForUpdate()
-                ->get();
-
-            foreach ($seats as $seat) {
-                // Chấp nhận ghế mà chính user này đang giữ (holding)
-                if ($seat->status === 'holding' && $seat->user_id === Auth::id()) {
-                    continue;
-                }
-                if ($seat->status !== 'available') {
-                    return 'taken';
-                }
-            }
-
-            // Khóa ghế sang trạng thái holding ngay lập tức
-            ShowtimeSeat::where('showtime_id', $showtimeId)
-                ->whereIn('id', $request->seat_ids)
-                ->update([
-                    'status'     => 'holding',
-                    'user_id'    => Auth::id(),
-                    'locked_at'  => now(),
-                    'expires_at' => $expiresAt,
-                ]);
-
-            return 'ok';
-        });
-
-        if ($result === 'taken') {
-            return redirect()->back()->withInput()->with('error', 'Một số ghế bạn chọn đã có người đặt trước đó. Vui lòng chọn ghế khác.');
+        // Validate toàn bộ quy tắc ghế trước khi lock
+        $validation = $this->seatValidationService->validate($showtimeId, $request->seat_ids);
+        if (!$validation['valid']) {
+            return redirect()->back()->withInput()->with('error', $validation['message']);
         }
+
+        // Lock ghế với transaction + lockForUpdate
+        $result = $this->seatValidationService->lockSeats($showtimeId, $request->seat_ids, Auth::id());
+        if (!$result['success']) {
+            return redirect()->back()->withInput()->with('error', $result['message']);
+        }
+        $expiresAt = $result['expires_at'];
 
         session()->put("booking.{$showtimeId}.seat_ids", $request->seat_ids);
         session()->put("booking.{$showtimeId}.expires_at", $expiresAt->timestamp);
@@ -740,10 +720,24 @@ class BookingController extends Controller
      */
     private function respondGatewayResult(Request $request, array $payload, int $statusCode = 200)
     {
+        // IPN từ server cổng thanh toán (POST) → trả JSON
         if ($request->isMethod('post') || $request->expectsJson()) {
             return response()->json($payload, $statusCode);
         }
 
-        return redirect()->route('home')->with('success', 'Đã xử lý callback thanh toán.');
+        // Return URL từ browser khách hàng (GET) → redirect về trang success hoặc thất bại
+        $bookingCode = $request->get('vnp_TxnRef') ?? explode('_', $request->get('orderId', ''))[0];
+        $booking = $bookingCode ? Booking::where('booking_code', $bookingCode)->first() : null;
+
+        if ($booking) {
+            $isSuccess = ($request->get('vnp_ResponseCode') === '00') || ((int) $request->get('resultCode') === 0);
+            if ($isSuccess) {
+                return redirect()->route('booking.success', $booking->id);
+            }
+            return redirect()->route('booking.checkout', $booking->showtime_id)
+                ->with('error', 'Thanh toán không thành công. Vui lòng thử lại.');
+        }
+
+        return redirect()->route('home')->with('error', 'Không tìm thấy đơn hàng.');
     }
 }
