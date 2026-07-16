@@ -257,7 +257,8 @@ class SeatValidationService
     public function lockSeats(int $showtimeId, array $showtimeSeatIds, int $userId): array
     {
         return DB::transaction(function () use ($showtimeId, $showtimeSeatIds, $userId) {
-            $seats = ShowtimeSeat::where('showtime_id', $showtimeId)
+            $seats = ShowtimeSeat::with('seat')
+                ->where('showtime_id', $showtimeId)
                 ->whereIn('id', $showtimeSeatIds)
                 ->lockForUpdate()
                 ->get();
