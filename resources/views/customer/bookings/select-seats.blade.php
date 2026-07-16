@@ -49,7 +49,7 @@
                                 <span class="material-symbols-outlined text-brand-primary">event_seat</span>
                                 Sơ Đồ Chọn Ghế Ngồi
                             </h2>
-                            <p class="text-xs text-zinc-400 font-medium mt-1">Vui lòng chọn vị trí ghế ngồi mong muốn. Bạn có thể chọn tối đa 10 ghế.</p>
+                            <p class="text-xs text-zinc-400 font-medium mt-1">Vui lòng chọn vị trí ghế ngồi mong muốn. Bạn có thể chọn tối đa 8 ghế.</p>
                         </div>
 
                         <!-- Screen Visualizer -->
@@ -234,65 +234,107 @@
             });
             updateSummary();
 
+            function selectSeat(btn) {
+                const seatId = btn.dataset.id;
+                const row = btn.dataset.row;
+                const number = btn.dataset.number;
+                const price = parseInt(btn.dataset.price);
+                const name = row + number;
+                
+                selectedSeats.push({ id: seatId, name: name, price: price });
+                
+                const type = btn.dataset.type;
+                if (type === 'VIP') {
+                    btn.classList.remove('bg-red-950/30', 'hover:bg-red-900/30', 'border-red-800/50', 'text-red-400', 'seat-available');
+                } else if (type === 'Sweetbox') {
+                    btn.classList.remove('bg-pink-950/30', 'hover:bg-pink-900/30', 'border-pink-800/50', 'text-pink-400', 'seat-available');
+                } else {
+                    btn.classList.remove('bg-zinc-900/50', 'hover:bg-zinc-800', 'border-zinc-700', 'text-zinc-300', 'seat-available');
+                }
+                btn.classList.add('bg-brand-primary', 'border-brand-primary', 'text-white', 'shadow-md', 'shadow-brand-primary/20', 'selected-seat');
+                
+                if (!document.getElementById('input-' + seatId)) {
+                    const input = document.createElement('input');
+                    input.type = 'hidden';
+                    input.name = 'seat_ids[]';
+                    input.value = seatId;
+                    input.id = 'input-' + seatId;
+                    hiddenContainer.appendChild(input);
+                }
+            }
+
+            function deselectSeat(btn) {
+                const seatId = btn.dataset.id;
+                const index = selectedSeats.findIndex(item => item.id === seatId);
+                if (index > -1) {
+                    selectedSeats.splice(index, 1);
+                }
+                
+                btn.classList.remove('bg-brand-primary', 'border-brand-primary', 'text-white', 'shadow-md', 'shadow-brand-primary/20', 'selected-seat');
+                const type = btn.dataset.type;
+                if (type === 'VIP') {
+                    btn.classList.add('bg-red-950/30', 'hover:bg-red-900/30', 'border-red-800/50', 'text-red-400', 'seat-available');
+                } else if (type === 'Sweetbox') {
+                    btn.classList.add('bg-pink-950/30', 'hover:bg-pink-900/30', 'border-pink-800/50', 'text-pink-400', 'seat-available');
+                } else {
+                    btn.classList.add('bg-zinc-900/50', 'hover:bg-zinc-800', 'border-zinc-700', 'text-zinc-300', 'seat-available');
+                }
+                
+                const input = document.getElementById('input-' + seatId);
+                if (input) input.remove();
+            }
+
             buttons.forEach(btn => {
                 btn.addEventListener('click', function () {
                     const seatId = this.dataset.id;
                     const row = this.dataset.row;
-                    const number = this.dataset.number;
-                    const price = parseInt(this.dataset.price);
-                    const name = row + number;
+                    const number = parseInt(this.dataset.number);
+                    const type = this.dataset.type;
 
-                    const index = selectedSeats.findIndex(item => item.id === seatId);
+                    const isCurrentlySelected = selectedSeats.some(item => item.id === seatId);
 
-                    if (index > -1) {
-                        // Deselect seat
-                        selectedSeats.splice(index, 1);
+                    if (type === 'Sweetbox') {
+                        const siblingNumber = (number % 2 === 1) ? (number + 1) : (number - 1);
+                        const siblingBtn = document.querySelector(`button[data-row="${row}"][data-number="${siblingNumber}"]`);
                         
-                        // Toggle visual class
-                        this.classList.remove('bg-brand-primary', 'border-brand-primary', 'text-white', 'shadow-md', 'shadow-brand-primary/20', 'selected-seat');
-                        
-                        // Restore base visual classes
-                        const type = this.dataset.type;
-                        if (type === 'VIP') {
-                            this.classList.add('bg-red-950/30', 'hover:bg-red-900/30', 'border-red-800/50', 'text-red-400', 'seat-available');
-                        } else if (type === 'Sweetbox') {
-                            this.classList.add('bg-pink-950/30', 'hover:bg-pink-900/30', 'border-pink-800/50', 'text-pink-400', 'seat-available');
+                        if (siblingBtn) {
+                            if (siblingBtn.disabled) {
+                                alert('Ghế đôi Sweetbox này đã có một ghế được đặt trước đó, không thể chọn.');
+                                return;
+                            }
+                            
+                            if (isCurrentlySelected) {
+                                deselectSeat(this);
+                                deselectSeat(siblingBtn);
+                            } else {
+                                if (selectedSeats.length + 2 > 8) {
+                                    alert('Bạn chỉ được chọn tối đa 8 ghế ngồi trên một giao dịch.');
+                                    return;
+                                }
+                                selectSeat(this);
+                                selectSeat(siblingBtn);
+                            }
                         } else {
-                            this.classList.add('bg-zinc-900/50', 'hover:bg-zinc-800', 'border-zinc-700', 'text-zinc-300', 'seat-available');
+                            if (isCurrentlySelected) {
+                                deselectSeat(this);
+                            } else {
+                                if (selectedSeats.length >= 8) {
+                                    alert('Bạn chỉ được chọn tối đa 8 ghế ngồi trên một giao dịch.');
+                                    return;
+                                }
+                                selectSeat(this);
+                            }
                         }
-
-                        // Remove hidden input
-                        const input = document.getElementById('input-' + seatId);
-                        if (input) input.remove();
                     } else {
-                        // Check limit (max 10 seats)
-                        if (selectedSeats.length >= 10) {
-                            alert('Bạn chỉ được chọn tối đa 10 ghế ngồi.');
-                            return;
-                        }
-
-                        // Select seat
-                        selectedSeats.push({ id: seatId, name: name, price: price });
-                        
-                        // Toggle visual class
-                        const type = this.dataset.type;
-                        if (type === 'VIP') {
-                            this.classList.remove('bg-red-950/30', 'hover:bg-red-900/30', 'border-red-800/50', 'text-red-400', 'seat-available');
-                        } else if (type === 'Sweetbox') {
-                            this.classList.remove('bg-pink-950/30', 'hover:bg-pink-900/30', 'border-pink-800/50', 'text-pink-400', 'seat-available');
+                        if (isCurrentlySelected) {
+                            deselectSeat(this);
                         } else {
-                            this.classList.remove('bg-zinc-900/50', 'hover:bg-zinc-800', 'border-zinc-700', 'text-zinc-300', 'seat-available');
+                            if (selectedSeats.length >= 8) {
+                                alert('Bạn chỉ được chọn tối đa 8 ghế ngồi trên một giao dịch.');
+                                return;
+                            }
+                            selectSeat(this);
                         }
-
-                        this.classList.add('bg-brand-primary', 'border-brand-primary', 'text-white', 'shadow-md', 'shadow-brand-primary/20', 'selected-seat');
-
-                        // Add hidden input
-                        const input = document.createElement('input');
-                        input.type = 'hidden';
-                        input.name = 'seat_ids[]';
-                        input.value = seatId;
-                        input.id = 'input-' + seatId;
-                        hiddenContainer.appendChild(input);
                     }
 
                     updateSummary();
@@ -311,6 +353,78 @@
                     submitBtn.setAttribute('disabled', 'disabled');
                 }
             }
+
+            const bookingForm = document.getElementById('bookingForm');
+            bookingForm.addEventListener('submit', function (e) {
+                if (selectedSeats.length === 0) {
+                    e.preventDefault();
+                    alert('Vui lòng chọn ít nhất một vị trí ghế ngồi.');
+                    return;
+                }
+
+                // 1. Kiểm tra lại quy tắc ghế đôi Sweetbox
+                for (let s of selectedSeats) {
+                    const btn = document.querySelector(`button[data-id="${s.id}"]`);
+                    if (btn && btn.dataset.type === 'Sweetbox') {
+                        const row = btn.dataset.row;
+                        const number = parseInt(btn.dataset.number);
+                        const siblingNumber = (number % 2 === 1) ? (number + 1) : (number - 1);
+                        
+                        const isSiblingSelected = selectedSeats.some(item => item.name === (row + siblingNumber));
+                        if (!isSiblingSelected) {
+                            e.preventDefault();
+                            alert(`Ghế đôi Sweetbox ${row}${number} và ${row}${siblingNumber} phải được chọn cùng nhau.`);
+                            return;
+                        }
+                    }
+                }
+
+                // 2. Kiểm tra quy tắc chống ghế trống đơn lẻ (Anti-Orphan)
+                const allSeatBtns = Array.from(document.querySelectorAll('button[data-row]'));
+                const rowSeatsMap = {};
+                allSeatBtns.forEach(btn => {
+                    const row = btn.dataset.row;
+                    const num = parseInt(btn.dataset.number);
+                    if (!rowSeatsMap[row]) {
+                        rowSeatsMap[row] = {};
+                    }
+                    rowSeatsMap[row][num] = btn;
+                });
+
+                for (let row in rowSeatsMap) {
+                    const rowSeats = rowSeatsMap[row];
+                    for (let numStr in rowSeats) {
+                        const num = parseInt(numStr);
+                        const btn = rowSeats[num];
+                        
+                        const isSelected = selectedSeats.some(s => s.id === btn.dataset.id);
+                        const isTaken = btn.disabled;
+                        const isAvailable = !isSelected && !isTaken;
+                        
+                        if (!isAvailable) {
+                            continue;
+                        }
+
+                        const L = rowSeats[num - 1];
+                        const R = rowSeats[num + 1];
+
+                        const leftBlockedNow = (L === undefined || L.disabled || selectedSeats.some(s => s.id === L.dataset.id));
+                        const rightBlockedNow = (R === undefined || R.disabled || selectedSeats.some(s => s.id === R.dataset.id));
+
+                        if (leftBlockedNow && rightBlockedNow) {
+                            const leftBlockedBefore = (L === undefined || L.disabled);
+                            const rightBlockedBefore = (R === undefined || R.disabled);
+                            const wasOrphanBefore = leftBlockedBefore && rightBlockedBefore;
+
+                            if (!wasOrphanBefore) {
+                                e.preventDefault();
+                                alert(`Không thể chọn các ghế này vì sẽ để lại một ghế trống đơn lẻ tại vị trí ${row}${num}.`);
+                                return;
+                            }
+                        }
+                    }
+                }
+            });
         });
     </script>
 @endsection

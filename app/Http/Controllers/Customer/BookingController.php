@@ -56,25 +56,137 @@ class BookingController extends Controller
     public function processSeats(Request $request, $showtimeId)
     {
         $request->validate([
-            'seat_ids' => 'required|array|min:1',
+            'seat_ids' => 'required|array|min:1|max:8',
             'seat_ids.*' => 'integer|exists:showtime_seats,id',
         ], [
             'seat_ids.required' => 'Vui lòng chọn ít nhất một vị trí ghế ngồi.',
+            'seat_ids.max' => 'Bạn chỉ được chọn tối đa 8 ghế ngồi trên một giao dịch.',
         ]);
 
-        // Cần đảm bảo các ghế này đều ở trạng thái available trong DB (hoặc do chính mình giữ)
-        $seats = ShowtimeSeat::where('showtime_id', $showtimeId)
-            ->whereIn('id', $request->seat_ids)
-            ->get();
+        $expiresAt = now()->addMinutes(10);
 
-        foreach ($seats as $seat) {
-            if ($seat->status !== 'available') {
-                return redirect()->back()->withInput()->with('error', 'Một số ghế bạn chọn đã có người đặt trước đó. Vui lòng chọn ghế khác.');
+        // Dùng transaction + lockForUpdate để tránh race condition
+        $result = DB::transaction(function () use ($showtimeId, $request, $expiresAt) {
+            $seats = ShowtimeSeat::with(['seat.seatType'])
+                ->where('showtime_id', $showtimeId)
+                ->whereIn('id', $request->seat_ids)
+                ->lockForUpdate()
+                ->get();
+
+            if ($seats->count() !== count($request->seat_ids)) {
+                return 'taken';
             }
+
+            foreach ($seats as $seat) {
+                // Chấp nhận ghế mà chính user này đang giữ (holding)
+                if ($seat->status === 'holding' && $seat->user_id === Auth::id()) {
+                    continue;
+                }
+                if ($seat->status !== 'available') {
+                    return 'taken';
+                }
+            }
+
+            // 1. Kiểm tra quy tắc ghế đôi Sweetbox
+            $sweetboxSeats = $seats->filter(function ($ss) {
+                return $ss->seat->seatType->name === 'Sweetbox';
+            });
+
+            $selectedRows = $seats->pluck('seat.seat_row')->unique();
+
+            // Lấy tất cả ghế trong các hàng đã chọn để kiểm tra tính kề cạnh
+            $allSeatsInRows = ShowtimeSeat::with(['seat.seatType'])
+                ->where('showtime_id', $showtimeId)
+                ->whereHas('seat', function ($query) use ($selectedRows) {
+                    $query->whereIn('seat_row', $selectedRows);
+                })
+                ->get();
+
+            $seatsByRowAndNumber = [];
+            foreach ($allSeatsInRows as $ss) {
+                $seatsByRowAndNumber[$ss->seat->seat_row][$ss->seat->seat_number] = $ss;
+            }
+
+            $selectedSeatIds = $seats->pluck('id')->toArray();
+
+            if ($sweetboxSeats->isNotEmpty()) {
+                foreach ($sweetboxSeats as $ss) {
+                    $row = $ss->seat->seat_row;
+                    $number = $ss->seat->seat_number;
+                    $siblingNumber = ($number % 2 === 1) ? $number + 1 : $number - 1;
+
+                    $siblingSeat = $seatsByRowAndNumber[$row][$siblingNumber] ?? null;
+                    if (!$siblingSeat) {
+                        return ['error' => "Ghế đôi Sweetbox {$row}{$number} không có ghế cùng cặp hợp lệ."];
+                    }
+
+                    if (!in_array($siblingSeat->id, $selectedSeatIds)) {
+                        return ['error' => "Ghế đôi Sweetbox {$row}{$number} và {$row}{$siblingNumber} phải được chọn cùng nhau."];
+                    }
+                }
+            }
+
+            // 2. Kiểm tra quy tắc chống ghế trống đơn lẻ (Anti-Orphan)
+            foreach ($selectedRows as $row) {
+                $rowSeats = $seatsByRowAndNumber[$row] ?? [];
+
+                // Đánh giá trạng thái từng ghế trong hàng sau khi khách chọn
+                foreach ($rowSeats as $num => $ss) {
+                    $ss->is_selected = in_array($ss->id, $selectedSeatIds);
+                    $ss->is_taken = ($ss->status !== 'available' && !($ss->status === 'holding' && $ss->user_id === Auth::id()));
+                    $ss->is_available = !$ss->is_selected && !$ss->is_taken;
+                }
+
+                // Kiểm tra xem có ghế trống khả dụng nào bị cô lập không
+                foreach ($rowSeats as $num => $ss) {
+                    if (!$ss->is_available) {
+                        continue;
+                    }
+
+                    $L = $rowSeats[$num - 1] ?? null;
+                    $R = $rowSeats[$num + 1] ?? null;
+
+                    $left_blocked_now = ($L === null || $L->is_taken || $L->is_selected);
+                    $right_blocked_now = ($R === null || $R->is_taken || $R->is_selected);
+
+                    if ($left_blocked_now && $right_blocked_now) {
+                        // Hiện tại đang bị cô lập thành ghế trống đơn lẻ
+                        // Kiểm tra xem trước khi chọn nó đã bị cô lập chưa
+                        $left_blocked_before = ($L === null || $L->is_taken);
+                        $right_blocked_before = ($R === null || $R->is_taken);
+
+                        $was_orphan_before = ($left_blocked_before && $right_blocked_before);
+
+                        if (!$was_orphan_before) {
+                            return ['error' => "Không thể chọn các ghế này vì sẽ để lại một ghế trống đơn lẻ tại vị trí {$row}{$num}."];
+                        }
+                    }
+                }
+            }
+
+            // Khóa ghế sang trạng thái holding ngay lập tức
+            ShowtimeSeat::where('showtime_id', $showtimeId)
+                ->whereIn('id', $request->seat_ids)
+                ->update([
+                    'status'     => 'holding',
+                    'user_id'    => Auth::id(),
+                    'locked_at'  => now(),
+                    'expires_at' => $expiresAt,
+                ]);
+
+            return 'ok';
+        });
+
+        if (is_array($result) && isset($result['error'])) {
+            return redirect()->back()->withInput()->with('error', $result['error']);
+        }
+
+        if ($result === 'taken') {
+            return redirect()->back()->withInput()->with('error', 'Một số ghế bạn chọn đã có người đặt trước đó. Vui lòng chọn ghế khác.');
         }
 
         session()->put("booking.{$showtimeId}.seat_ids", $request->seat_ids);
-        session()->put("booking.{$showtimeId}.expires_at", time() + 600); // 10 phút giữ ghế
+        session()->put("booking.{$showtimeId}.expires_at", $expiresAt->timestamp);
 
         return redirect()->route('booking.select-combos', $showtimeId);
     }
