@@ -62,10 +62,11 @@ class BookingService
             $totalSeatPrice = 0;
             $seatsPricing   = [];
             foreach ($showtimeSeats as $ss) {
-                // Dùng giá đã được tính sẵn khi tạo suất chiếu (snapshot), fallback sang tính lại nếu chưa có
-                $seatPrice = (isset($ss->price) && $ss->price > 0)
+                // SỬA LỖI 2: Đồng nhất giá ghế. Bắt buộc dùng $ss->price. Chỉ fallback khi null hoặc 0.
+                $seatPrice = (!is_null($ss->price) && $ss->price > 0)
                     ? $ss->price
                     : $showtime->base_price + ($ss->seat->seatType->surcharge_price ?? 0);
+                
                 $totalSeatPrice += $seatPrice;
                 $seatsPricing[$ss->id] = $seatPrice;
             }
@@ -103,39 +104,57 @@ class BookingService
             $promotionId    = null;
 
             if (!empty($voucherData) && isset($voucherData['promotion_id'])) {
-                $promotion = Promotion::find($voucherData['promotion_id']);
-                $now       = now();
-
-                $isValid = $promotion
-                    && $promotion->status === 'active'
-                    && ($promotion->start_date === null || $now->gte($promotion->start_date))
-                    && ($promotion->end_date === null || $now->lte($promotion->end_date));
-
-                if ($isValid && $promotion->quantity !== null) {
-                    $totalUsed = $promotion->bookings()->count();
-                    if ($totalUsed >= $promotion->quantity) {
-                        $isValid = false;
-                    }
+                // SỬA LỖI 5: Tái xác thực Voucher an toàn với lockForUpdate
+                $promotion = Promotion::where('id', $voucherData['promotion_id'])->lockForUpdate()->first();
+                
+                if (!$promotion) {
+                    throw new Exception("Mã khuyến mãi không tồn tại.");
                 }
 
-                if ($isValid && $promotion->max_uses_per_user !== null) {
+                $now = now();
+
+                if ($promotion->status !== 'active') {
+                    throw new Exception("Mã khuyến mãi này đã bị vô hiệu hóa.");
+                }
+                
+                if ($promotion->start_date !== null && $now->lt($promotion->start_date)) {
+                    throw new Exception("Mã khuyến mãi này chưa tới thời gian sử dụng.");
+                }
+
+                if ($promotion->end_date !== null && $now->gt($promotion->end_date)) {
+                    throw new Exception("Mã khuyến mãi này đã hết hạn sử dụng.");
+                }
+
+                // Kiểm tra giới hạn lượt dùng tổng
+                $usageLimit = $promotion->usage_limit; 
+                if ($usageLimit !== null && $promotion->used_count >= $usageLimit) {
+                    throw new Exception("Mã khuyến mãi này đã hết lượt sử dụng.");
+                }
+
+                // Kiểm tra giới hạn lượt dùng của User
+                if ($promotion->max_uses_per_user !== null) {
                     $usedByUser = $promotion->bookings()->where('user_id', $userId)->count();
                     if ($usedByUser >= $promotion->max_uses_per_user) {
-                        $isValid = false;
+                        throw new Exception("Bạn đã sử dụng hết số lần tối đa cho mã khuyến mãi này.");
                     }
                 }
 
-                if ($isValid) {
-                    $subtotalForDiscount = $totalSeatPrice + $totalComboPrice;
+                $subtotalForDiscount = $totalSeatPrice + $totalComboPrice;
 
-                    if ($promotion->discount_type === 'percent') {
-                        $discountAmount = (int) ($subtotalForDiscount * ($promotion->discount_value / 100));
-                    } else {
-                        $discountAmount = min($promotion->discount_value, $subtotalForDiscount);
-                    }
-
-                    $promotionId = $promotion->id;
+                // Kiểm tra giá trị đơn hàng tối thiểu
+                if ($promotion->min_order_amount !== null && $subtotalForDiscount < $promotion->min_order_amount) {
+                    throw new Exception("Đơn hàng chưa đạt giá trị tối thiểu để dùng mã này.");
                 }
+
+                if ($promotion->discount_type === 'percent') {
+                    $discountAmount = (int) ($subtotalForDiscount * ($promotion->discount_value / 100));
+                } else {
+                    $discountAmount = min($promotion->discount_value, $subtotalForDiscount);
+                }
+
+                // Tăng used_count ngay trong transaction để chiếm chỗ an toàn
+                $promotion->increment('used_count');
+                $promotionId = $promotion->id;
             }
 
             $totalAmount = max(0, $totalSeatPrice + $totalComboPrice - $discountAmount);
@@ -166,7 +185,8 @@ class BookingService
                     'ticket_status'     => 'unused',
                 ]);
 
-                // Giữ ghế ở trạng thái 'holding' cho đến khi thanh toán xác nhận thành công
+                // SỬA LỖI 3: Tránh set trạng thái booked quá sớm.
+                // Giữ ghế ở trạng thái 'holding' (tạm chờ thanh toán) cho đến khi webhook/IPN thanh toán xác nhận thành công.
                 $ss->update(['status' => 'holding', 'user_id' => $userId]);
             }
 

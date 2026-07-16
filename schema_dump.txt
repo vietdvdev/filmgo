@@ -1,0 +1,295 @@
+﻿
+            $table->id()->comment('KhÃ³a chÃ­nh há»‡ thá»‘ng');
+            $table->string('full_name')->comment('Há» vÃ  tÃªn ngÆ°á»i dÃ¹ng');
+            $table->string('email')->unique()->comment('Äá»‹a chá»‰ email Ä‘Äƒng nháº­p');
+            $table->string('phone', 20)->nullable()->comment('Sá»‘ Ä‘iá»‡n thoáº¡i liÃªn há»‡');
+            $table->string('password')->comment('Máº­t kháº©u Ä‘Ã£ Ä‘Æ°á»£c mÃ£ hÃ³a (bcrypt)');
+            $table->string('avatar')->nullable()->comment('ÄÆ°á»ng dáº«n áº£nh Ä‘áº¡i diá»‡n');
+            $table->timestamp('email_verified_at')->nullable()->comment('Thá»i Ä‘iá»ƒm xÃ¡c thá»±c email');
+            $table->enum('status', ['active', 'locked'])->default('active')->comment('Tráº¡ng thÃ¡i tÃ i khoáº£n');
+            $table->timestamps();
+            $table->softDeletes()->comment('XÃ³a má»m phá»¥c vá»¥ audit');
+            $table->string('email')->primary()->comment('Email yÃªu cáº§u');
+            $table->string('token')->comment('Chuá»—i token bÃ­ máº­t');
+            $table->timestamp('created_at')->nullable()->comment('Thá»i gian táº¡o token');
+            $table->string('id')->primary();
+            $table->foreignId('user_id')->nullable()->index();
+            $table->string('ip_address', 45)->nullable();
+            $table->text('user_agent')->nullable();
+            $table->longText('payload');
+            $table->integer('last_activity')->index();
+            $table->string('key')->primary();
+            $table->mediumText('value');
+            $table->bigInteger('expiration')->index();
+            $table->string('key')->primary();
+            $table->string('owner');
+            $table->bigInteger('expiration')->index();
+            $table->id();
+            $table->string('queue')->index();
+            $table->longText('payload');
+            $table->unsignedSmallInteger('attempts');
+            $table->unsignedInteger('reserved_at')->nullable();
+            $table->unsignedInteger('available_at');
+            $table->unsignedInteger('created_at');
+            $table->string('id')->primary();
+            $table->string('name');
+            $table->integer('total_jobs');
+            $table->integer('pending_jobs');
+            $table->integer('failed_jobs');
+            $table->longText('failed_job_ids');
+            $table->mediumText('options')->nullable();
+            $table->integer('cancelled_at')->nullable();
+            $table->integer('created_at');
+            $table->integer('finished_at')->nullable();
+            $table->id();
+            $table->string('uuid')->unique();
+            $table->string('connection');
+            $table->string('queue');
+            $table->longText('payload');
+            $table->longText('exception');
+            $table->timestamp('failed_at')->useCurrent();
+            $table->index(['connection', 'queue', 'failed_at']);
+            $table->id()->comment('KhÃ³a chÃ­nh');
+            $table->string('name', 50)->unique()->comment('TÃªn vai trÃ²: admin, manager, staff, customer');
+            $table->string('description', 255)->nullable()->comment('MÃ´ táº£ quyá»n háº¡n cá»§a vai trÃ²');
+            $table->id()->comment('KhÃ³a chÃ­nh');
+            $table->foreignId('user_id')->comment('NgÆ°á»i nháºn thÃ´ng 
+bÃ¡o')->constrained('users')->cascadeOnDelete();
+            $table->string('type', 50)->comment('Loáº¡i: booking_confirmed, check_in_reminder...');
+            $table->string('title', 255)->comment('TiÃªu Ä‘á» thÃ´ng bÃ¡o');
+            $table->text('content')->comment('Ná»™i dung chi tiáº¿t');
+            $table->tinyInteger('is_read')->default(0)->comment('ÄÃ£ Ä‘á»c chÆ°a (0: ChÆ°a, 1: Rá»“i)');
+            $table->timestamp('created_at')->nullable()->comment('Thá»i Ä‘iá»ƒm gá»­i');
+            $table->id()->comment('KhÃ³a chÃ­nh');
+            $table->foreignId('user_id')->comment('TÃi khoáº£n thá»±c hiá»‡n thao 
+tÃ¡c')->constrained('users')->cascadeOnDelete();
+            $table->string('action', 100)->comment('TÃªn hÃ nh Ä‘á»™ng');
+            $table->string('model_type', 100)->nullable()->comment('Loáº¡i Ä‘á»‘i tÆ°á»£ng bá»‹ tÃ¡c Ä‘á»™ng');
+            $table->bigInteger('model_id')->nullable()->comment('ID Ä‘á»‘i tÆ°á»£ng bá»‹ tÃ¡c Ä‘á»™ng');
+            $table->text('description')->nullable()->comment('MÃ´ táº£ chi tiáº¿t hÃ nh Ä‘á»™ng');
+            $table->string('ip_address', 45)->nullable()->comment('Äá»‹a chá»‰ IP khi thá»±c hiá»‡n');
+            $table->timestamp('created_at')->nullable()->comment('Thá»i gian ghi log');
+            $table->id()->comment('KhÃ³a chÃ­nh');
+            $table->foreignId('author_id')->comment('Admin/Staff viáº¿t bÃi')->constrained('users')->cascadeOnDelete();
+            $table->string('title', 255)->comment('TiÃªu Ä‘á» bÃ i viáº¿t');
+            $table->string('slug', 255)->unique()->comment('ÄÆ°á»ng dáº«n SEO');
+            $table->string('thumbnail', 255)->nullable()->comment('áº¢nh bÃ¬a bÃ i viáº¿t');
+            $table->longText('content')->comment('Ná»™i dung Ä‘áº§y Ä‘á»§ (HTML)');
+            $table->enum('status', ['draft', 'published', 'archived'])->default('draft')->comment('Tráº¡ng thÃ¡i 
+xuáº¥t báº£n');
+            $table->timestamp('published_at')->nullable()->comment('Thá»i gian xuáº¥t báº£n');
+            $table->timestamps();
+            $table->softDeletes()->comment('XÃ³a má»m');
+            $table->foreignId('user_id')->comment('MÃ£ ngÆ°á»i dÃ¹ng')->constrained('users')->cascadeOnDelete();
+            $table->foreignId('role_id')->comment('MÃ£ vai trÃ²')->constrained('roles')->cascadeOnDelete();
+            $table->primary(['user_id', 'role_id']);
+            $table->id()->comment('MÃ£ chi nhÃ¡nh');
+            $table->string('name', 255)->comment('TÃªn ráº¡p (VD: CGV Vincom)');
+            $table->string('address', 255)->comment('Äá»‹a chá»‰ cá»¥ thá»ƒ');
+            $table->string('phone', 20)->nullable()->comment('Hotline ráº¡p');
+            $table->string('city', 100)->comment('ThÃ nh phá»‘');
+            $table->enum('status', ['active', 'inactive'])->default('active')->comment('Tráº¡ng thÃ¡i hoáº¡t Ä‘á»™ng');
+            $table->timestamps();
+            $table->softDeletes()->comment('XÃ³a má»m');
+            $table->id()->comment('KhÃ³a chÃ­nh');
+            $table->string('name', 50)->unique()->comment('TÃªn loáº¡i gháº¿: ThÆ°á»ng, VIP, Sweetbox');
+            $table->integer('surcharge_price')->default(0)->comment('GiÃ¡ phá»¥ thu cá»™ng thÃªm so vá»›i base_price 
+(VNÄ)');
+            $table->id()->comment('KhÃ³a chÃ­nh');
+            $table->foreignId('cinema_id')->comment('Thuá»™c ráº¡p nÃ o')->constrained('cinemas')->cascadeOnDelete();
+            $table->string('room_name', 100)->comment('TÃªn phÃ²ng (VD: PhÃ²ng 1, Hall A)');
+            $table->integer('capacity')->comment('Tá»•ng sá»©c chá»©a (sá»‘ gháº¿)');
+            $table->enum('room_type', ['2D', '3D', 'IMAX', '4DX'])->comment('Loáº¡i phÃ²ng chiáº¿u');
+            $table->enum('status', ['active', 'maintenance', 'inactive'])->default('active')->comment('Tráº¡ng thÃ¡i 
+phÃ²ng');
+            $table->timestamps();
+            $table->softDeletes()->comment('XÃ³a má»m');
+            $table->id()->comment('KhÃ³a chÃ­nh');
+            $table->foreignId('room_id')->comment('Thuá»™c phÃ²ng chiáº¿u nÃ
+o')->constrained('rooms')->cascadeOnDelete();
+            $table->foreignId('seat_type_id')->comment('Loáº¡i gháº¿ cá»§a vá»‹ trÃ nÃ
+y')->constrained('seat_types')->restrictOnDelete();
+            $table->string('seat_row', 10)->comment('KÃ½ hiá»‡u hÃ ng gháº¿ (A, B, C...)');
+            $table->integer('seat_number')->comment('Sá»‘ thá»© tá»± gháº¿ trÃªn hÃ ng (1, 2, 3...)');
+            $table->enum('status', ['active', 'maintenance'])->default('active')->comment('Tráº¡ng thÃ¡i váºt lÃ½ 
+cá»§a gháº¿');
+            $table->unique(['room_id', 'seat_row', 'seat_number']);
+            $table->id()->comment('KhÃ³a chÃ­nh');
+            $table->foreignId('user_id')->comment('MÃ£ quáº£n lÃ½/nhÃ¢n 
+viÃªn')->constrained('users')->cascadeOnDelete();
+            $table->foreignId('cinema_id')->comment('Ráº¡p phim Ä‘Æ°á»£c phÃ¢n 
+quyá»n')->constrained('cinemas')->cascadeOnDelete();
+            $table->timestamp('created_at')->nullable()->comment('Thá»i gian phÃ¢n cÃ´ng');
+            $table->unique(['user_id', 'cinema_id']);
+            $table->id()->comment('MÃ£ phim');
+            $table->string('title', 255)->comment('TÃªn bá»™ phim');
+            $table->string('slug', 255)->unique()->comment('ÄÆ°á»ng dáº«n SEO thÃ¢n thiá»‡n');
+            $table->string('poster', 255)->nullable()->comment('áº¢nh poster chÃ­nh');
+            $table->string('trailer_url', 255)->nullable()->comment('LiÃªn káº¿t trailer YouTube/Vimeo');
+            $table->integer('duration')->comment('Thá»i lÆ°á»£ng phim (phÃºt)');
+            $table->date('release_date')->comment('NgÃ y khá»Ÿi chiáº¿u chÃ­nh thá»©c');
+            $table->string('director', 255)->nullable()->comment('TÃªn Ä‘áº¡o diá»…n');
+            $table->string('country', 100)->nullable()->comment('Quá»‘c gia sáº£n xuáº¥t');
+            $table->enum('age_limit', ['P', 'K', 'T13', 'T16', 'T18'])->comment('PhÃ¢n loáº¡i Ä‘á»™ tuá»•i');
+            $table->text('description')->nullable()->comment('MÃ´ táº£ ná»™i dung phim');
+            $table->enum('status', ['upcoming', 'showing', 'stopped'])->default('upcoming')->comment('Tráº¡ng thÃ¡i 
+phim');
+            $table->timestamps();
+            $table->softDeletes()->comment('XÃ³a má»m - phá»¥c há»“i Ä‘Æ°á»£c');
+            $table->fullText(['title', 'description']);
+            $table->id()->comment('KhÃ³a chÃ­nh');
+            $table->string('name', 100)->unique()->comment('TÃªn thá»ƒ loáº¡i (HÃ nh Ä‘á»™ng, Kinh dá»‹...)');
+            $table->text('description')->nullable()->comment('MÃ´ táº£ thá»ƒ loáº¡i');
+            $table->id()->comment('KhÃ³a chÃ­nh');
+            $table->string('name', 255)->comment('TÃªn diá»…n viÃªn');
+            $table->string('avatar', 255)->nullable()->comment('áº¢nh Ä‘áº¡i diá»‡n diá»…n viÃªn');
+            $table->text('biography')->nullable()->comment('Tiá»ƒu sá»­, sá»± nghiá»‡p');
+            $table->date('date_of_birth')->nullable()->comment('NgÃ y sinh');
+            $table->id()->comment('KhÃ³a chÃ­nh');
+            $table->foreignId('user_id')->comment('KhÃ¡ch hÃng viáº¿t Ä‘Ã¡nh 
+giÃ¡')->constrained('users')->cascadeOnDelete();
+            $table->foreignId('movie_id')->comment('Phim Ä‘Æ°á»£c Ä‘Ã¡nh 
+giÃ¡')->constrained('movies')->cascadeOnDelete();
+            $table->unsignedTinyInteger('rating')->comment('Äiá»ƒm sá»‘ tá»« 1 Ä‘áº¿n 5 sao');
+            $table->text('comment')->nullable()->comment('Ná»™i dung bÃ¬nh luáº­n');
+            $table->enum('status', ['pending', 'approved', 'rejected'])->default('approved')->comment('Tráº¡ng thÃ¡i 
+kiá»ƒm duyá»‡t ná»™i dung');
+            $table->timestamp('created_at')->nullable()->comment('Thá»i gian viáº¿t Ä‘Ã¡nh giÃ¡');
+            $table->softDeletes()->comment('XÃ³a má»m náº¿u vi pháº¡m ná»™i dung');
+            $table->unique(['user_id', 'movie_id']);
+            $table->foreignId('movie_id')->comment('MÃ£ phim')->constrained('movies')->cascadeOnDelete();
+            $table->foreignId('genre_id')->comment('MÃ£ thá»ƒ loáº¡i')->constrained('genres')->cascadeOnDelete();
+            $table->primary(['movie_id', 'genre_id']);
+            $table->foreignId('movie_id')->comment('MÃ£ phim')->constrained('movies')->cascadeOnDelete();
+            $table->foreignId('actor_id')->comment('MÃ£ diá»…n viÃªn')->constrained('actors')->cascadeOnDelete();
+            $table->string('role_name', 100)->nullable()->comment('TÃªn nhÃ¢n váº­t Ä‘áº£m nháº­n trong phim');
+            $table->primary(['movie_id', 'actor_id']);
+            $table->id()->comment('KhÃ³a chÃ­nh');
+            $table->string('name', 100)->comment('TÃªn quy táº¯c giÃ¡');
+            $table->tinyInteger('day_of_week')->comment('0: CN, 1-6: T2-T7');
+            $table->time('start_time')->comment('Giá» báº¯t Ä‘áº§u Ã¡p dá»¥ng khung giÃ¡');
+            $table->time('end_time')->comment('Giá» káº¿t thÃºc khung giÃ¡');
+            $table->integer('adjustment_amount')->default(0)->comment('Sá»‘ tiá»n cá»™ng/trá»« vÃo base_price 
+(VNÄ)');
+            $table->tinyInteger('is_active')->default(1)->comment('Quy táº¯c Ä‘ang Ä‘Æ°á»£c Ã¡p dá»¥ng (1=CÃ³, 
+0=KhÃ´ng)');
+            $table->timestamps();
+            $table->id()->comment('KhÃ³a chÃ­nh');
+            $table->string('name', 100)->comment('TÃªn ngÃ y lá»… (VD: Tet Nguyen Dan, Quoc Khanh)');
+            $table->date('holiday_date')->unique()->comment('Tra cá»©u ngÃ y lá»… khÃ´ng trÃ¹ng láº·p');
+            $table->string('description', 255)->nullable()->comment('Ghi chÃº thÃªm vá» ngÃ y lá»…');
+            $table->id()->comment('KhÃ³a chÃ­nh');
+            $table->foreignId('movie_id')->comment('Phim Ä‘Æ°á»£c chiáº¿u')->constrained('movies')->cascadeOnDelete();
+            $table->foreignId('room_id')->comment('PhÃ²ng chiáº¿u')->constrained('rooms')->cascadeOnDelete();
+            $table->date('show_date')->comment('NgÃ y chiáº¿u cá»¥ thá»ƒ');
+            $table->time('start_time')->comment('Giá» báº¯t Ä‘áº§u chiáº¿u');
+            $table->time('end_time')->comment('Giá» káº¿t thÃºc');
+            $table->integer('base_price')->comment('GiÃ¡ vÃ© cÆ¡ sá»Ÿ cá»§a suáº¥t (VNÄ)');
+            $table->enum('status', ['upcoming', 'showing', 'finished', 
+'cancelled'])->default('upcoming')->comment('Tráº¡ng thÃ¡i suáº¥t chiáº¿u');
+            $table->timestamps();
+            $table->softDeletes()->comment('XÃ³a má»m - há»§y suáº¥t chiáº¿u');
+            $table->index(['movie_id', 'show_date']);
+            $table->id()->comment('KhÃ³a chÃ­nh');
+            $table->foreignId('showtime_id')->comment('Thuá»™c suáº¥t chiáº¿u nÃ
+o')->constrained('showtimes')->cascadeOnDelete();
+            $table->foreignId('seat_id')->comment('Vá»‹ trÃ gháº¿ váºt lÃ½ tÆ°Æ¡ng 
+á»©ng')->constrained('seats')->cascadeOnDelete();
+            $table->foreignId('user_id')->nullable()->comment('KhÃ¡ch Ä‘ang giá»¯ hoáº·c Ä‘áº·t 
+gháº¿')->constrained('users')->nullOnDelete();
+            $table->enum('status', ['available', 'holding', 'booked'])->default('available')->comment('Tráº¡ng thÃ¡i 
+gháº¿ thá»±c táº¿');
+            $table->timestamp('locked_at')->nullable()->comment('Thá»i Ä‘iá»ƒm báº¯t Ä‘áº§u giá»¯ gháº¿ (holding)');
+            $table->timestamp('expires_at')->nullable()->comment('Háº¡n giá»¯ gháº¿ - tá»± Ä‘á»™ng nháº£ khi quÃ¡ 
+háº¡n');
+            $table->unique(['showtime_id', 'seat_id']);
+            $table->index(['status', 'expires_at']);
+            $table->id()->comment('KhÃ³a chÃ­nh');
+            $table->string('combo_name', 255)->comment('TÃªn combo');
+            $table->string('image', 255)->nullable()->comment('HÃ¬nh áº£nh minh há»a combo');
+            $table->integer('price')->comment('GiÃ¡ bÃ¡n (VNÄ)');
+            $table->text('description')->nullable()->comment('ThÃ nh pháº§n chi tiáº¿t combo');
+            $table->enum('status', ['active', 'inactive'])->default('active')->comment('Tráº¡ng thÃ¡i kinh doanh');
+            $table->timestamps();
+            $table->softDeletes()->comment('XÃ³a má»m');
+            $table->id()->comment('KhÃ³a chÃ­nh');
+            $table->string('code', 50)->unique()->comment('MÃ£ nháº­p cá»§a khÃ¡ch (VD: SALE50)');
+            $table->enum('discount_type', ['percent', 'fixed'])->comment('Loáº¡i giáº£m: % hoáº·c tiá»n');
+            $table->integer('discount_value')->comment('GiÃ¡ trá»‹ giáº£m');
+            $table->integer('min_order_amount')->default(0)->comment('GiÃ¡ trá»‹ Ä‘Æ¡n tá»‘i thiá»ƒu Ä‘á»ƒ Ã¡p dá»¥ng 
+mÃ£');
+            $table->integer('max_uses_per_user')->default(1)->comment('Sá»‘ láº§n tá»‘i Ä‘a má»™t user Ä‘Æ°á»£c 
+dÃ¹ng');
+            $table->timestamp('start_date')->comment('NgÃ y báº¯t Ä‘áº§u Ã¡p dá»¥ng');
+            $table->timestamp('end_date')->comment('NgÃ y káº¿t thÃºc Ã¡p dá»¥ng');
+            $table->integer('quantity')->nullable()->comment('Tá»•ng lÆ°á»£t sá»­ dá»¥ng (Null = vÃ´ háº¡n)');
+            $table->enum('status', ['active', 'inactive'])->default('active')->comment('Tráº¡ng thÃ¡i mÃ£');
+            $table->softDeletes()->comment('XÃ³a má»m');
+            $table->id()->comment('KhÃ³a chÃ­nh');
+            $table->foreignId('user_id')->comment('KhÃ¡ch hÃ ng Ä‘áº·t vÃ©')->constrained('users')->cascadeOnDelete();
+            $table->foreignId('showtime_id')->comment('Suáº¥t chiáº¿u tÆ°Æ¡ng 
+á»©ng')->constrained('showtimes')->cascadeOnDelete();
+            $table->string('booking_code', 100)->unique()->comment('MÃ£ tra cá»©u Ä‘Æ¡n (VD: FLM-9283)');
+            $table->integer('total_amount')->comment('Tá»•ng tiá»n sau cÃ¹ng cáº§n thanh toÃ¡n');
+            $table->integer('discount_amount')->default(0)->comment('Sá»‘ tiá»n Ä‘Ã£ Ä‘Æ°á»£c giáº£m (lÆ°u váº¿t 
+Ä‘á»‘i soÃ¡t)');
+            $table->enum('payment_status', ['pending', 'paid', 'failed', 
+'refunded'])->default('pending')->comment('Tráº¡ng thÃ¡i thanh toÃ¡n');
+            $table->enum('booking_status', ['pending', 'confirmed', 
+'cancelled'])->default('pending')->comment('Tráº¡ng thÃ¡i xÃ¡c nháºn vÃ©');
+            $table->timestamp('expired_at')->comment('Háº¡n chÃ³t thanh toÃ¡n - quÃ¡ háº¡n há»§y tá»± Ä‘á»™ng');
+            $table->timestamps();
+            $table->index(['user_id', 'created_at']);
+            $table->id()->comment('KhÃ³a chÃ­nh');
+            $table->foreignId('booking_id')->comment('MÃ£ Ä‘Æ¡n Ä‘áº·t 
+vÃ©')->constrained('bookings')->cascadeOnDelete();
+            $table->foreignId('showtime_seat_id')->comment('Tham chiáº¿u tráº¡ng thÃ¡i gháº¿ cá»§a suáº¥t 
+chiáº¿u')->constrained('showtime_seats')->cascadeOnDelete();
+            $table->integer('price')->comment('GiÃ¡ chá»‘t táº¡i thá»i Ä‘iá»ƒm mua - Price Snapshot');
+            $table->id()->comment('KhÃ³a chÃ­nh');
+            $table->foreignId('booking_id')->comment('ÄÆ¡n Ä‘áº·t vÃ© tÆ°Æ¡ng 
+á»©ng')->constrained('bookings')->cascadeOnDelete();
+            $table->foreignId('combo_id')->comment('MÃ£ combo Ä‘Ã£ chá»n')->constrained('combos')->restrictOnDelete();
+            $table->integer('quantity')->comment('Sá»‘ lÆ°á»£ng Ä‘áº·t mua');
+            $table->integer('subtotal')->comment('ThÃ nh tiá»n - Snapshot');
+            $table->id()->comment('KhÃ³a chÃ­nh');
+            $table->foreignId('booking_id')->comment('ÄÆ¡n Ä‘áº·t vÃ© Ä‘Æ°á»£c thanh 
+toÃ¡n')->constrained('bookings')->cascadeOnDelete();
+            $table->string('transaction_code', 100)->nullable()->comment('MÃ£ giao dá»‹ch tá»« cá»•ng thanh toÃ¡n');
+            $table->integer('amount')->comment('Sá»‘ tiá»n giao dá»‹ch (VNÄ)');
+            $table->string('payment_method', 50)->comment('PhÆ°Æ¡ng thá»©c: Credit, Momo, VNPay, ZaloPay');
+            $table->enum('payment_status', ['pending', 'success', 'failed', 'refunded'])->comment('Tráº¡ng thÃ¡i 
+cá»•ng bÃ¡o vá»');
+            $table->timestamp('paid_at')->nullable()->comment('Thá»i Ä‘iá»ƒm thanh toÃ¡n thÃ nh cÃ´ng');
+            $table->id()->comment('KhÃ³a chÃ­nh');
+            $table->foreignId('booking_detail_id')->comment('Gháº¿ tÆ°Æ¡ng á»©ng trÃªn chi tiáº¿t 
+Ä‘Æ¡n')->constrained('booking_details')->cascadeOnDelete();
+            $table->string('qr_code', 255)->unique()->comment('Chuá»—i Ä‘á»‹nh danh Ä‘á»ƒ mÃ£ hÃ³a QR');
+            $table->enum('ticket_status', ['unused', 'used', 'cancelled'])->default('unused')->comment('Tráº¡ng thÃ¡i 
+vÃ©');
+            $table->timestamp('checked_in_at')->nullable()->comment('Thá»i gian quÃ©t mÃ£ vÃ o ráº¡p');
+            $table->index(['qr_code']);
+            $table->foreignId('booking_id')->comment('ÄÆ¡n hÃng Ä‘Æ°á»£c Ã¡p 
+mÃ£')->constrained('bookings')->cascadeOnDelete();
+            $table->foreignId('promotion_id')->comment('MÃ£ khuyáº¿n mÃ£i Ä‘Æ°á»£c sá» 
+dá»¥ng')->constrained('promotions')->cascadeOnDelete();
+            $table->primary(['booking_id', 'promotion_id']);
+            $table->rememberToken()->after('status');
+            $table->dropColumn('remember_token');
+            $table->boolean('is_auto_generated')
+            $table->dropColumn('is_auto_generated');
+            $table->unsignedBigInteger('price')
+            $table->dropColumn('price');
+            $table->unsignedInteger('used_count')
+            $table->enum('apply_to', ['all', 'ticket_only', 'combo_only'])
+            $table->unsignedInteger('max_discount_amount')
+            $table->dropColumn(['used_count', 'apply_to', 'max_discount_amount']);
+            $table->unsignedBigInteger('subtotal')
+            $table->foreignId('promotion_id')
+            $table->unsignedBigInteger('final_total')
+            $table->dropForeign(['promotion_id']);
+            $table->dropColumn(['subtotal', 'promotion_id', 'final_total']);
+            $table->dateTime('publish_at')->nullable()->comment('Thá»i gian há»‡ thá»‘ng tá»± Ä‘á»™ng má»Ÿ bÃ¡n');
+            $table->dropColumn('publish_at');
+
+

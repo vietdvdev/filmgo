@@ -50,3 +50,30 @@ Route::middleware(['web', 'auth', 'manager'])
             [App\Http\Controllers\Manager\ManagerShowtimeController::class, 'apiDeleteShowtime']
         )->name('api.manager.showtimes.delete');
     });
+
+// ── Admin Dashboard API ───────────────────────────────────────────────────────
+// Khai báo theo yêu cầu: prefix api/admin/dashboard và các endpoint tương ứng.
+// Do dự án FilmGo sử dụng session-based authentication qua web cookie,
+// các route này được bảo vệ bởi middleware 'web', 'auth', 'admin'.
+Route::middleware(['web', 'auth', 'admin'])
+    ->prefix('admin/dashboard')
+    ->group(function () {
+        // GET /api/admin/dashboard/kpis
+        Route::get('/kpis', [App\Http\Controllers\Admin\DashboardController::class, 'kpis'])->name('api.admin.dashboard.kpis');
+
+        // GET /api/admin/dashboard/charts/revenue
+        Route::get('/charts/revenue', [App\Http\Controllers\Admin\DashboardController::class, 'chartsRevenue'])->name('api.admin.dashboard.charts.revenue');
+
+        // GET /api/admin/dashboard/charts/top-movies
+        Route::get('/charts/top-movies', [App\Http\Controllers\Admin\DashboardController::class, 'chartsTopMovies'])->name('api.admin.dashboard.charts.top-movies');
+
+        // GET /api/admin/dashboard/ops/conflicts
+        Route::get('/ops/conflicts', [App\Http\Controllers\Admin\DashboardController::class, 'opsConflicts'])->name('api.admin.dashboard.ops.conflicts');
+
+        // GET /api/admin/dashboard/ops/today-showtimes
+        Route::get('/ops/today-showtimes', [App\Http\Controllers\Admin\DashboardController::class, 'opsTodayShowtimes'])->name('api.admin.dashboard.ops.today-showtimes');
+
+        // POST /api/admin/dashboard/ops/conflicts/{id}/resolve
+        Route::post('/ops/conflicts/{id}/resolve', [App\Http\Controllers\Admin\DashboardController::class, 'resolveConflict'])->name('api.admin.dashboard.ops.conflicts.resolve');
+    });
+

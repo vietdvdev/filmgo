@@ -69,18 +69,50 @@ class BookingController extends Controller
             'seat_ids.max'      => 'Bạn chỉ được chọn tối đa 10 ghế.',
         ]);
 
-        // Validate toàn bộ quy tắc ghế trước khi lock
+        // Validate toàn bộ quy tắc ghế (Single seat, Sweetbox...) bằng Validation Service
         $validation = $this->seatValidationService->validate($showtimeId, $request->seat_ids);
         if (!$validation['valid']) {
             return redirect()->back()->withInput()->with('error', $validation['message']);
         }
 
-        // Lock ghế với transaction + lockForUpdate
-        $result = $this->seatValidationService->lockSeats($showtimeId, $request->seat_ids, Auth::id());
-        if (!$result['success']) {
-            return redirect()->back()->withInput()->with('error', $result['message']);
+        $userId = Auth::id();
+        $seatIds = $request->seat_ids;
+
+        try {
+            // SỬA LỖI 1: Bọc logic trong DB::transaction và gọi lockForUpdate
+            $expiresAt = DB::transaction(function () use ($showtimeId, $seatIds, $userId) {
+                $seats = ShowtimeSeat::with('seat')
+                    ->where('showtime_id', $showtimeId)
+                    ->whereIn('id', $seatIds)
+                    ->lockForUpdate() // Khóa dòng dữ liệu tránh 2 người chọn cùng lúc
+                    ->get();
+
+                foreach ($seats as $ss) {
+                    if (($ss->status === 'holding' || $ss->status === 'locked') && $ss->user_id === $userId) {
+                        continue;
+                    }
+                    if ($ss->status !== 'available') {
+                        throw new Exception('Ghế ' . $ss->seat->seat_row . $ss->seat->seat_number . ' vừa có người khác đặt. Vui lòng chọn ghế khác.');
+                    }
+                }
+
+                $expireTime = now()->addMinutes(10); // Hết hạn holding = 10 phút
+
+                ShowtimeSeat::where('showtime_id', $showtimeId)
+                    ->whereIn('id', $seatIds)
+                    ->update([
+                        'status' => 'holding',
+                        'user_id' => $userId,
+                        'locked_at' => now(),
+                        'expires_at' => $expireTime
+                    ]);
+
+                return $expireTime;
+            });
+        } catch (Exception $e) {
+            // Throw exception -> Rollback -> Hiển thị lỗi
+            return redirect()->back()->withInput()->with('error', $e->getMessage());
         }
-        $expiresAt = $result['expires_at'];
 
         session()->put("booking.{$showtimeId}.seat_ids", $request->seat_ids);
         session()->put("booking.{$showtimeId}.expires_at", $expiresAt->timestamp);
@@ -258,10 +290,17 @@ class BookingController extends Controller
             return redirect()->route('booking.select-seats', $showtimeId)->with('error', 'Vui lòng chọn ghế ngồi trước.');
         }
 
-        // 2. Kiểm tra suất chiếu còn hợp lệ để đặt vé
+        // 2. Kiểm tra suất chiếu còn hợp lệ để đặt vé (SỬA LỖI 4: Check start_time)
         $showtime = Showtime::find($showtimeId);
-        if (!$showtime || !in_array($showtime->status, ['upcoming', 'showing', 'active'])) {
-            // Nhả ghế holding về available
+        
+        $isPast = false;
+        if ($showtime) {
+            $startDateTime = \Carbon\Carbon::parse($showtime->show_date->format('Y-m-d') . ' ' . $showtime->start_time);
+            $isPast = $startDateTime->isPast();
+        }
+
+        if (!$showtime || !in_array($showtime->status, ['upcoming', 'showing', 'active']) || $isPast) {
+            // Nhả ghế holding về available nếu suất chiếu không hợp lệ
             ShowtimeSeat::whereIn('id', $seatIds)->where('user_id', Auth::id())->update([
                 'status' => 'available', 'user_id' => null, 'locked_at' => null, 'expires_at' => null,
             ]);
