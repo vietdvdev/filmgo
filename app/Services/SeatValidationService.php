@@ -120,6 +120,12 @@ class SeatValidationService
             return $this->fail($singleSeatError);
         }
 
+        // Kiểm tra quy tắc ghế đôi Sweetbox
+        $sweetboxError = $this->validateSweetboxRule($allSeats, $showtimeSeatIds);
+        if ($sweetboxError) {
+            return $this->fail($sweetboxError);
+        }
+
         return ['valid' => true];
     }
 
@@ -182,6 +188,46 @@ class SeatValidationService
                 if ($leftBlocked && $rightBlocked) {
                     return "Lựa chọn của bạn tạo ra ghế trống cô đơn ở hàng {$row}. Vui lòng chọn lại để không bỏ trống 1 ghế đơn lẻ.";
                 }
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * Kiểm tra quy tắc ghế đôi Sweetbox (phải chọn cả cặp).
+     */
+    public function validateSweetboxRule($allSeats, array $selectedIds): ?string
+    {
+        $selectedSeats = $allSeats->only($selectedIds);
+        $sweetboxSeats = $selectedSeats->filter(function ($ss) {
+            return $ss->seat->seatType->name === 'Sweetbox';
+        });
+
+        if ($sweetboxSeats->isEmpty()) {
+            return null;
+        }
+
+        // Nhóm tất cả ghế theo hàng và số ghế để tra cứu nhanh
+        $seatsByRowAndNumber = [];
+        foreach ($allSeats as $ss) {
+            $seatsByRowAndNumber[$ss->seat->seat_row][$ss->seat->seat_number] = $ss;
+        }
+
+        $selectedSeatIds = $selectedSeats->pluck('id')->toArray();
+
+        foreach ($sweetboxSeats as $ss) {
+            $row = $ss->seat->seat_row;
+            $number = $ss->seat->seat_number;
+            $siblingNumber = ($number % 2 === 1) ? $number + 1 : $number - 1;
+
+            $siblingSeat = $seatsByRowAndNumber[$row][$siblingNumber] ?? null;
+            if (!$siblingSeat) {
+                return "Ghế đôi Sweetbox {$row}{$number} không có ghế cùng cặp hợp lệ.";
+            }
+
+            if (!in_array($siblingSeat->id, $selectedSeatIds)) {
+                return "Ghế đôi Sweetbox {$row}{$number} và {$row}{$siblingNumber} phải được chọn cùng nhau.";
             }
         }
 
