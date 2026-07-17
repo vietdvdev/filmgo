@@ -179,6 +179,11 @@ class MovieController extends Controller
 
     public function destroy(Movie $movie)
     {
+        if ($movie->showtimes()->exists()) {
+            return redirect()->route('admin.movies.index')
+                ->with('error', 'Không thể xóa phim «' . $movie->title . '» vì đang có suất chiếu hoạt động!');
+        }
+
         $movie->delete();
         return redirect()->route('admin.movies.index')->with('success', 'Đã xóa phim «' . $movie->title . '»!');
     }
