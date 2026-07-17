@@ -826,11 +826,14 @@ const POS = (() => {
         Object.values(rows).forEach(r => r.sort((a, b) => a.number - b.number));
 
         for (const [row, seats] of Object.entries(rows)) {
-            for (let i = 1; i < seats.length - 1; i++) {
+            for (let i = 0; i < seats.length; i++) {
                 const s = seats[i];
                 const isSelected = sel => state.selectedSeats.some(x => x.showtime_seat_id === sel.showtime_seat_id);
                 const isBlocked = sel => ['booked','holding','maintenance'].includes(sel.status) || sel.seat_status === 'maintenance' || isSelected(sel);
-                if (!isBlocked(s) && isBlocked(seats[i - 1]) && isBlocked(seats[i + 1])) {
+                if (isBlocked(s)) continue;
+                const leftBlocked  = (i === 0) || isBlocked(seats[i - 1]);
+                const rightBlocked = (i === seats.length - 1) || isBlocked(seats[i + 1]);
+                if (leftBlocked && rightBlocked) {
                     return `Ghế ${s.label} sẽ bị bỏ trống cô đơn. Vui lòng chọn thêm hoặc bỏ bớt ghế liền kề.`;
                 }
             }

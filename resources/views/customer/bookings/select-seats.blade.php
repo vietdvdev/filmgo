@@ -412,10 +412,8 @@
 
                     for (let i = 0; i < states.length; i++) {
                         if (states[i] !== 'O') continue;
-                        // Ghế ở biên hàng không bao giờ là ghế cô đơn
-                        if (i === 0 || i === states.length - 1) continue;
-                        const leftBlocked  = (states[i-1] === 'X' || states[i-1] === 'S');
-                        const rightBlocked = (states[i+1] === 'X' || states[i+1] === 'S');
+                        const leftBlocked  = (i === 0) || (states[i-1] === 'X' || states[i-1] === 'S');
+                        const rightBlocked = (i === states.length - 1) || (states[i+1] === 'X' || states[i+1] === 'S');
                         if (leftBlocked && rightBlocked) {
                             return `Lựa chọn của bạn tạo ra ghế trống cô đơn ở hàng ${row}. Vui lòng chọn lại để không bỏ trống 1 ghế đơn lẻ.`;
                         }
