@@ -72,6 +72,9 @@ Route::middleware('customer')->group(function () {
     Route::post('/booking/showtime/{showtime_id}/combos', [App\Http\Controllers\Customer\BookingController::class, 'processCombos'])->name('booking.process-combos');
     // Nhả ghế khi khách bấm Quay lại từ trang Combo → về trang Chọn Ghế
     Route::post('/booking/showtime/{showtime_id}/release-seats', [App\Http\Controllers\Customer\BookingController::class, 'releaseSeats'])->name('booking.release-seats');
+    // API nhả ghế qua Beacon (dùng khi user thoát trang/đóng tab — không cần redirect)
+    Route::post('/booking/showtime/{showtime_id}/release-seats-beacon', [App\Http\Controllers\Customer\BookingController::class, 'releaseSeatsBeacon'])->name('booking.release-seats-beacon');
+
     
     Route::get('/booking/showtime/{showtime_id}/checkout', [App\Http\Controllers\Customer\BookingController::class, 'checkout'])->name('booking.checkout');
     Route::post('/booking/showtime/{showtime_id}/confirm', [App\Http\Controllers\Customer\BookingController::class, 'confirm'])->name('booking.confirm');

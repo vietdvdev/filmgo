@@ -107,8 +107,26 @@ class BookingController extends Controller
         $seatIds = $request->seat_ids;
 
         try {
-            // SỬA LỖI 1: Bọc logic trong DB::transaction và gọi lockForUpdate
+            // Bọc logic trong DB::transaction và gọi lockForUpdate
             $expiresAt = DB::transaction(function () use ($showtimeId, $seatIds, $userId) {
+
+                // ── NHẢI GHẾ CŨ KHÔNG CÒN TRONG LỰA CHỌN MỚI ──
+                // Trường hợp: user quay lại trang ghế từ combo, bỏ chọn một số ghế rồi submit lại.
+                // Ghế bị bỏ chọn phải được nhả ngay về 'available' thay vì chờ hết hạn.
+                $previousSeatIds = session()->get("booking.{$showtimeId}.seat_ids", []);
+                $droppedSeatIds = array_values(array_diff($previousSeatIds, $seatIds));
+                if (!empty($droppedSeatIds)) {
+                    ShowtimeSeat::whereIn('id', $droppedSeatIds)
+                        ->where('user_id', $userId)
+                        ->whereIn('status', ['holding', 'locked'])
+                        ->update([
+                            'status'     => 'available',
+                            'user_id'    => null,
+                            'locked_at'  => null,
+                            'expires_at' => null,
+                        ]);
+                }
+
                 $seats = ShowtimeSeat::with('seat')
                     ->where('showtime_id', $showtimeId)
                     ->whereIn('id', $seatIds)
@@ -147,6 +165,8 @@ class BookingController extends Controller
 
         return redirect()->route('booking.select-combos', $showtimeId);
     }
+
+
 
     /**
      * Step 2: Show active food combos to upsell.
@@ -260,6 +280,46 @@ class BookingController extends Controller
         return redirect()->route('booking.select-seats', $showtimeId)
             ->with('info', 'Ghế đã được giải phóng. Bạn có thể chọn lại ghế khác.');
     }
+
+    /**
+     * Beacon API: Nhả ghế không cần redirect — dùng khi user thoát trang/đóng tab.
+     * Trả về JSON 200. Frontend gọi qua navigator.sendBeacon() trong beforeunload / visibilitychange.
+     */
+    public function releaseSeatsBeacon(Request $request, $showtimeId)
+    {
+        $userId = Auth::id();
+        if (!$userId) {
+            return response()->json(['ok' => false, 'reason' => 'unauthenticated'], 401);
+        }
+
+        // Lấy seat_ids từ body JSON của Beacon request (Beacon gửi dạng plain text / JSON)
+        $seatIds = session()->get("booking.{$showtimeId}.seat_ids", []);
+
+        // Nếu session không có (beacon chạy trước session close), thử lấy từ body
+        if (empty($seatIds)) {
+            $bodyJson = $request->getContent();
+            $body = json_decode($bodyJson, true);
+            $seatIds = $body['seat_ids'] ?? [];
+        }
+
+        if (!empty($seatIds)) {
+            ShowtimeSeat::whereIn('id', $seatIds)
+                ->where('user_id', $userId)
+                ->whereIn('status', ['holding', 'locked'])
+                ->update([
+                    'status'     => 'available',
+                    'user_id'    => null,
+                    'locked_at'  => null,
+                    'expires_at' => null,
+                ]);
+        }
+
+        session()->forget("booking.{$showtimeId}");
+
+        return response()->json(['ok' => true]);
+    }
+
+
 
     /**
      * Step 3: Checkout summary.

@@ -198,21 +198,27 @@
                         </div>
 
                         <!-- Action buttons -->
-                        <div class="flex gap-4">
-                            {{-- Nút Quay Lại: dùng form POST để nhả ghế holding trước khi về trang chọn ghế --}}
-                            <form action="{{ route('booking.release-seats', $showtime->id) }}" method="POST" class="w-1/3">
-                                @csrf
-                                <button type="submit"
-                                   class="w-full bg-white border border-slate-300 hover:border-brand-primary hover:text-brand-primary text-slate-400 font-bold py-4 rounded-none flex items-center justify-center transition-all duration-200 shadow-sm">
-                                    <span class="material-symbols-outlined text-base">arrow_back</span>
-                                </button>
-                            </form>
-                            <button type="submit" 
-                                    class="w-2/3 bg-brand-primary hover:bg-red-700 text-white font-bold py-4 rounded-none shadow-lg shadow-brand-primary/25 transition-all duration-200 flex items-center justify-center gap-2 uppercase tracking-wider text-sm font-black">
-                                Tiếp tục đặt vé
+                        <div class="flex flex-col sm:flex-row gap-3">
+                            {{-- Nút Quay Lại Chọn Ghế:
+                                 Dùng thẻ <a> điều hướng về trang chọn ghế mà KHÔNG nhả ghế.
+                                 Ghế vẫn còn trong session → hiển thị đỏ để user có thể xem lại / hủy.
+                                 Nếu user muốn đổi ghế hoàn toàn, họ có thể click bỏ chọn trên trang ghế rồi submit lại. --}}
+                            <a href="{{ route('booking.select-seats', $showtime->id) }}"
+                               id="btnBackToSeats"
+                               class="w-full sm:w-1/2 bg-white border-2 border-slate-300 hover:border-brand-primary hover:text-brand-primary text-slate-500 font-bold py-3.5 rounded-xl flex items-center justify-center gap-2 transition-all duration-200 shadow-sm text-sm uppercase tracking-wide">
+                                <span class="material-symbols-outlined text-base">arrow_back</span>
+                                Quay Lại Chọn Ghế
+                            </a>
+
+                            {{-- Nút Tiếp Tục: submit form combo sang trang Thanh Toán --}}
+                            <button type="submit"
+                                    id="btnContinue"
+                                    class="w-full sm:w-1/2 bg-brand-primary hover:bg-red-700 text-white font-bold py-3.5 rounded-xl shadow-lg shadow-brand-primary/25 transition-all duration-200 flex items-center justify-center gap-2 uppercase tracking-wide text-sm">
+                                Tiếp Tục
                                 <span class="material-symbols-outlined text-sm">arrow_forward</span>
                             </button>
                         </div>
+
                     </div>
 
                 </div>
@@ -223,6 +229,40 @@
     <!-- JavaScript to Dynamic Handle Combo quantity -->
     <script>
         document.addEventListener('DOMContentLoaded', function () {
+            // ── CHẶN NÚT BACK TRÌNH DUYỆT (chỉ khi back về trang Thanh Toán) ──
+            // Đẩy 1 state giả vào history để tạo điểm chặn khi người dùng nhấn nút back.
+            // Khi popstate kích hoạt (back bị nhấn), ta tự redirect về trang chọn ghế.
+            // Cờ "navigatingIntentionally" ngăn popstate chạy khi user đã click nút UI.
+            let navigatingIntentionally = false;
+
+            history.pushState({ page: 'combos', showtimeId: {{ $showtime->id }} }, '', window.location.href);
+
+            window.addEventListener('popstate', function (event) {
+                if (navigatingIntentionally) return; // click nút UI → bỏ qua
+                // Nhấn nút back trình duyệt → về trang chọn ghế, ghế vẫn còn trong session
+                window.location.replace("{{ route('booking.select-seats', $showtime->id) }}");
+            });
+
+            // Khi click nút "Quay Lại Chọn Ghế" → đánh dấu để popstate không can thiệp
+            const btnBack = document.getElementById('btnBackToSeats');
+            if (btnBack) {
+                btnBack.addEventListener('click', function () {
+                    navigatingIntentionally = true;
+                    // Điều hướng về seats — ghế vẫn giữ trong session, hiển thị đỏ
+                    // (không cần làm gì thêm, href đã xử lý)
+                });
+            }
+
+            // Khi submit form (Tiếp Tục) → cũng đánh dấu intentional
+            const comboForm = document.getElementById('comboForm');
+            if (comboForm) {
+                comboForm.addEventListener('submit', function () {
+                    navigatingIntentionally = true;
+                });
+            }
+
+
+
             const decButtons = document.querySelectorAll('.btn-qty-dec');
             const incButtons = document.querySelectorAll('.btn-qty-inc');
             const qtyInputs = document.querySelectorAll('.combo-qty-input');

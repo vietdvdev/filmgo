@@ -71,38 +71,46 @@
                                             @foreach($seats as $ss)
                                                 @php
                                                     $seatType = $ss->seat->seatType;
-                                                    $isBooked = $ss->status !== 'available';
-                                                    $isSaved = in_array($ss->id, $savedSeatIds);
-                                                    
-                                                    // Determine base class by seat type
+                                                    $isSaved  = in_array($ss->id, $savedSeatIds);
+
+                                                    // Ghế do CHÍNH user hiện tại đang giữ (holding/locked) từ session trước
+                                                    // → phải coi như "đang chọn", KHÔNG phải "đã có người đặt"
+                                                    $isHeldByMe = $isSaved && in_array($ss->status, ['holding', 'locked']);
+
+                                                    // Ghế bị chiếm khi: không phải available VÀ không phải do mình giữ
+                                                    $isBooked = ($ss->status !== 'available') && !$isHeldByMe;
+
+                                                    // Xác định class CSS
                                                     $btnClass = 'w-9 h-9 rounded-xl border flex items-center justify-center text-xs font-black transition-all duration-150 ';
-                                                    
-                                                    if ($isBooked) {
+
+                                                    if ($isHeldByMe) {
+                                                        // Ghế đang do mình giữ → hiển thị màu đỏ selected
+                                                        $btnClass .= 'bg-brand-primary border-brand-primary text-white shadow-md shadow-brand-primary/20 selected-seat';
+                                                    } elseif ($isBooked) {
+                                                        // Ghế đã có người khác đặt → disabled
                                                         $btnClass .= 'bg-zinc-800/40 border-zinc-800 text-zinc-600 cursor-not-allowed';
                                                     } else {
-                                                        if ($isSaved) {
-                                                            $btnClass .= 'bg-brand-primary border-brand-primary text-white shadow-md shadow-brand-primary/20 selected-seat';
+                                                        // Ghế trống → màu theo loại ghế
+                                                        if ($seatType->name === 'VIP') {
+                                                            $btnClass .= 'bg-red-950/30 hover:bg-red-900/30 border-red-800/50 text-red-400 seat-available';
+                                                        } elseif ($seatType->name === 'Sweetbox') {
+                                                            $btnClass .= 'bg-pink-950/30 hover:bg-pink-900/30 border-pink-800/50 text-pink-400 seat-available';
                                                         } else {
-                                                            if ($seatType->name === 'VIP') {
-                                                                $btnClass .= 'bg-red-950/30 hover:bg-red-900/30 border-red-800/50 text-red-400 seat-available';
-                                                            } elseif ($seatType->name === 'Sweetbox') {
-                                                                $btnClass .= 'bg-pink-950/30 hover:bg-pink-900/30 border-pink-800/50 text-pink-400 seat-available';
-                                                            } else {
-                                                                $btnClass .= 'bg-zinc-900/50 hover:bg-zinc-800 border-zinc-700 text-zinc-300 seat-available';
-                                                            }
+                                                            $btnClass .= 'bg-zinc-900/50 hover:bg-zinc-800 border-zinc-700 text-zinc-300 seat-available';
                                                         }
                                                     }
                                                 @endphp
-                                                <button type="button" 
-                                                        class="{{ $btnClass }}" 
-                                                        data-id="{{ $ss->id }}" 
-                                                        data-row="{{ $row }}" 
+                                                <button type="button"
+                                                        class="{{ $btnClass }}"
+                                                        data-id="{{ $ss->id }}"
+                                                        data-row="{{ $row }}"
                                                         data-number="{{ $ss->seat->seat_number }}"
                                                         data-price="{{ $showtime->base_price + ($seatType->surcharge_price ?? 0) }}"
                                                         data-type="{{ $seatType->name }}"
                                                         @if($isBooked) disabled @endif>
                                                     {{ $ss->seat->seat_number }}
                                                 </button>
+
                                             @endforeach
                                         </div>
                                         
@@ -221,6 +229,12 @@
     <!-- JavaScript to Handle Interactive Selection -->
     <script>
         document.addEventListener('DOMContentLoaded', function () {
+            // ── ĐẶT LẠI ĐIỂM GỐC LỊCH SỬ ĐIỀU HƯỚNG ──
+            // Dùng replaceState để đảm bảo trang chọn ghế luôn là điểm bắt đầu
+            // trong history stack, tránh nút back trình duyệt dẫn về trang Thanh Toán
+            // hoặc các bước trước đó không mong muốn.
+            history.replaceState({ page: 'select-seats', showtimeId: {{ $showtime->id }} }, '', window.location.href);
+
             const buttons = document.querySelectorAll('.seat-available, .selected-seat');
             const hiddenContainer = document.getElementById('hiddenInputsContainer');
             const submitBtn = document.getElementById('submitBtn');
@@ -228,6 +242,7 @@
             const totalPriceLabel = document.getElementById('totalPriceLabel');
 
             // Build map: seatId -> { row, number, status } cho toàn bộ ghế trong phòng
+
             const allSeatData = {};
             document.querySelectorAll('[data-id]').forEach(btn => {
                 allSeatData[btn.dataset.id] = {
@@ -239,17 +254,30 @@
 
             let selectedSeats = [];
 
-            // Khởi tạo từ session (ghế đã chọn trước)
+            // Khởi tạo từ session (ghế đã chọn / đang giữ trước)
             document.querySelectorAll('.selected-seat').forEach(btn => {
+                const seatId = btn.dataset.id;
                 selectedSeats.push({
-                    id: btn.dataset.id,
+                    id: seatId,
                     name: btn.dataset.row + btn.dataset.number,
                     price: parseInt(btn.dataset.price),
                     row: btn.dataset.row,
                     number: parseInt(btn.dataset.number),
                 });
+
+                // Tạo hidden input để form gửi đúng seat_ids[] lên server
+                if (!document.getElementById('input-' + seatId)) {
+                    const input = document.createElement('input');
+                    input.type  = 'hidden';
+                    input.name  = 'seat_ids[]';
+                    input.value = seatId;
+                    input.id    = 'input-' + seatId;
+                    hiddenContainer.appendChild(input);
+                }
             });
             updateSummary();
+
+
 
             function selectSeat(btn) {
                 const seatId = btn.dataset.id;
@@ -414,11 +442,31 @@
                         const number = parseInt(numStr);
                         if (states[number] !== 'O') continue;
 
-                        const leftExists = states[number - 1] !== undefined;
+                        const leftExists  = states[number - 1] !== undefined;
                         const rightExists = states[number + 1] !== undefined;
 
-                        if (!leftExists || !rightExists) continue;
+                        // Ghế đứng một mình (hàng 1 ghế) → bỏ qua
+                        if (!leftExists && !rightExists) continue;
 
+                        // ── GHẾ GÓC TRÁI (đầu hàng, không có hàng xóm bên trái) ──
+                        // VD: ghế 1. Nếu ghế 2 bên cạnh là 'S' → ghế 1 cô đơn ở góc → lỗi
+                        if (!leftExists && rightExists) {
+                            if (states[number + 1] === 'S') {
+                                return `Lựa chọn của bạn bỏ trống ghế góc cô đơn ở đầu hàng ${row} (ghế số ${number}). Vui lòng chọn từ ghế đầu hàng hoặc chọn liên tiếp.`;
+                            }
+                            continue;
+                        }
+
+                        // ── GHẾ GÓC PHẢI (cuối hàng, không có hàng xóm bên phải) ──
+                        // VD: ghế 10. Nếu ghế 9 bên cạnh là 'S' → ghế 10 cô đơn ở góc → lỗi
+                        if (leftExists && !rightExists) {
+                            if (states[number - 1] === 'S') {
+                                return `Lựa chọn của bạn bỏ trống ghế góc cô đơn ở cuối hàng ${row} (ghế số ${number}). Vui lòng chọn đến ghế cuối hàng hoặc chọn liên tiếp.`;
+                            }
+                            continue;
+                        }
+
+                        // ── GHẾ Ở GIỮA HÀNG ──
                         const leftBlocked  = (states[number - 1] === 'X' || states[number - 1] === 'S');
                         const rightBlocked = (states[number + 1] === 'X' || states[number + 1] === 'S');
 
@@ -431,6 +479,7 @@
                 }
                 return null;
             }
+
 
             function selectVisual(btn) {
                 const type = btn.dataset.type;
@@ -479,8 +528,54 @@
                 if (window._errorTimer) clearTimeout(window._errorTimer);
                 window._errorTimer = setTimeout(() => { el.style.display = 'none'; }, 5000);
             }
+
+            // ── NHẢI GHẾ KHI USER THOÁT TRANG ──
+            // Dùng navigator.sendBeacon để gửi request nhả ghế khi:
+            //   1. User đóng tab / cửa sổ trình duyệt (beforeunload)
+            //   2. User chuyển sang tab khác rồi tắt (visibilitychange → hidden)
+            // sendBeacon đảm bảo request được gửi dù trang đã tắt, không cần chờ response.
+            //
+            // QUAN TRỌNG: KHÔNG nhả ghế khi user submit form (ấn Tiếp tục) —
+            // ta dùng cờ "leavingViaForm" để phân biệt.
+
+            let leavingViaForm = false;
+
+            const bookingForm = document.getElementById('bookingForm');
+            if (bookingForm) {
+                bookingForm.addEventListener('submit', function () {
+                    leavingViaForm = true; // đánh dấu: đang đi theo flow đặt vé bình thường
+                });
+            }
+
+            const beaconUrl  = "{{ route('booking.release-seats-beacon', $showtime->id) }}";
+            const csrfToken  = document.querySelector('meta[name="csrf-token"]')?.content ?? "{{ csrf_token() }}";
+
+            function buildBeaconPayload() {
+                const seatIds = selectedSeats.map(s => s.id);
+                return new Blob(
+                    [JSON.stringify({ seat_ids: seatIds, _token: csrfToken })],
+                    { type: 'application/json' }
+                );
+            }
+
+            // Chặn khi đóng tab / F5 / nhập URL khác
+            window.addEventListener('beforeunload', function () {
+                if (leavingViaForm) return; // đang đi theo flow bình thường → bỏ qua
+                if (selectedSeats.length === 0) return; // chưa chọn ghế nào → không cần nhả
+                navigator.sendBeacon(beaconUrl, buildBeaconPayload());
+            });
+
+            // Chặn thêm khi user ẩn tab (chuyển sang tab khác rồi đóng tab cũ)
+            document.addEventListener('visibilitychange', function () {
+                if (document.visibilityState === 'hidden' && !leavingViaForm && selectedSeats.length > 0) {
+                    navigator.sendBeacon(beaconUrl, buildBeaconPayload());
+                }
+            });
+
         });
     </script>
+
+
 
     @if(session('showtime_started'))
     {{-- Modal thông báo Suất chiếu đã bắt đầu --}}

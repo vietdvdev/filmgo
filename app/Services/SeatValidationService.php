@@ -178,20 +178,40 @@ class SeatValidationService
                     continue;
                 }
 
-                // Nếu ghế ở sát lối đi (hoặc chỗ khuyết sơ đồ), không có ghế liền kề trái/phải -> không bị coi là ghế cô đơn
                 $leftExists  = isset($states[$number - 1]);
                 $rightExists = isset($states[$number + 1]);
 
-                if (!$leftExists || !$rightExists) {
+                if (!$leftExists && !$rightExists) {
+                    // Ghế đứng một mình (hàng chỉ có 1 ghế) → bỏ qua
                     continue;
                 }
 
+                // ── GHẾ Ở BIÊN TRÁI (góc đầu hàng, không có hàng xóm bên trái) ──
+                // Ví dụ: ghế số 1. Nếu ghế số 2 bên cạnh là 'S' (do user chọn),
+                // thì ghế 1 bị bỏ trống cô đơn ở góc → KHÔNG được phép.
+                if (!$leftExists && $rightExists) {
+                    if ($states[$number + 1] === 'S') {
+                        return "Lựa chọn của bạn bỏ trống ghế góc cô đơn ở đầu hàng {$row} (ghế số {$number}). Vui lòng chọn từ ghế đầu hàng hoặc chọn liên tiếp.";
+                    }
+                    continue;
+                }
+
+                // ── GHẾ Ở BIÊN PHẢI (góc cuối hàng, không có hàng xóm bên phải) ──
+                // Ví dụ: ghế số 10. Nếu ghế số 9 bên cạnh là 'S' (do user chọn),
+                // thì ghế 10 bị bỏ trống cô đơn ở góc → KHÔNG được phép.
+                if ($leftExists && !$rightExists) {
+                    if ($states[$number - 1] === 'S') {
+                        return "Lựa chọn của bạn bỏ trống ghế góc cô đơn ở cuối hàng {$row} (ghế số {$number}). Vui lòng chọn đến ghế cuối hàng hoặc chọn liên tiếp.";
+                    }
+                    continue;
+                }
+
+                // ── GHẾ Ở GIỮA HÀNG ──
                 $leftBlocked  = ($states[$number - 1] === 'X' || $states[$number - 1] === 'S');
                 $rightBlocked = ($states[$number + 1] === 'X' || $states[$number + 1] === 'S');
 
                 if ($leftBlocked && $rightBlocked) {
                     // Chỉ báo lỗi nếu ít nhất một bên là 'S' (do CHÍNH user hiện tại gây ra)
-                    // Nếu cả hai bên đều là 'X' thì ghế này đã bị cô đơn từ trước
                     if ($states[$number - 1] === 'S' || $states[$number + 1] === 'S') {
                         return "Lựa chọn của bạn tạo ra ghế trống cô đơn ở hàng {$row}. Vui lòng chọn lại để không bỏ trống 1 ghế đơn lẻ.";
                     }
