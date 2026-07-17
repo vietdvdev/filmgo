@@ -67,13 +67,7 @@ Route::middleware(['web', 'auth', 'admin'])
         // GET /api/admin/dashboard/charts/top-movies
         Route::get('/charts/top-movies', [App\Http\Controllers\Admin\DashboardController::class, 'chartsTopMovies'])->name('api.admin.dashboard.charts.top-movies');
 
-        // GET /api/admin/dashboard/ops/conflicts
-        Route::get('/ops/conflicts', [App\Http\Controllers\Admin\DashboardController::class, 'opsConflicts'])->name('api.admin.dashboard.ops.conflicts');
-
         // GET /api/admin/dashboard/ops/today-showtimes
         Route::get('/ops/today-showtimes', [App\Http\Controllers\Admin\DashboardController::class, 'opsTodayShowtimes'])->name('api.admin.dashboard.ops.today-showtimes');
-
-        // POST /api/admin/dashboard/ops/conflicts/{id}/resolve
-        Route::post('/ops/conflicts/{id}/resolve', [App\Http\Controllers\Admin\DashboardController::class, 'resolveConflict'])->name('api.admin.dashboard.ops.conflicts.resolve');
     });
 

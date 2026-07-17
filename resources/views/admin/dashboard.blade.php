@@ -219,11 +219,11 @@
 
     </div>
 
-    <!-- ── 3. Bảng Vận Hành & Cảnh Báo (Grid 3 cột) ── -->
-    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+    <!-- ── 3. Bảng Vận Hành & Cảnh Báo ── -->
+    <div class="grid grid-cols-1 gap-6">
         
-        <!-- Cột 2/3: Bảng Theo dõi suất chiếu hôm nay -->
-        <div class="lg:col-span-2 bg-white border border-zinc-200/80 rounded-3xl p-6 shadow-sm">
+        <!-- Bảng Theo dõi suất chiếu hôm nay -->
+        <div class="bg-white border border-zinc-200/80 rounded-3xl p-6 shadow-sm">
             <h3 class="text-base font-black uppercase tracking-wider text-zinc-800 mb-6 flex items-center gap-2">
                 <span class="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></span>
                 Suất Chiếu Đang Vận Hành (Hôm Nay)
@@ -263,44 +263,6 @@
             </div>
         </div>
 
-        <!-- Cột 1/3: Cảnh báo lỗi thanh toán muộn -->
-        <div class="lg:col-span-1 bg-white border border-zinc-200/80 rounded-3xl p-6 shadow-sm">
-            <h3 class="text-base font-black uppercase tracking-wider text-zinc-800 mb-6 flex items-center gap-2">
-                <span class="w-2.5 h-2.5 rounded-full bg-rose-500 animate-ping"></span>
-                Giao Dịch Xung Đột (TT Muộn)
-            </h3>
-
-            <div class="space-y-4 max-h-[350px] overflow-y-auto pr-1">
-                <div v-for="cf in conflicts" :key="cf.id" 
-                     class="bg-red-50 border border-red-100 rounded-2xl p-4 flex flex-col justify-between gap-3">
-                    <div class="flex justify-between items-start">
-                        <div>
-                            <span class="text-[10px] bg-red-100 text-red-700 px-2 py-0.5 rounded font-black uppercase tracking-wider border border-red-200">Chờ kế toán duyệt</span>
-                            <h4 class="text-sm font-black text-zinc-800 mt-2">Mã: @{{ cf.booking_code }}</h4>
-                            <p class="text-[10px] text-zinc-400 font-bold mt-1">Giao dịch: @{{ cf.transaction_code || 'N/A' }}</p>
-                        </div>
-                        <span class="text-base font-black text-red-600">@{{ formatMoney(cf.amount) }}</span>
-                    </div>
-                    
-                    <p class="text-[11px] text-zinc-600 bg-white p-2.5 rounded-xl border border-red-100/50 leading-relaxed shadow-sm">
-                        <strong>Lý do:</strong> @{{ cf.reason }}
-                    </p>
-
-                    <div class="flex justify-between items-center pt-2">
-                        <span class="text-[10px] text-zinc-400 font-semibold">@{{ cf.created_at }}</span>
-                        <button @click="resolveConflict(cf.id)" class="px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white text-xs font-bold rounded-lg transition-all shadow-md shadow-red-200 flex items-center gap-1">
-                            <span class="material-symbols-outlined text-[14px]">done</span>
-                            Đã giải quyết
-                        </button>
-                    </div>
-                </div>
-
-                <div v-if="conflicts.length === 0" class="py-12 text-center border border-dashed border-zinc-200 rounded-2xl">
-                    <span class="material-symbols-outlined text-zinc-300 text-3xl">verified</span>
-                    <p class="text-zinc-400 text-xs font-semibold mt-2">Không có giao dịch lỗi thanh toán nào.</p>
-                </div>
-            </div>
-        </div>
 
     </div>
 
@@ -344,7 +306,6 @@
     createApp({
         setup() {
             const kpis = ref(null);
-            const conflicts = ref([]);
             const showtimes = ref([]);
             const loading = ref(true);
 
@@ -389,11 +350,7 @@
                     const kpisRes = await axios.get('/api/admin/dashboard/kpis', { params });
                     kpis.value = kpisRes.data;
 
-                    // 2. Load Conflicts (Không phụ thuộc vào lọc ngày vì là danh sách pending hoạt động thực tế)
-                    const conflictsRes = await axios.get('/api/admin/dashboard/ops/conflicts');
-                    conflicts.value = conflictsRes.data;
-
-                    // 3. Load showtimes hôm nay
+                    // 2. Load showtimes hôm nay
                     const showtimesRes = await axios.get('/api/admin/dashboard/ops/today-showtimes');
                     showtimes.value = showtimesRes.data;
 
@@ -437,19 +394,6 @@
                 startDate.value = customStartDate.value;
                 endDate.value = customEndDate.value;
                 fetchDashboardData();
-            };
-
-            const resolveConflict = async (id) => {
-                if (!confirm('Xác nhận đã xử lý hoàn tiền hoặc khớp đơn giao dịch lỗi này?')) return;
-                try {
-                    const res = await axios.post(`/api/admin/dashboard/ops/conflicts/${id}/resolve`);
-                    if (res.data.success) {
-                        conflicts.value = conflicts.value.filter(c => c.id !== id);
-                    }
-                } catch (error) {
-                    console.error('Lỗi khi giải quyết giao dịch:', error);
-                    alert('Không thể thực hiện tác vụ. Vui lòng thử lại sau.');
-                }
             };
 
             const initCharts = async () => {
@@ -608,7 +552,6 @@
 
             return {
                 kpis,
-                conflicts,
                 showtimes,
                 loading,
                 filterType,
@@ -621,7 +564,6 @@
                 formatDateDisplay,
                 setFilter,
                 applyCustomFilter,
-                resolveConflict,
                 fetchDashboardData
             };
         }

@@ -9,7 +9,6 @@ use App\Models\BookingDetail;
 use App\Models\Showtime;
 use App\Models\ShowtimeSeat;
 use App\Models\Movie;
-use App\Models\ConflictPayment;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Cache;
 use Carbon\Carbon;
@@ -293,35 +292,6 @@ class DashboardController extends BaseController
         ]);
     }
 
-    /**
-     * 3.1 API Vận hành Real-time Lỗi thanh toán (ops/conflicts)
-     * Lấy danh sách 10 giao dịch lỗi thanh toán muộn trạng thái pending để kế toán xử lý.
-     */
-    public function opsConflicts(Request $request)
-    {
-        $conflicts = ConflictPayment::with('booking.user')
-            ->where('status', 'pending')
-            ->orderBy('created_at', 'desc')
-            ->limit(10)
-            ->get()
-            ->map(function ($c) {
-                return [
-                    'id' => $c->id,
-                    'booking_id' => $c->booking_id,
-                    'booking_code' => $c->booking_code,
-                    'transaction_code' => $c->transaction_code,
-                    'amount' => $c->amount,
-                    'payment_method' => $c->payment_method,
-                    'reason' => $c->reason,
-                    'status' => $c->status,
-                    'customer_name' => $c->booking?->user?->full_name ?? 'Khách vãng lai',
-                    'customer_email' => $c->booking?->user?->email ?? 'N/A',
-                    'created_at' => $c->created_at->format('H:i d/m/Y'),
-                ];
-            });
-
-        return response()->json($conflicts);
-    }
 
     /**
      * 3.2 API Vận hành Real-time Suất chiếu hôm nay (ops/today-showtimes)
@@ -373,21 +343,6 @@ class DashboardController extends BaseController
             return $today > 0 ? 100 : 0;
         }
         return round((($today - $yesterday) / $yesterday) * 100, 2);
-    }
-
-    /**
-     * 3.3. API Resolve Lỗi thanh toán (ops/conflicts/{id}/resolve)
-     * Cập nhật trạng thái của giao dịch lỗi thanh toán muộn thành 'resolved'.
-     */
-    public function resolveConflict(Request $request, $id)
-    {
-        $conflict = ConflictPayment::findOrFail($id);
-        $conflict->update(['status' => 'resolved']);
-
-        return response()->json([
-            'success' => true,
-            'message' => 'Đã giải quyết giao dịch lỗi thanh toán muộn thành công.'
-        ]);
     }
 }
 
