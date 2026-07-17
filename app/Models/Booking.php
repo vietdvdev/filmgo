@@ -60,7 +60,7 @@ class Booking extends Model
 
     public function showtime(): BelongsTo
     {
-        return $this->belongsTo(Showtime::class, 'showtime_id');
+        return $this->belongsTo(Showtime::class, 'showtime_id')->withTrashed();
     }
 
     /**

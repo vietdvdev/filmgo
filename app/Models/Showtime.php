@@ -50,7 +50,7 @@ class Showtime extends Model
 
     public function movie(): BelongsTo
     {
-        return $this->belongsTo(Movie::class, 'movie_id');
+        return $this->belongsTo(Movie::class, 'movie_id')->withTrashed();
     }
 
     public function room(): BelongsTo

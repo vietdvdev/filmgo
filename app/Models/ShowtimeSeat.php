@@ -61,7 +61,7 @@ class ShowtimeSeat extends Model
 
     public function showtime(): BelongsTo
     {
-        return $this->belongsTo(Showtime::class, 'showtime_id');
+        return $this->belongsTo(Showtime::class, 'showtime_id')->withTrashed();
     }
 
     public function seat(): BelongsTo
