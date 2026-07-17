@@ -70,6 +70,8 @@ Route::middleware('customer')->group(function () {
     
     Route::get('/booking/showtime/{showtime_id}/combos', [App\Http\Controllers\Customer\BookingController::class, 'selectCombos'])->name('booking.select-combos');
     Route::post('/booking/showtime/{showtime_id}/combos', [App\Http\Controllers\Customer\BookingController::class, 'processCombos'])->name('booking.process-combos');
+    // Nhả ghế khi khách bấm Quay lại từ trang Combo → về trang Chọn Ghế
+    Route::post('/booking/showtime/{showtime_id}/release-seats', [App\Http\Controllers\Customer\BookingController::class, 'releaseSeats'])->name('booking.release-seats');
     
     Route::get('/booking/showtime/{showtime_id}/checkout', [App\Http\Controllers\Customer\BookingController::class, 'checkout'])->name('booking.checkout');
     Route::post('/booking/showtime/{showtime_id}/confirm', [App\Http\Controllers\Customer\BookingController::class, 'confirm'])->name('booking.confirm');

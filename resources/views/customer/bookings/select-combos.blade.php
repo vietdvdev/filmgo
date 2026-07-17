@@ -199,10 +199,14 @@
 
                         <!-- Action buttons -->
                         <div class="flex gap-4">
-                            <a href="{{ route('booking.select-seats', $showtime->id) }}" 
-                               class="w-1/3 bg-white border border-slate-300 hover:border-brand-primary hover:text-brand-primary text-slate-400 font-bold py-4 rounded-none flex items-center justify-center transition-all duration-200 shadow-sm">
-                                <span class="material-symbols-outlined text-base">arrow_back</span>
-                            </a>
+                            {{-- Nút Quay Lại: dùng form POST để nhả ghế holding trước khi về trang chọn ghế --}}
+                            <form action="{{ route('booking.release-seats', $showtime->id) }}" method="POST" class="w-1/3">
+                                @csrf
+                                <button type="submit"
+                                   class="w-full bg-white border border-slate-300 hover:border-brand-primary hover:text-brand-primary text-slate-400 font-bold py-4 rounded-none flex items-center justify-center transition-all duration-200 shadow-sm">
+                                    <span class="material-symbols-outlined text-base">arrow_back</span>
+                                </button>
+                            </form>
                             <button type="submit" 
                                     class="w-2/3 bg-brand-primary hover:bg-red-700 text-white font-bold py-4 rounded-none shadow-lg shadow-brand-primary/25 transition-all duration-200 flex items-center justify-center gap-2 uppercase tracking-wider text-sm font-black">
                                 Tiếp tục đặt vé

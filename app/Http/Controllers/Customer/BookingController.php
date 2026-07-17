@@ -69,6 +69,34 @@ class BookingController extends Controller
             'seat_ids.max'      => 'Bạn chỉ được chọn tối đa 10 ghế.',
         ]);
 
+        // ── KIỂM TRA SUẤT CHIẾU ĐÃ BẮT ĐẦU ──
+        $showtime = Showtime::find($showtimeId);
+        if ($showtime) {
+            $startDateTime = \Carbon\Carbon::parse(
+                $showtime->show_date->format('Y-m-d') . ' ' . $showtime->start_time
+            );
+            if ($startDateTime->isPast()) {
+                // Nhả ghế đang holding (nếu có) của user này
+                $existingSeatIds = session()->get("booking.{$showtimeId}.seat_ids", []);
+                if (!empty($existingSeatIds)) {
+                    ShowtimeSeat::whereIn('id', $existingSeatIds)
+                        ->where('user_id', Auth::id())
+                        ->whereIn('status', ['holding', 'locked'])
+                        ->update([
+                            'status'     => 'available',
+                            'user_id'    => null,
+                            'locked_at'  => null,
+                            'expires_at' => null,
+                        ]);
+                }
+                session()->forget("booking.{$showtimeId}");
+
+                // Flash cờ đặc biệt để View hiển thị modal SweetAlert
+                return redirect()->route('booking.select-seats', $showtimeId)
+                    ->with('showtime_started', true);
+            }
+        }
+
         // Validate toàn bộ quy tắc ghế (Single seat, Sweetbox...) bằng Validation Service
         $validation = $this->seatValidationService->validate($showtimeId, $request->seat_ids);
         if (!$validation['valid']) {
@@ -202,6 +230,35 @@ class BookingController extends Controller
         session()->put("booking.{$showtimeId}.combos", $snapshotCombos);
 
         return redirect()->route('booking.checkout', $showtimeId);
+    }
+
+    /**
+     * Back action: Nhả ghế holding về available khi khách bấm "Quay lại" từ trang combo.
+     * Xóa toàn bộ dữ liệu booking trong session để khách có thể chọn lại ghế mới.
+     */
+    public function releaseSeats(Request $request, $showtimeId)
+    {
+        $userId = Auth::id();
+        $seatIds = session()->get("booking.{$showtimeId}.seat_ids", []);
+
+        if (!empty($seatIds)) {
+            // Chỉ nhả ghế do chính user này đang giữ
+            ShowtimeSeat::whereIn('id', $seatIds)
+                ->where('user_id', $userId)
+                ->whereIn('status', ['holding', 'locked'])
+                ->update([
+                    'status'     => 'available',
+                    'user_id'    => null,
+                    'locked_at'  => null,
+                    'expires_at' => null,
+                ]);
+        }
+
+        // Xóa dữ liệu booking trong session để khách chọn lại từ đầu
+        session()->forget("booking.{$showtimeId}");
+
+        return redirect()->route('booking.select-seats', $showtimeId)
+            ->with('info', 'Ghế đã được giải phóng. Bạn có thể chọn lại ghế khác.');
     }
 
     /**

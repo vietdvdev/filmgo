@@ -151,42 +151,50 @@ class SeatValidationService
         $selectedSet = array_flip($selectedIds);
 
         foreach ($byRow as $row => $seats) {
-            // Sắp xếp theo seat_number
-            usort($seats, fn($a, $b) => $a->seat->seat_number <=> $b->seat->seat_number);
-
-            // Xây dựng mảng trạng thái
+            // Xây dựng mảng trạng thái với key là seat_number để đảm bảo đúng vị trí vật lý
             $states = [];
             foreach ($seats as $ss) {
+                $seatNumber = $ss->seat->seat_number;
                 $isSelected = isset($selectedSet[$ss->id]);
                 $isUnavailable = in_array($ss->status, self::UNAVAILABLE_STATUSES)
                     || ($ss->status === 'locked' && $ss->user_id !== $userId && $ss->expires_at?->isFuture())
                     || ($ss->status === 'holding' && $ss->user_id !== $userId);
 
                 if ($isSelected) {
-                    $states[] = 'S'; // Đang chọn
+                    $states[$seatNumber] = 'S'; // Đang chọn
                 } elseif ($isUnavailable) {
-                    $states[] = 'X'; // Không khả dụng
+                    $states[$seatNumber] = 'X'; // Không khả dụng
                 } else {
-                    $states[] = 'O'; // Trống
+                    $states[$seatNumber] = 'O'; // Trống
                 }
             }
 
-            $count = count($states);
+            $seatNumbers = array_keys($states);
+            sort($seatNumbers);
 
             // Quét từng vị trí tìm ghế trống 'O'
-            for ($i = 0; $i < $count; $i++) {
-                if ($states[$i] !== 'O') {
+            foreach ($seatNumbers as $number) {
+                if ($states[$number] !== 'O') {
                     continue;
                 }
 
-                // Ghế ở biên hàng không bao giờ là ghế cô đơn
-                if ($i === 0 || $i === $count - 1) continue;
+                // Nếu ghế ở sát lối đi (hoặc chỗ khuyết sơ đồ), không có ghế liền kề trái/phải -> không bị coi là ghế cô đơn
+                $leftExists  = isset($states[$number - 1]);
+                $rightExists = isset($states[$number + 1]);
 
-                $leftBlocked  = ($states[$i - 1] === 'X' || $states[$i - 1] === 'S');
-                $rightBlocked = ($states[$i + 1] === 'X' || $states[$i + 1] === 'S');
+                if (!$leftExists || !$rightExists) {
+                    continue;
+                }
+
+                $leftBlocked  = ($states[$number - 1] === 'X' || $states[$number - 1] === 'S');
+                $rightBlocked = ($states[$number + 1] === 'X' || $states[$number + 1] === 'S');
 
                 if ($leftBlocked && $rightBlocked) {
-                    return "Lựa chọn của bạn tạo ra ghế trống cô đơn ở hàng {$row}. Vui lòng chọn lại để không bỏ trống 1 ghế đơn lẻ.";
+                    // Chỉ báo lỗi nếu ít nhất một bên là 'S' (do CHÍNH user hiện tại gây ra)
+                    // Nếu cả hai bên đều là 'X' thì ghế này đã bị cô đơn từ trước
+                    if ($states[$number - 1] === 'S' || $states[$number + 1] === 'S') {
+                        return "Lựa chọn của bạn tạo ra ghế trống cô đơn ở hàng {$row}. Vui lòng chọn lại để không bỏ trống 1 ghế đơn lẻ.";
+                    }
                 }
             }
         }

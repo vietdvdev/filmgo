@@ -403,19 +403,29 @@
                 const selectedSet = new Set(testSelected.map(s => s.id));
 
                 for (const row in rowMap) {
-                    const seats = rowMap[row].sort((a, b) => a.number - b.number);
-                    const states = seats.map(s => {
-                        if (selectedSet.has(s.id)) return 'S';
-                        if (!s.available) return 'X';
-                        return 'O';
+                    const states = {};
+                    rowMap[row].forEach(s => {
+                        if (selectedSet.has(s.id)) states[s.number] = 'S';
+                        else if (!s.available) states[s.number] = 'X';
+                        else states[s.number] = 'O';
                     });
 
-                    for (let i = 0; i < states.length; i++) {
-                        if (states[i] !== 'O') continue;
-                        const leftBlocked  = (i === 0) || (states[i-1] === 'X' || states[i-1] === 'S');
-                        const rightBlocked = (i === states.length - 1) || (states[i+1] === 'X' || states[i+1] === 'S');
+                    for (const numStr in states) {
+                        const number = parseInt(numStr);
+                        if (states[number] !== 'O') continue;
+
+                        const leftExists = states[number - 1] !== undefined;
+                        const rightExists = states[number + 1] !== undefined;
+
+                        if (!leftExists || !rightExists) continue;
+
+                        const leftBlocked  = (states[number - 1] === 'X' || states[number - 1] === 'S');
+                        const rightBlocked = (states[number + 1] === 'X' || states[number + 1] === 'S');
+
                         if (leftBlocked && rightBlocked) {
-                            return `Lựa chọn của bạn tạo ra ghế trống cô đơn ở hàng ${row}. Vui lòng chọn lại để không bỏ trống 1 ghế đơn lẻ.`;
+                            if (states[number - 1] === 'S' || states[number + 1] === 'S') {
+                                return `Lựa chọn của bạn tạo ra ghế trống cô đơn ở hàng ${row}. Vui lòng chọn lại để không bỏ trống 1 ghế đơn lẻ.`;
+                            }
                         }
                     }
                 }
@@ -471,4 +481,43 @@
             }
         });
     </script>
+
+    @if(session('showtime_started'))
+    {{-- Modal thông báo Suất chiếu đã bắt đầu --}}
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            Swal.fire({
+                title: '🎬 Suất chiếu đã bắt đầu!',
+                html: `
+                    <div style="line-height: 1.7; color: #374151;">
+                        <p style="font-size: 15px; margin-bottom: 8px;">
+                            Suất chiếu này đã bắt đầu chiếu.
+                        </p>
+                        <p style="font-size: 14px; color: #6B7280;">
+                            Vui lòng đến trực tiếp quầy vé tại rạp để được hỗ trợ mua vé.
+                        </p>
+                    </div>
+                `,
+                icon: 'warning',
+                iconColor: '#EF4444',
+                confirmButtonText: '🏠 Về trang mua vé',
+                confirmButtonColor: '#EF4444',
+                allowOutsideClick: false,
+                allowEscapeKey: false,
+                backdrop: 'rgba(0,0,0,0.75)',
+                customClass: {
+                    popup: 'rounded-2xl',
+                    title: 'font-bold text-xl',
+                    confirmButton: 'font-bold px-6 py-3 rounded-xl'
+                }
+            }).then(function (result) {
+                if (result.isConfirmed) {
+                    window.location.href = "{{ route('movies.showing') }}";
+                }
+            });
+        });
+    </script>
+    @endif
+
 @endsection
