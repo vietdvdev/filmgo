@@ -21,25 +21,48 @@
             <form action="{{ route('admin.promotions.store') }}" method="POST" class="space-y-6">
                 @csrf
 
-                <!-- Mã Code -->
-                <div class="space-y-2">
-                    <label for="code" class="block font-label-md text-label-md text-on-surface">
-                        Mã Code <span class="text-error">*</span>
-                    </label>
-                    <input
-                        type="text"
-                        id="code"
-                        name="code"
-                        value="{{ old('code') }}"
-                        class="w-full px-4 py-2 bg-surface-container-lowest border border-outline-variant rounded-lg font-body-md text-body-md text-on-surface focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-colors uppercase @error('code') border-error @enderror"
-                        placeholder="Ví dụ: SALE50, MOVIE2026..."
-                        maxlength="50"
-                        required
-                    >
-                    <p class="text-xs text-on-surface-variant">Mã nhập của khách hàng khi thanh toán (không dấu, không chứa khoảng trắng, viết hoa tự động)</p>
-                    @error('code')
-                        <p class="text-error font-body-md text-xs mt-1">{{ $message }}</p>
-                    @enderror
+                <!-- Mã Code & Phạm vi áp dụng -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <!-- Mã Code -->
+                    <div class="space-y-2">
+                        <label for="code" class="block font-label-md text-label-md text-on-surface">
+                            Mã Code <span class="text-error">*</span>
+                        </label>
+                        <input
+                            type="text"
+                            id="code"
+                            name="code"
+                            value="{{ old('code') }}"
+                            class="w-full px-4 py-2 bg-surface-container-lowest border border-outline-variant rounded-lg font-body-md text-body-md text-on-surface focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-colors uppercase @error('code') border-error @enderror"
+                            placeholder="Ví dụ: SALE50, MOVIE2026..."
+                            maxlength="50"
+                            required
+                        >
+                        <p class="text-xs text-on-surface-variant">Mã nhập của khách hàng khi thanh toán (không dấu, viết hoa tự động)</p>
+                        @error('code')
+                            <p class="text-error font-body-md text-xs mt-1">{{ $message }}</p>
+                        @enderror
+                    </div>
+
+                    <!-- Phạm vi áp dụng -->
+                    <div class="space-y-2">
+                        <label for="apply_to" class="block font-label-md text-label-md text-on-surface">
+                            Phạm Vi Áp Dụng <span class="text-error">*</span>
+                        </label>
+                        <select
+                            id="apply_to"
+                            name="apply_to"
+                            class="w-full px-4 py-2 bg-surface-container-lowest border border-outline-variant rounded-lg font-body-md text-body-md text-on-surface focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-colors @error('apply_to') border-error @enderror"
+                            required
+                        >
+                            <option value="all" {{ old('apply_to') == 'all' ? 'selected' : '' }}>Tất cả (Vé & Bắp nước)</option>
+                            <option value="ticket_only" {{ old('apply_to') == 'ticket_only' ? 'selected' : '' }}>Chỉ áp dụng cho Vé xem phim</option>
+                            <option value="combo_only" {{ old('apply_to') == 'combo_only' ? 'selected' : '' }}>Chỉ áp dụng cho Bắp nước / Combo</option>
+                        </select>
+                        @error('apply_to')
+                            <p class="text-error font-body-md text-xs mt-1">{{ $message }}</p>
+                        @enderror
+                    </div>
                 </div>
 
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -76,11 +99,31 @@
                             min="1"
                             required
                         >
-                        <p class="text-xs text-on-surface-variant" id="discount_value_help">Nhập phần trăm giảm (ví dụ: 10, 20...) hoặc số tiền giảm (ví dụ: 20000, 50000...)</p>
+                        <p class="text-xs text-on-surface-variant" id="discount_value_help">Nhập phần trăm giảm (tối đa 100%) hoặc số tiền giảm</p>
                         @error('discount_value')
                             <p class="text-error font-body-md text-xs mt-1">{{ $message }}</p>
                         @enderror
                     </div>
+                </div>
+
+                <!-- Mức giảm tối đa (Dành cho giảm theo phần trăm %) -->
+                <div class="space-y-2" id="max_discount_wrapper">
+                    <label for="max_discount_amount" class="block font-label-md text-label-md text-on-surface">
+                        Số Tiền Giảm Tối Đa (VNĐ)
+                    </label>
+                    <input
+                        type="number"
+                        id="max_discount_amount"
+                        name="max_discount_amount"
+                        value="{{ old('max_discount_amount') }}"
+                        class="w-full px-4 py-2 bg-surface-container-lowest border border-outline-variant rounded-lg font-body-md text-body-md text-on-surface focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-colors @error('max_discount_amount') border-error @enderror"
+                        placeholder="Ví dụ: 50000 (Để trống nếu không giới hạn trần tiền giảm)"
+                        min="0"
+                    >
+                    <p class="text-xs text-on-surface-variant">Giới hạn số tiền giảm tối đa khi chọn giảm theo phần trăm % (tránh bị lỗ với đơn hàng lớn)</p>
+                    @error('max_discount_amount')
+                        <p class="text-error font-body-md text-xs mt-1">{{ $message }}</p>
+                    @enderror
                 </div>
 
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -128,20 +171,20 @@
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <!-- Tổng số lượng phát hành -->
                     <div class="space-y-2">
-                        <label for="quantity" class="block font-label-md text-label-md text-on-surface">
+                        <label for="usage_limit" class="block font-label-md text-label-md text-on-surface">
                             Tổng Số Lượng Phát Hành
                         </label>
                         <input
                             type="number"
-                            id="quantity"
-                            name="quantity"
-                            value="{{ old('quantity') }}"
-                            class="w-full px-4 py-2 bg-surface-container-lowest border border-outline-variant rounded-lg font-body-md text-body-md text-on-surface focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-colors @error('quantity') border-error @enderror"
+                            id="usage_limit"
+                            name="usage_limit"
+                            value="{{ old('usage_limit') }}"
+                            class="w-full px-4 py-2 bg-surface-container-lowest border border-outline-variant rounded-lg font-body-md text-body-md text-on-surface focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-colors @error('usage_limit') border-error @enderror"
                             placeholder="Không giới hạn"
                             min="1"
                         >
                         <p class="text-xs text-on-surface-variant">Tổng số lượt sử dụng mã khuyến mãi này trên toàn hệ thống (để trống nếu không giới hạn)</p>
-                        @error('quantity')
+                        @error('usage_limit')
                             <p class="text-error font-body-md text-xs mt-1">{{ $message }}</p>
                         @enderror
                     </div>
@@ -228,17 +271,23 @@
     document.addEventListener('DOMContentLoaded', function () {
         const typeSelect = document.getElementById('discount_type');
         const valueHelp = document.getElementById('discount_value_help');
+        const maxDiscountWrapper = document.getElementById('max_discount_wrapper');
+        const discountValueInput = document.getElementById('discount_value');
 
-        function updateHelpText() {
+        function updateFormState() {
             if (typeSelect.value === 'percent') {
                 valueHelp.textContent = 'Nhập phần trăm giảm (ví dụ: 10, 20...). Tối đa 100%.';
+                discountValueInput.setAttribute('max', '100');
+                maxDiscountWrapper.style.display = 'block';
             } else {
                 valueHelp.textContent = 'Nhập số tiền giảm bằng VNĐ (ví dụ: 20000, 50000...).';
+                discountValueInput.removeAttribute('max');
+                maxDiscountWrapper.style.display = 'none';
             }
         }
 
-        typeSelect.addEventListener('change', updateHelpText);
-        updateHelpText();
+        typeSelect.addEventListener('change', updateFormState);
+        updateFormState();
     });
 </script>
 @endsection

@@ -54,10 +54,10 @@
                             <tr class="bg-surface-container/60 font-label-md text-label-md text-on-surface-variant border-b border-outline-variant/60">
                                 <th class="py-3.5 px-6 font-semibold whitespace-nowrap" style="width:60px;">#</th>
                                 <th class="py-3.5 px-6 font-semibold">Mã Code</th>
-                                <th class="py-3.5 px-6 font-semibold">Loại Giảm</th>
+                                <th class="py-3.5 px-6 font-semibold">Phạm Vi</th>
                                 <th class="py-3.5 px-6 font-semibold">Giá Trị Giảm</th>
                                 <th class="py-3.5 px-6 font-semibold">Đơn Tối Thiểu</th>
-                                <th class="py-3.5 px-6 font-semibold">Tổng Số Lượng</th>
+                                <th class="py-3.5 px-6 font-semibold">Lượt Sử Dụng</th>
                                 <th class="py-3.5 px-6 font-semibold">Thời Gian Áp Dụng</th>
                                 <th class="py-3.5 px-6 font-semibold">Trạng Thái</th>
                                 <th class="py-3.5 px-6 font-semibold text-right" style="width:180px;">Thao Tác</th>
@@ -72,27 +72,34 @@
                                             {{ $promo->code }}
                                         </span>
                                     </td>
-                                    <td class="py-4 px-6 font-semibold text-on-surface-variant">
-                                        @if($promo->discount_type === 'percent')
-                                            Giảm theo %
+                                    <td class="py-4 px-6">
+                                        @if($promo->apply_to === 'ticket_only')
+                                            <span class="inline-flex items-center px-2.5 py-0.5 rounded text-xs font-medium bg-blue-50 text-blue-700 border border-blue-200">Chỉ Vé</span>
+                                        @elseif($promo->apply_to === 'combo_only')
+                                            <span class="inline-flex items-center px-2.5 py-0.5 rounded text-xs font-medium bg-amber-50 text-amber-700 border border-amber-200">Chỉ Combo</span>
                                         @else
-                                            Giảm tiền mặt
+                                            <span class="inline-flex items-center px-2.5 py-0.5 rounded text-xs font-medium bg-purple-50 text-purple-700 border border-purple-200">Tất Cả</span>
                                         @endif
                                     </td>
                                     <td class="py-4 px-6">
-                                        <span class="font-black text-on-surface">
+                                        <div class="font-black text-on-surface">
                                             @if($promo->discount_type === 'percent')
-                                                {{ $promo->discount_value }}%
+                                                Giảm {{ $promo->discount_value }}%
+                                                @if($promo->max_discount_amount)
+                                                    <div class="text-xs font-normal text-on-surface-variant mt-0.5">(Tối đa {{ number_format($promo->max_discount_amount) }} ₫)</div>
+                                                @endif
                                             @else
-                                                {{ number_format($promo->discount_value) }} ₫
+                                                Giảm {{ number_format($promo->discount_value) }} ₫
                                             @endif
-                                        </span>
+                                        </div>
                                     </td>
                                     <td class="py-4 px-6 font-semibold">
                                         {{ number_format($promo->min_order_amount) }} ₫
                                     </td>
                                     <td class="py-4 px-6 text-on-surface-variant font-medium">
-                                        {{ $promo->quantity !== null ? $promo->quantity . ' lượt' : 'Không giới hạn' }}
+                                        <span class="font-bold text-on-surface">{{ $promo->used_count ?? 0 }}</span>
+                                        /
+                                        <span>{{ $promo->usage_limit !== null ? $promo->usage_limit . ' lượt' : '∞' }}</span>
                                     </td>
                                     <td class="py-4 px-6 text-xs text-on-surface-variant">
                                         <div>BĐ: {{ $promo->start_date ? $promo->start_date->format('d/m/Y H:i') : '-' }}</div>
