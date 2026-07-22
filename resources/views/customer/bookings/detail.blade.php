@@ -195,15 +195,9 @@
         @endif
 
         {{-- Actions --}}
-        <div class="flex flex-col sm:flex-row gap-3">
-            <a href="{{ route('booking.history.invoice', $booking->id) }}"
-               target="_blank"
-               class="flex-1 flex items-center justify-center gap-2 py-3 bg-white hover:bg-gray-50 border border-gray-200 text-gray-700 font-bold rounded-xl shadow-sm transition-all text-sm">
-                <span class="material-symbols-outlined text-lg">print</span>
-                Xem / In Hóa Đơn
-            </a>
+        <div class="flex justify-center">
             <a href="{{ route('booking.history.index') }}"
-               class="flex-1 flex items-center justify-center gap-2 py-3 bg-brand-primary hover:bg-red-700 text-white font-bold rounded-xl shadow-sm transition-all text-sm">
+               class="w-full flex items-center justify-center gap-2 py-3 bg-brand-primary hover:bg-red-700 text-white font-bold rounded-xl shadow-sm transition-all text-sm">
                 <span class="material-symbols-outlined text-lg">arrow_back</span>
                 Quay Lại Lịch Sử
             </a>

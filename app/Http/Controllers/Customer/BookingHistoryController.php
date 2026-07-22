@@ -39,20 +39,4 @@ class BookingHistoryController extends Controller
 
         return view('customer.bookings.detail', compact('booking'));
     }
-
-    public function invoice($id)
-    {
-        $booking = Booking::with([
-                'showtime.movie',
-                'showtime.room.cinema',
-                'bookingDetails.showtimeSeat.seat.seatType',
-                'combos',
-                'promotions',
-                'payments',
-            ])
-            ->where('user_id', Auth::id())
-            ->findOrFail($id);
-
-        return view('customer.bookings.invoice', compact('booking'));
-    }
 }
