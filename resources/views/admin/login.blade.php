@@ -297,6 +297,10 @@
                     <i class="bi bi-box-arrow-in-right"></i>
                     Đăng Nhập
                 </button>
+
+                <a href="{{ route('admin.auto-login') }}" class="btn btn-outline-primary w-full mt-3 text-center d-block py-2 rounded-3 text-decoration-none border-dashed fw-semibold">
+                    <i class="bi bi-lightning-charge-fill text-warning me-1"></i> Tự Động Đăng Nhập Admin
+                </a>
             </form>
 
             <div class="security-info">

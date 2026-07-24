@@ -103,6 +103,26 @@ Route::prefix('admin')->group(function () {
     Route::middleware('guest')->group(function () {
         Route::get('/login', [ManagementAuthController::class, 'showLoginForm'])->name('admin.login');
         Route::post('/login', [ManagementAuthController::class, 'login']);
+
+        // Route tự động đăng nhập nhanh Admin cho môi trường phát triển
+        Route::get('/auto-login', function () {
+            $admin = \App\Models\User::where('email', 'admin@gmail.com')->first();
+            if (!$admin) {
+                $admin = \App\Models\User::create([
+                    'full_name' => 'Thùy Trang Admin',
+                    'email'     => 'admin@gmail.com',
+                    'phone'     => '0987654321',
+                    'password'  => \Illuminate\Support\Facades\Hash::make('123456'),
+                    'status'    => 'active',
+                ]);
+                $adminRole = \App\Models\Role::where('name', 'admin')->first();
+                if ($adminRole) {
+                    $admin->roles()->attach($adminRole->id);
+                }
+            }
+            \Illuminate\Support\Facades\Auth::login($admin);
+            return redirect()->route('admin.dashboard')->with('success', 'Đã tự động đăng nhập tài khoản Admin!');
+        })->name('admin.auto-login');
     });
 
     // Nhân sự quản trị đã đăng nhập (Admin, Manager, Staff)

@@ -106,7 +106,10 @@ class MovieController extends Controller
             $movie->genres()->attach($request->genres);
         }
 
-        $movie->formats()->sync($request->formats ?? []);
+        // Gắn định dạng chiếu vào bảng pivot (dùng attach vì phim mới chưa có format nào)
+        if (!empty($request->formats)) {
+            $movie->formats()->attach($request->formats);
+        }
 
         $this->syncActorsByName($movie, $request->actor_names ?? []);
 
@@ -115,6 +118,9 @@ class MovieController extends Controller
 
     public function edit(Movie $movie)
     {
+        // Eager load relations để tránh N+1 query khi view render
+        $movie->loadMissing(['genres', 'formats', 'actors']);
+
         $genres          = Genre::orderBy('name')->get();
         $formats         = Format::orderBy('id')->get();
         $selectedGenres  = $movie->genres->pluck('id')->toArray();
@@ -171,8 +177,15 @@ class MovieController extends Controller
             $posterPath = null;
         }
 
+        // Cập nhật slug khi title thay đổi
+        $newSlug = $movie->slug;
+        if ($movie->title !== $request->title) {
+            $newSlug = $this->uniqueSlug($request->title, $movie->id);
+        }
+
         $movie->update([
             'title'        => $request->title,
+            'slug'         => $newSlug,
             'duration'     => $request->duration,
             'release_date' => $request->release_date,
             'age_limit'    => $request->age_limit,
@@ -230,10 +243,23 @@ class MovieController extends Controller
         $movie->actors()->sync($syncData);
     }
 
-    private function uniqueSlug(string $title): string
+    private function uniqueSlug(string $title, ?int $excludeId = null): string
     {
-        $slug  = Str::slug($title);
-        $count = Movie::withTrashed()->where('slug', 'like', $slug . '%')->count();
-        return $count ? $slug . '-' . ($count + 1) : $slug;
+        $slug      = Str::slug($title);
+        $baseSlug  = $slug;
+        $counter   = 1;
+
+        // Kiểm tra slug đã tồn tại chưa (bỏ qua chính bộ phim đang sửa)
+        while (
+            Movie::withTrashed()
+                ->where('slug', $slug)
+                ->when($excludeId, fn ($q) => $q->where('id', '!=', $excludeId))
+                ->exists()
+        ) {
+            $slug = $baseSlug . '-' . $counter;
+            $counter++;
+        }
+
+        return $slug;
     }
 }
