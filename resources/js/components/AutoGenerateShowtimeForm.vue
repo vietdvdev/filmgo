@@ -69,36 +69,18 @@
       <!-- Form chính (chỉ hiện khi đã chọn/có rạp) -->
       <template v-if="cinemasList.length > 0 && (cinemasList.length === 1 || selectedCinemaId)">
 
-        <!-- Block 2 (Base Info — Grid 3 cols) -->
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <!-- Chọn Phim -->
-          <div>
-            <label for="movie_id" class="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1">
-              Chọn Phim
-            </label>
-            <select
-              id="movie_id"
-              v-model="payload.movie_id"
-              class="block w-full px-3 py-2.5 border text-sm focus:outline-none focus:border-purple-600 focus:ring-1 focus:ring-purple-600 bg-white rounded-none disabled:bg-slate-100 disabled:text-slate-400"
-              :class="errors.movie_id ? 'border-rose-400' : 'border-slate-300'"
-            >
-              <option value="">-- Chọn phim --</option>
-              <option v-for="movie in moviesList" :key="movie.id" :value="movie.id">
-                {{ movie.title }} ({{ movie.duration }} phút)
-              </option>
-            </select>
-            <p v-if="errors.movie_id" class="mt-1 text-xs text-rose-600 font-semibold">{{ errors.movie_id }}</p>
-          </div>
-
-          <!-- Chọn Phòng Chiếu -->
+        <!-- Block 2 (Base Info — Grid 4 cols) -->
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <!-- 1. Chọn Phòng Chiếu -->
           <div>
             <label for="room_id" class="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1">
-              Chọn Phòng Chiếu
+              1. Phòng Chiếu
             </label>
             <div class="relative">
               <select
                 id="room_id"
                 v-model="payload.room_id"
+                @change="onAutoRoomChange"
                 :disabled="isLoadingRooms || roomsList.length === 0"
                 class="block w-full px-3 py-2.5 border text-sm focus:outline-none focus:border-purple-600 focus:ring-1 focus:ring-purple-600 bg-white rounded-none disabled:bg-slate-100 disabled:text-slate-400"
                 :class="errors.room_id ? 'border-rose-400' : 'border-slate-300'"
@@ -108,23 +90,55 @@
                   {{ room.room_name }} ({{ room.room_type }} – {{ room.capacity }} ghế)
                 </option>
               </select>
-              <div v-if="isLoadingRooms" class="absolute right-3 top-1/2 -translate-y-1/2">
-                <svg class="animate-spin h-4 w-4 text-purple-500" fill="none" viewBox="0 0 24 24">
-                  <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
-                  <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
-                </svg>
-              </div>
             </div>
             <p v-if="errors.room_id" class="mt-1 text-xs text-rose-600 font-semibold">{{ errors.room_id }}</p>
-            <p v-if="!isLoadingRooms && roomsList.length === 0 && selectedCinemaId" class="mt-1 text-xs text-amber-600">
-              Rạp này chưa có phòng chiếu nào đang hoạt động.
-            </p>
           </div>
 
-          <!-- Ngày Chiếu -->
+          <!-- 2. Chọn Phim -->
+          <div>
+            <label for="movie_id" class="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1">
+              2. Chọn Phim
+            </label>
+            <select
+              id="movie_id"
+              v-model="payload.movie_id"
+              @change="onAutoMovieChange"
+              :disabled="!payload.room_id || isLoadingAutoMovies"
+              class="block w-full px-3 py-2.5 border text-sm focus:outline-none focus:border-purple-600 focus:ring-1 focus:ring-purple-600 bg-white rounded-none disabled:bg-slate-100 disabled:text-slate-400"
+              :class="errors.movie_id ? 'border-rose-400' : 'border-slate-300'"
+            >
+              <option value="">{{ !payload.room_id ? 'Chọn phòng trước' : isLoadingAutoMovies ? 'Đang tải phim...' : '-- Chọn phim --' }}</option>
+              <option v-for="movie in roomMoviesList" :key="movie.id" :value="movie.id">
+                {{ movie.title }} ({{ movie.duration }} phút)
+              </option>
+            </select>
+            <p v-if="errors.movie_id" class="mt-1 text-xs text-rose-600 font-semibold">{{ errors.movie_id }}</p>
+          </div>
+
+          <!-- 3. Định dạng chiếu -->
+          <div>
+            <label for="format_id" class="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1">
+              3. Định Dạng
+            </label>
+            <select
+              id="format_id"
+              v-model="payload.format_id"
+              :disabled="!payload.movie_id || isLoadingAutoFormats"
+              class="block w-full px-3 py-2.5 border text-sm focus:outline-none focus:border-purple-600 focus:ring-1 focus:ring-purple-600 bg-white rounded-none disabled:bg-slate-100 disabled:text-slate-400"
+              :class="errors.format_id ? 'border-rose-400' : 'border-slate-300'"
+            >
+              <option value="">{{ !payload.movie_id ? 'Chọn phim trước' : isLoadingAutoFormats ? 'Đang tải...' : '-- Chọn định dạng --' }}</option>
+              <option v-for="fmt in formatsList" :key="fmt.id" :value="fmt.id">
+                {{ fmt.name }} {{ fmt.surcharge_price > 0 ? '(+' + fmt.surcharge_price.toLocaleString() + 'đ)' : '' }}
+              </option>
+            </select>
+            <p v-if="errors.format_id" class="mt-1 text-xs text-rose-600 font-semibold">{{ errors.format_id }}</p>
+          </div>
+
+          <!-- 4. Ngày Chiếu -->
           <div>
             <label for="show_date" class="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1">
-              Ngày Chiếu
+              4. Ngày Chiếu
             </label>
             <input
               id="show_date"
@@ -315,8 +329,9 @@ axios.defaults.headers.common['Accept']       = 'application/json';
 const todayDate = new Date().toISOString().split('T')[0];
 
 const payload = reactive({
-  movie_id: '',
   room_id: '',
+  movie_id: '',
+  format_id: '',
   show_date: todayDate,
   shift_start: '08:00',
   shift_end: '23:00',
@@ -350,16 +365,19 @@ const setSchedule24hBefore = () => {
   publishAt.value = fmtDTL(d);
 };
 
-const isLoading    = ref(false);
-const isLoadingCinemas = ref(true);
-const isLoadingRooms   = ref(false);
-const errors       = ref({});
-const globalSuccessMessage = ref('');
-const globalErrorMessage   = ref('');
+const isLoading           = ref(false);
+const isLoadingCinemas    = ref(true);
+const isLoadingRooms      = ref(false);
+const isLoadingAutoMovies = ref(false);
+const isLoadingAutoFormats= ref(false);
+const errors              = ref({});
+const globalSuccessMessage= ref('');
+const globalErrorMessage  = ref('');
 
-const moviesList   = ref(movies);
-const cinemasList  = ref([]);
-const roomsList    = ref([]);
+const cinemasList    = ref([]);
+const roomsList      = ref([]);
+const roomMoviesList = ref([]);
+const formatsList    = ref([]);
 
 const selectedCinemaId = ref('');
 
@@ -387,11 +405,15 @@ const fetchRoomsByCinema = async (cinemaId) => {
   if (!cinemaId) {
     roomsList.value = [];
     payload.room_id = '';
+    payload.movie_id = '';
+    payload.format_id = '';
     return;
   }
   isLoadingRooms.value = true;
   roomsList.value = [];
   payload.room_id = '';
+  payload.movie_id = '';
+  payload.format_id = '';
   try {
     const url = props.roomsUrlPattern.replace(':cinema_id', cinemaId);
     const res = await axios.get(url);
@@ -400,6 +422,45 @@ const fetchRoomsByCinema = async (cinemaId) => {
     globalErrorMessage.value = 'Không thể tải danh sách phòng chiếu của rạp này.';
   } finally {
     isLoadingRooms.value = false;
+  }
+};
+
+const onAutoRoomChange = async () => {
+  payload.movie_id  = '';
+  payload.format_id = '';
+  roomMoviesList.value = [];
+  formatsList.value    = [];
+
+  if (!payload.room_id) return;
+
+  isLoadingAutoMovies.value = true;
+  try {
+    const res = await axios.get(`/api/rooms/${payload.room_id}/movies`);
+    roomMoviesList.value = res.data.data || res.data || [];
+  } catch (e) {
+    globalErrorMessage.value = 'Không thể tải danh sách phim phù hợp cho phòng chiếu này.';
+  } finally {
+    isLoadingAutoMovies.value = false;
+  }
+};
+
+const onAutoMovieChange = async () => {
+  payload.format_id = '';
+  formatsList.value = [];
+
+  if (!payload.room_id || !payload.movie_id) return;
+
+  isLoadingAutoFormats.value = true;
+  try {
+    const res = await axios.get(`/api/rooms/${payload.room_id}/movies/${payload.movie_id}/formats`);
+    formatsList.value = res.data.data || res.data || [];
+    if (formatsList.value.length === 1) {
+      payload.format_id = formatsList.value[0].id;
+    }
+  } catch (e) {
+    globalErrorMessage.value = 'Không thể tải danh sách định dạng chiếu giao điểm.';
+  } finally {
+    isLoadingAutoFormats.value = false;
   }
 };
 

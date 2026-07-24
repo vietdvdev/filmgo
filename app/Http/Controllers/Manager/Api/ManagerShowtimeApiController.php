@@ -116,6 +116,88 @@ class ManagerShowtimeApiController extends Controller
         return response()->json($rooms);
     }
 
+    /**
+     * Helper: Lấy danh sách tên định dạng chiếu được hỗ trợ bởi loại phòng.
+     */
+    private function getSupportedFormatsByRoomType(string $roomType): array
+    {
+        $typeUpper = strtoupper(trim($roomType));
+
+        return match ($typeUpper) {
+            '2D'    => ['2D'],
+            '3D'    => ['2D', '3D'],
+            'IMAX'  => ['2D', '3D', 'IMAX'],
+            '4DX'   => ['2D', '3D', '4DX'],
+            default => ['2D', $typeUpper],
+        };
+    }
+
+    /**
+     * API 1: Luồng Ưu Tiên Phòng (Room-first) - Lấy danh sách Phim tương thích với Phòng chiếu.
+     * GET /api/rooms/{id}/movies
+     */
+    public function getMoviesByRoom($id)
+    {
+        $room = Room::findOrFail($id);
+
+        $cinemaIds = $this->getCinemaIds();
+        if (!in_array((int)$room->cinema_id, $cinemaIds, true)) {
+            return response()->json([
+                'message' => 'Bạn không có quyền quản lý phòng chiếu này.'
+            ], 403);
+        }
+
+        $supportedFormats = $this->getSupportedFormatsByRoomType($room->room_type);
+
+        $movies = Movie::where('status', '!=', 'stopped')
+            ->whereHas('formats', function ($q) use ($supportedFormats) {
+                $q->whereIn('name', $supportedFormats);
+            })
+            ->orderBy('title')
+            ->get(['id', 'title', 'duration', 'age_limit', 'status']);
+
+        return response()->json([
+            'success' => true,
+            'room'    => [
+                'id'        => $room->id,
+                'name'      => $room->room_name,
+                'room_type' => $room->room_type,
+            ],
+            'data'    => $movies,
+        ]);
+    }
+
+    /**
+     * API 2: Luồng Ưu Tiên Phòng (Room-first) - Lấy danh sách Định dạng giao điểm giữa Phòng và Phim.
+     * GET /api/rooms/{room_id}/movies/{movie_id}/formats
+     */
+    public function getIntersectionFormats($roomId, $movieId)
+    {
+        $room  = Room::findOrFail($roomId);
+        $movie = Movie::findOrFail($movieId);
+
+        $cinemaIds = $this->getCinemaIds();
+        if (!in_array((int)$room->cinema_id, $cinemaIds, true)) {
+            return response()->json([
+                'message' => 'Bạn không có quyền quản lý phòng chiếu này.'
+            ], 403);
+        }
+
+        $roomFormats = $this->getSupportedFormatsByRoomType($room->room_type);
+
+        $formats = Format::whereHas('movies', function ($q) use ($movie) {
+                $q->where('movies.id', $movie->id);
+            })
+            ->whereIn('name', $roomFormats)
+            ->orderBy('id')
+            ->get(['id', 'name', 'surcharge_price']);
+
+        return response()->json([
+            'success' => true,
+            'data'    => $formats,
+        ]);
+    }
+
 
 
     /**
@@ -266,26 +348,40 @@ class ManagerShowtimeApiController extends Controller
 
         $startTime = Carbon::createFromFormat(
             'Y-m-d H:i',
-            $request->input('show_date') . ' ' . $request->input('start_time')
+            $request->input('show_date') . ' ' . $request->input('start_time'),
+            config('app.timezone')  // Bug fix: luôn chỉ định timezone tránh lệch giờ
         );
         $endTime = $startTime->copy()->addMinutes($movie->duration);
 
         $startTimeStr = $startTime->format('H:i:s');
         $endTimeStr   = $endTime->format('H:i:s');
         $showDateStr  = $request->input('show_date');
+        // Bug fix: Xử lý trường hợp suất chiếu qua nửa đêm
+        $crossMidnight = $endTime->toDateString() > $startTime->toDateString();
 
-        // Check collision
+        // Bug fix: Dùng so sánh Carbon datetime tuyệt đối thay vì string để xử lý đúng suất qua nửa đêm
         $overlapQuery = Showtime::where('room_id', $room->id)
-            ->where('show_date', $showDateStr);
-
-        if ($endTimeStr <= $startTimeStr) {
-            $overlapQuery->where('start_time', '>=', $startTimeStr);
-        } else {
-            $overlapQuery->where(function ($q) use ($startTimeStr, $endTimeStr) {
-                $q->where('start_time', '<', $endTimeStr)
-                  ->where('end_time', '>', $startTimeStr);
+            ->whereIn('show_date', [
+                $showDateStr,
+                // Nếu qua nửa đêm, cũng kiểm tra ngày hôm sau
+                $crossMidnight ? $endTime->toDateString() : $showDateStr,
+            ])
+            ->where('status', '!=', 'cancelled')
+            ->where(function ($q) use ($startTimeStr, $endTimeStr, $crossMidnight, $showDateStr) {
+                if ($crossMidnight) {
+                    // Suất chiếu mới qua nửa đêm: trùng với bất kỳ suất nào bắt đầu từ start đến 23:59 hoặc 00:00 đến end
+                    $q->where(function ($inner) use ($startTimeStr) {
+                        $inner->where('show_date', '=', request()->input('show_date'))
+                              ->where('start_time', '>=', $startTimeStr);
+                    })->orWhere(function ($inner) use ($endTimeStr) {
+                        $inner->where('end_time', '>', '00:00:00')
+                              ->where('start_time', '<', $endTimeStr);
+                    });
+                } else {
+                    $q->where('start_time', '<', $endTimeStr)
+                      ->where('end_time', '>', $startTimeStr);
+                }
             });
-        }
 
         $overlap = $overlapQuery->with('movie')->first();
 
@@ -300,7 +396,7 @@ class ManagerShowtimeApiController extends Controller
                             'Trùng lịch! Khung giờ %s–%s bị chồng lấn với suất chiếu "%s" (%s–%s) tại phòng này.',
                             $startTime->format('H:i'),
                             $endTime->format('H:i'),
-                            $overlap->movie->title,
+                            $overlap->movie->title ?? 'N/A',
                             $overlapStart,
                             $overlapEnd
                         )

@@ -83,7 +83,9 @@ class StoreShowtimeRequest extends FormRequest
             }
 
             // 2. Kiểm tra ràng buộc Định dạng chiếu và Tiêu chuẩn Phòng chiếu
-            if ($movieId && $formatId && $roomId) {
+            // Guard: chỉ chạy cross-check khi các field cơ bản không có lỗi, tránh N+1 query vô nghĩa
+            $hasBasicErrors = $validator->errors()->hasAny(['movie_id', 'format_id', 'room_id', 'cinema_id']);
+            if ($movieId && $formatId && $roomId && !$hasBasicErrors) {
                 $formatService = app(\App\Services\FormatService::class);
                 $formatErrors  = $formatService->validateShowtimeFormatAndRoom((int)$movieId, (int)$formatId, (int)$roomId);
 

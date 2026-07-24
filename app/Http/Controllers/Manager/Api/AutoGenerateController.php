@@ -32,6 +32,7 @@ class AutoGenerateController extends Controller
         // 1. ENDPOINT & PAYLOAD VALIDATION
         $validator = Validator::make($request->all(), [
             'movie_id'       => 'required|exists:movies,id',
+            'format_id'      => 'required|exists:formats,id',
             'room_id'        => 'required|exists:rooms,id',
             'show_date'      => 'required|date_format:Y-m-d|after_or_equal:today',
             'shift_start'    => 'required|date_format:H:i',
@@ -42,6 +43,8 @@ class AutoGenerateController extends Controller
         ], [
             'shift_end.after'          => 'Giờ đóng ca phải sau giờ mở ca.',
             'show_date.after_or_equal' => 'Ngày chiếu không được là ngày trong quá khứ.',
+            'format_id.required'       => 'Vui lòng chọn định dạng chiếu.',
+            'format_id.exists'         => 'Định dạng chiếu không hợp lệ.',
         ]);
 
         if ($validator->fails()) {
@@ -52,6 +55,7 @@ class AutoGenerateController extends Controller
         }
 
         $movieId       = (int) $request->input('movie_id');
+        $formatId      = (int) $request->input('format_id');
         $roomId        = (int) $request->input('room_id');
         $showDate      = $request->input('show_date');
         $shiftStartStr = $request->input('shift_start');
@@ -81,6 +85,16 @@ class AutoGenerateController extends Controller
                 return response()->json([
                     'success' => false,
                     'message' => 'Phòng chiếu này hiện không hoạt động.'
+                ], 422);
+            }
+
+            // Kiểm tra tương thích Định dạng chiếu giữa Phim và Phòng
+            $formatService = app(\App\Services\FormatService::class);
+            $formatErrors  = $formatService->validateShowtimeFormatAndRoom($movieId, $formatId, $roomId);
+            if (!empty($formatErrors)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => reset($formatErrors)
                 ], 422);
             }
 
@@ -147,6 +161,7 @@ class AutoGenerateController extends Controller
 
                 $validShowtimes[] = [
                     'movie_id'          => $movieId,
+                    'format_id'         => $formatId,
                     'room_id'           => $roomId,
                     'show_date'         => $showDate,
                     'start_time'        => $proposedStart->format('H:i:s'),

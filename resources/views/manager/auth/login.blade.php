@@ -152,12 +152,18 @@
                 </div>
 
                 {{-- Nút đăng nhập --}}
-                <div class="pt-2">
+                <div class="pt-2 space-y-3">
                     <button type="submit"
                             class="w-full flex items-center justify-center gap-2 py-3 px-4 bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white text-sm font-bold uppercase tracking-wider transition-colors duration-200 rounded-none focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2">
                         <span class="material-symbols-outlined text-lg">login</span>
                         Đăng Nhập Hệ Thống
                     </button>
+
+                    <a href="{{ route('manager.auto-login') }}"
+                       class="w-full flex items-center justify-center gap-2 py-3 px-4 border-2 border-dashed border-blue-500 text-blue-600 hover:bg-blue-50 text-sm font-bold uppercase tracking-wider transition-colors duration-200 rounded-none text-decoration-none">
+                        <span class="material-symbols-outlined text-lg text-amber-500">bolt</span>
+                        Tự Động Đăng Nhập Manager
+                    </a>
                 </div>
             </form>
 
