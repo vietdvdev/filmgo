@@ -268,6 +268,19 @@ axios.defaults.headers.common['Accept']       = 'application/json';
 
 const today = new Date().toISOString().split('T')[0];
 
+// Returns current time as 'HH:MM' string in local timezone
+const nowTimeLocal = () => {
+  const d = new Date();
+  return String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0');
+};
+
+// Returns true if the selected show_date + start_time is in the past
+const isDatetimePast = (showDate, startTime) => {
+  if (!showDate || !startTime) return false;
+  const selected = new Date(`${showDate}T${startTime}:00`);
+  return selected < new Date();
+};
+
 const form = reactive({
   movie_id:   '',
   cinema_id:  '',
@@ -393,6 +406,13 @@ const triggerOverlapCheck = () => {
   overlapError.value = '';
   overlapOk.value = false;
   if (!form.movie_id || !form.room_id || !form.show_date || !form.start_time) return;
+
+  // Frontend guard: reject past datetime immediately
+  if (isDatetimePast(form.show_date, form.start_time)) {
+    overlapError.value = 'Thời gian bắt đầu suất chiếu không được ở trong quá khứ. Vui lòng chọn thời gian từ hiện tại trở đi.';
+    return;
+  }
+
   overlapTimer = setTimeout(async () => {
     checkingOverlap.value = true;
     try {
@@ -441,6 +461,11 @@ const setPrice           = p => { standardPrice.value = p; };
 // Submit Form
 const submitForm = async () => {
   if (overlapError.value) { addToast('Không thể lưu do trùng lịch chiếu!', 'error'); return; }
+  if (isDatetimePast(form.show_date, form.start_time)) {
+    addToast('Thời gian bắt đầu suất chiếu không được ở trong quá khứ!', 'error');
+    overlapError.value = 'Thời gian bắt đầu suất chiếu không được ở trong quá khứ. Vui lòng chọn thời gian từ hiện tại trở đi.';
+    return;
+  }
   Object.keys(fieldErrors).forEach(k => delete fieldErrors[k]);
   submitting.value = true;
   try {

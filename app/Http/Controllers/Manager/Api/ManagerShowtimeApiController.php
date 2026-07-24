@@ -103,8 +103,18 @@ class ManagerShowtimeApiController extends Controller
 
         $startTime = Carbon::createFromFormat(
             'Y-m-d H:i',
-            $request->input('show_date') . ' ' . $request->input('start_time')
+            $request->input('show_date') . ' ' . $request->input('start_time'),
+            config('app.timezone')
         );
+
+        if ($startTime->isPast()) {
+            return response()->json([
+                'overlap'  => true,
+                'past'     => true,
+                'message'  => 'Thời gian bắt đầu suất chiếu không được ở trong quá khứ. Vui lòng chọn thời gian từ hiện tại trở đi.',
+            ]);
+        }
+
         $endTime = $startTime->copy()->addMinutes($movie->duration);
 
         $startTimeStr = $startTime->format('H:i:s');

@@ -33,6 +33,47 @@ class StoreShowtimeRequest extends FormRequest
     }
 
     /**
+     * Validate that the combined show_date + start_time is not in the past.
+     */
+    public function withValidator($validator)
+    {
+        $validator->after(function ($validator) {
+            // Cross-field: room must belong to cinema
+            $cinemaId = $this->input('cinema_id');
+            $roomId   = $this->input('room_id');
+
+            if ($cinemaId && $roomId) {
+                $roomExists = \App\Models\Room::where('id', $roomId)
+                    ->where('cinema_id', $cinemaId)
+                    ->exists();
+
+                if (!$roomExists) {
+                    $validator->errors()->add('room_id', 'Phòng chiếu được chọn không thuộc rạp chiếu đã chọn.');
+                }
+            }
+
+            // Cross-field: combined datetime must not be in the past
+            $showDate  = $this->input('show_date');
+            $startTime = $this->input('start_time');
+
+            if ($showDate && $startTime && !$validator->errors()->has('show_date') && !$validator->errors()->has('start_time')) {
+                $startDateTime = \Carbon\Carbon::createFromFormat(
+                    'Y-m-d H:i',
+                    $showDate . ' ' . $startTime,
+                    config('app.timezone')
+                );
+
+                if ($startDateTime->isPast()) {
+                    $validator->errors()->add(
+                        'start_time',
+                        'Thời gian bắt đầu suất chiếu không được ở trong quá khứ. Vui lòng chọn thời gian từ hiện tại trở đi.'
+                    );
+                }
+            }
+        });
+    }
+
+    /**
      * Custom error messages for validation rules.
      */
     public function messages(): array
@@ -55,25 +96,6 @@ class StoreShowtimeRequest extends FormRequest
         ];
     }
 
-    /**
-     * Configure the validator instance to perform cross-field verification.
-     */
-    public function withValidator($validator)
-    {
-        $validator->after(function ($validator) {
-            $cinemaId = $this->input('cinema_id');
-            $roomId = $this->input('room_id');
 
-            if ($cinemaId && $roomId) {
-                $roomExists = \App\Models\Room::where('id', $roomId)
-                    ->where('cinema_id', $cinemaId)
-                    ->exists();
-
-                if (!$roomExists) {
-                    $validator->errors()->add('room_id', 'Phòng chiếu được chọn không thuộc rạp chiếu đã chọn.');
-                }
-            }
-        });
-    }
 }
 
