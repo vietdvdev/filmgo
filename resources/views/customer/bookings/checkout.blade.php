@@ -3,19 +3,19 @@
 @section('title', 'Thanh Toán - FilmGo')
 
 @section('content')
-<div class="min-h-screen bg-[#0F0F0F] text-white font-sans antialiased py-10">
+<div class="min-h-screen bg-slate-50 text-slate-850 font-sans antialiased py-10 selection:bg-brand-primary selection:text-white">
     <div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
 
         {{-- ── Countdown Timer ── --}}
-        <div id="countdown-wrapper" class="fixed top-4 right-4 bg-zinc-900 text-white px-4 py-2 rounded-full font-bold shadow-lg z-50 flex items-center gap-2 border border-zinc-700">
-            <span>⏳ Thời gian giữ ghế:</span>
-            <span id="seat-countdown" class="text-lg">10:00</span>
+        <div id="countdown-wrapper" class="fixed top-4 right-4 bg-white text-slate-800 px-4 py-2 rounded-full font-bold shadow-md z-50 flex items-center gap-2 border border-slate-200">
+            <span class="text-xs text-slate-500 font-bold uppercase tracking-wider">⏳ Giữ ghế:</span>
+            <span id="seat-countdown" class="text-base font-black text-brand-primary">10:00</span>
         </div>
 
         {{-- ── Progress Steps ── --}}
         <div class="max-w-xl mx-auto mb-10">
             <div class="flex items-center justify-between relative">
-                <div class="absolute inset-x-0 top-5 h-0.5 bg-zinc-700 z-0"></div>
+                <div class="absolute inset-x-0 top-5 h-0.5 bg-slate-200 z-0"></div>
                 <div class="absolute left-0 right-[0%] top-5 h-0.5 bg-brand-primary z-0"></div>
 
                 @php
@@ -26,8 +26,8 @@
                     <div class="z-10 flex flex-col items-center gap-2">
                         <div class="w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm border-2 transition-all duration-200
                             {{ ($i + 1) < $currentStep ? 'bg-brand-primary border-brand-primary text-white' : '' }}
-                            {{ ($i + 1) === $currentStep ? 'bg-brand-primary border-brand-primary text-white ring-4 ring-brand-primary/30' : '' }}
-                            {{ ($i + 1) > $currentStep ? 'bg-zinc-800 border-zinc-600 text-zinc-400' : '' }}">
+                            {{ ($i + 1) === $currentStep ? 'bg-brand-primary border-brand-primary text-white ring-4 ring-brand-primary/20' : '' }}
+                            {{ ($i + 1) > $currentStep ? 'bg-white border-slate-300 text-slate-400' : '' }}">
                             @if(($i + 1) < $currentStep)
                                 <span class="material-symbols-outlined text-base">check</span>
                             @else
@@ -35,7 +35,7 @@
                             @endif
                         </div>
                         <span class="text-[10px] font-bold uppercase tracking-widest
-                            {{ ($i + 1) === $currentStep ? 'text-brand-primary' : 'text-zinc-500' }}">
+                            {{ ($i + 1) === $currentStep ? 'text-brand-primary' : 'text-slate-400' }}">
                             {{ $label }}
                         </span>
                     </div>
@@ -48,7 +48,7 @@
 
             {{-- ═══ LEFT — Vé Điện Tử ═══ --}}
             <div class="lg:col-span-2">
-                <div class="bg-[#1A1A1A] border border-zinc-800 rounded-2xl overflow-hidden">
+                <div class="bg-white border border-slate-200 rounded-none shadow-sm overflow-hidden">
                     {{-- Header --}}
                     <div class="bg-brand-primary px-5 py-3">
                         <h3 class="text-xs font-black uppercase tracking-widest text-white flex items-center gap-2">
@@ -62,29 +62,29 @@
                         <div class="flex gap-3">
                             @if($showtime->movie->poster_url)
                             <img src="{{ $showtime->movie->poster_url }}" alt="poster"
-                                 class="w-16 h-24 object-cover rounded-lg flex-shrink-0 border border-zinc-700">
+                                 class="w-16 h-24 object-cover rounded-none flex-shrink-0 border border-slate-200">
                             @endif
                             <div class="flex-1 min-w-0">
-                                <p class="font-black text-white text-sm leading-tight line-clamp-2">{{ $showtime->movie->title }}</p>
+                                <p class="font-black text-slate-900 text-sm leading-tight line-clamp-2 uppercase">{{ $showtime->movie->title }}</p>
                                 <div class="flex items-center gap-2 mt-1.5 flex-wrap">
-                                    <span class="px-2 py-0.5 text-[9px] font-black bg-brand-primary/20 text-brand-primary rounded border border-brand-primary/30 uppercase">
+                                    <span class="px-2 py-0.5 text-[9px] font-black bg-brand-primary/10 text-brand-primary rounded-none border border-brand-primary/20 uppercase">
                                         {{ $showtime->movie->age_limit }}
                                     </span>
-                                    <span class="text-[10px] text-zinc-500">{{ $showtime->movie->duration }} phút</span>
+                                    <span class="text-[10px] text-slate-500 font-bold">{{ $showtime->movie->duration }} phút</span>
                                 </div>
-                                <p class="text-[10px] text-zinc-400 mt-2 font-semibold">
+                                <p class="text-[10px] text-slate-600 mt-2 font-bold">
                                     {{ $showtime->room->cinema->name }}
                                 </p>
                                 <p class="text-[10px] text-brand-primary font-bold mt-0.5">
                                     {{ \Carbon\Carbon::parse($showtime->start_time)->format('H:i') }} • {{ $showtime->show_date->format('d/m/Y') }}
                                 </p>
-                                <p class="text-[10px] text-zinc-500 mt-0.5">{{ $showtime->room->room_name }} ({{ $showtime->room->room_type }})</p>
+                                <p class="text-[10px] text-slate-500 mt-0.5 font-medium">{{ $showtime->room->room_name }} ({{ $showtime->room->room_type }})</p>
                             </div>
                         </div>
 
                         {{-- Seats detail --}}
-                        <div class="border-t border-zinc-800 pt-4">
-                            <p class="text-[10px] font-bold text-zinc-500 uppercase tracking-widest mb-2">Chi Tiết Ghế</p>
+                        <div class="border-t border-slate-200 pt-4">
+                            <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">Chi Tiết Ghế</p>
                             <div class="space-y-1.5">
                                 @foreach($selectedSeats as $ss)
                                 @php
@@ -92,12 +92,12 @@
                                 @endphp
                                 <div class="flex justify-between items-center">
                                     <div class="flex items-center gap-2">
-                                        <span class="w-7 h-7 rounded-md bg-zinc-800 border border-zinc-700 flex items-center justify-center text-[10px] font-black text-white">
+                                        <span class="w-7 h-7 rounded-none bg-slate-100 border border-slate-300 flex items-center justify-center text-[10px] font-black text-slate-800">
                                             {{ $ss->seat->seat_row }}{{ $ss->seat->seat_number }}
                                         </span>
-                                        <span class="text-[10px] text-zinc-400">{{ $ss->seat->seatType->type_name ?? 'Thường' }}</span>
+                                        <span class="text-[10px] text-slate-500 font-medium">{{ $ss->seat->seatType->type_name ?? 'Thường' }}</span>
                                     </div>
-                                    <span class="text-xs font-semibold text-zinc-300">{{ number_format($seatPrice) }}đ</span>
+                                    <span class="text-xs font-semibold text-slate-800">{{ number_format($seatPrice) }}đ</span>
                                 </div>
                                 @endforeach
                             </div>
@@ -105,15 +105,15 @@
 
                         {{-- Combos --}}
                         @if(count($selectedCombos) > 0)
-                        <div class="border-t border-zinc-800 pt-4">
-                            <p class="text-[10px] font-bold text-zinc-500 uppercase tracking-widest mb-2">Bắp Nước</p>
+                        <div class="border-t border-slate-200 pt-4">
+                            <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">Bắp Nước</p>
                             <div class="space-y-1.5">
                                 @foreach($selectedCombos as $sc)
                                 <div class="flex justify-between items-center">
-                                    <span class="text-xs text-zinc-300">{{ $sc['name'] }}
-                                        <span class="text-zinc-500 ml-1">×{{ $sc['quantity'] }}</span>
+                                    <span class="text-xs text-slate-700 font-medium">{{ $sc['name'] }}
+                                        <span class="text-slate-400 ml-1 font-bold">×{{ $sc['quantity'] }}</span>
                                     </span>
-                                    <span class="text-xs font-semibold text-zinc-300">{{ number_format($sc['subtotal']) }}đ</span>
+                                    <span class="text-xs font-semibold text-slate-800">{{ number_format($sc['subtotal']) }}đ</span>
                                 </div>
                                 @endforeach
                             </div>
@@ -121,24 +121,24 @@
                         @endif
 
                         {{-- Price breakdown --}}
-                        <div class="border-t border-dashed border-zinc-700 pt-4 space-y-2">
-                            <div class="flex justify-between text-xs text-zinc-400">
+                        <div class="border-t border-dashed border-slate-300 pt-4 space-y-2">
+                            <div class="flex justify-between text-xs text-slate-500">
                                 <span>Tiền ghế ({{ $selectedSeats->count() }} ghế)</span>
                                 <span>{{ number_format($totalSeatPrice) }}đ</span>
                             </div>
                             @if($totalComboPrice > 0)
-                            <div class="flex justify-between text-xs text-zinc-400">
+                            <div class="flex justify-between text-xs text-slate-500">
                                 <span>Bắp nước</span>
                                 <span>{{ number_format($totalComboPrice) }}đ</span>
                             </div>
                             @endif
                             @if($discountAmount > 0)
-                            <div class="flex justify-between text-xs text-emerald-400 font-semibold" id="discountRow">
+                            <div class="flex justify-between text-xs text-emerald-600 font-semibold" id="discountRow">
                                 <span>Giảm giá (<span id="appliedCodeLabel">{{ $appliedVoucher['code'] ?? '' }}</span>)</span>
                                 <span id="discountLabel">-{{ number_format($discountAmount) }}đ</span>
                             </div>
                             @else
-                            <div class="hidden justify-between text-xs text-emerald-400 font-semibold" id="discountRow">
+                            <div class="hidden justify-between text-xs text-emerald-600 font-semibold" id="discountRow">
                                 <span>Giảm giá (<span id="appliedCodeLabel"></span>)</span>
                                 <span id="discountLabel"></span>
                             </div>
@@ -146,15 +146,15 @@
                         </div>
 
                         {{-- Grand total --}}
-                        <div class="border-t border-zinc-700 pt-4">
+                        <div class="border-t border-slate-200 pt-4">
                             <div class="flex justify-between items-center">
-                                <span class="text-xs font-bold text-zinc-400 uppercase tracking-widest">Tổng Cộng</span>
+                                <span class="text-xs font-bold text-slate-500 uppercase tracking-widest">Tổng Cộng</span>
                                 <span class="text-2xl font-black text-brand-primary" id="grandTotalLabel">
                                     {{ number_format($finalTotal) }}đ
                                 </span>
                             </div>
                             @if($discountAmount > 0)
-                            <p class="text-right text-[10px] text-zinc-500 mt-1 line-through" id="originalTotalLabel">
+                            <p class="text-right text-[10px] text-slate-400 mt-1 line-through" id="originalTotalLabel">
                                 {{ number_format($grandTotal) }}đ
                             </p>
                             @endif
@@ -167,14 +167,14 @@
             <div class="lg:col-span-3 space-y-5">
 
                 {{-- ── Mã Khuyến Mãi ── --}}
-                <div class="bg-[#1A1A1A] border border-zinc-800 rounded-2xl p-5">
-                    <h4 class="text-xs font-black text-zinc-400 uppercase tracking-widest mb-4 flex items-center gap-2">
+                <div class="bg-white border border-slate-200 rounded-none shadow-sm p-5">
+                    <h4 class="text-xs font-black text-slate-900 uppercase tracking-widest mb-4 flex items-center gap-2">
                         <span class="material-symbols-outlined text-sm text-brand-primary">sell</span>
                         Mã Khuyến Mãi
                     </h4>
 
                     {{-- Alert box --}}
-                    <div id="voucherAlert" class="hidden mb-3 px-4 py-3 rounded-xl text-xs font-semibold flex items-start gap-2"></div>
+                    <div id="voucherAlert" class="hidden mb-3 px-4 py-3 rounded-none text-xs font-semibold flex items-start gap-2"></div>
 
                     <div class="flex gap-2">
                         <input
@@ -183,25 +183,25 @@
                             placeholder="Nhập mã tại đây..."
                             value="{{ $appliedVoucher['code'] ?? '' }}"
                             maxlength="50"
-                            class="flex-1 bg-zinc-900 border border-zinc-700 text-white placeholder-zinc-600 text-sm px-4 py-3 rounded-xl focus:outline-none focus:border-brand-primary focus:ring-1 focus:ring-brand-primary/50 uppercase tracking-wider transition-colors"
+                            class="flex-1 bg-white border border-slate-300 text-slate-900 placeholder-slate-400 text-sm px-4 py-3 rounded-none focus:outline-none focus:border-brand-primary focus:ring-1 focus:ring-brand-primary/50 uppercase tracking-wider transition-colors"
                         >
                         <button
                             type="button"
                             id="applyVoucherBtn"
-                            class="px-5 py-3 bg-zinc-800 hover:bg-brand-primary text-white text-xs font-black uppercase tracking-widest rounded-xl transition-all duration-200 border border-zinc-700 hover:border-brand-primary whitespace-nowrap">
+                            class="px-5 py-3 bg-slate-800 hover:bg-brand-primary text-white text-xs font-black uppercase tracking-widest rounded-none transition-all duration-200 border border-slate-800 hover:border-brand-primary whitespace-nowrap">
                             Áp Dụng
                         </button>
                     </div>
 
                     {{-- Applied badge --}}
-                    <div id="appliedBadge" class="{{ $appliedVoucher ? 'flex' : 'hidden' }} items-center justify-between mt-3 px-4 py-2.5 bg-emerald-500/10 border border-emerald-500/30 rounded-xl">
+                    <div id="appliedBadge" class="{{ $appliedVoucher ? 'flex' : 'hidden' }} items-center justify-between mt-3 px-4 py-2.5 bg-emerald-50 border border-emerald-200 rounded-none">
                         <div class="flex items-center gap-2">
-                            <span class="material-symbols-outlined text-emerald-400 text-base">check_circle</span>
+                            <span class="material-symbols-outlined text-emerald-600 text-base">check_circle</span>
                             <div>
-                                <p class="text-xs font-black text-emerald-400">
+                                <p class="text-xs font-black text-emerald-700">
                                     Đã áp dụng: <span id="badgeCode">{{ $appliedVoucher['code'] ?? '' }}</span>
                                 </p>
-                                <p class="text-[10px] text-emerald-500/70" id="badgeDesc">
+                                <p class="text-[10px] text-emerald-600 font-medium" id="badgeDesc">
                                     @if($appliedVoucher)
                                         Giảm {{ $appliedVoucher['discount_type'] === 'percent' ? $appliedVoucher['discount_value'].'%' : number_format($appliedVoucher['discount_value']).'đ' }}
                                     @endif
@@ -209,26 +209,26 @@
                             </div>
                         </div>
                         <button type="button" id="removeVoucherBtn"
-                                class="text-zinc-500 hover:text-red-400 transition-colors">
+                                class="text-slate-400 hover:text-red-500 transition-colors">
                             <span class="material-symbols-outlined text-base">close</span>
                         </button>
                     </div>
                 </div>
 
                 {{-- ── Phương thức thanh toán ── --}}
-                <div class="bg-[#1A1A1A] border border-brand-primary/40 rounded-2xl p-5">
-                    <h4 class="text-xs font-black text-zinc-400 uppercase tracking-widest mb-3 flex items-center gap-2">
+                <div class="bg-white border border-slate-200 rounded-none shadow-sm p-5">
+                    <h4 class="text-xs font-black text-slate-900 uppercase tracking-widest mb-3 flex items-center gap-2">
                         <span class="material-symbols-outlined text-sm text-brand-primary">payments</span>
                         Phương Thức Thanh Toán
                     </h4>
 
-                    <div class="rounded-2xl border border-brand-primary/20 bg-brand-primary/10 p-4 flex items-start gap-3">
-                        <div class="w-10 h-10 rounded-xl bg-brand-primary/20 flex items-center justify-center flex-shrink-0">
+                    <div class="rounded-none border border-brand-primary/20 bg-brand-primary/5 p-4 flex items-start gap-3">
+                        <div class="w-10 h-10 rounded-none bg-brand-primary/10 flex items-center justify-center flex-shrink-0">
                             <span class="material-symbols-outlined text-lg text-brand-primary">credit_card</span>
                         </div>
                         <div>
-                            <p class="text-sm font-bold text-white">Thanh toán qua VNPay</p>
-                            <p class="text-[10px] text-zinc-400 mt-1">Chỉ hỗ trợ cổng thanh toán VNPay theo môi trường sandbox. Bạn sẽ chọn ngân hàng rồi chuyển sang trang thanh toán của VNPay.</p>
+                            <p class="text-sm font-bold text-slate-900">Thanh toán qua VNPay</p>
+                            <p class="text-[10px] text-slate-500 mt-1 font-medium leading-relaxed">Hệ thống chuyển sang cổng thanh toán VNPay. Vui lòng chọn ngân hàng trước khi tiếp tục.</p>
                         </div>
                     </div>
                 </div>
@@ -240,11 +240,11 @@
                     <input type="hidden" name="bank_code" id="bankCodeInput" value="NCB">
                     <div id="hiddenCombosContainer"></div>
 
-                    <div class="mb-4 rounded-2xl border border-zinc-800 bg-zinc-900/60 p-4">
-                        <label for="bankCodeSelect" class="block text-[10px] font-black uppercase tracking-widest text-zinc-500 mb-2">
+                    <div class="mb-4 rounded-none border border-slate-200 bg-white p-4 shadow-sm">
+                        <label for="bankCodeSelect" class="block text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2">
                             Chọn ngân hàng thanh toán
                         </label>
-                        <select id="bankCodeSelect" class="w-full rounded-xl border border-zinc-700 bg-zinc-950 px-4 py-3 text-sm text-white focus:border-brand-primary focus:outline-none">
+                        <select id="bankCodeSelect" class="w-full rounded-none border border-slate-300 bg-white px-4 py-3 text-sm text-slate-800 focus:border-brand-primary focus:outline-none font-medium">
                             <option value="NCB">Ngân hàng NCB</option>
                             <option value="VNPAYQR">VNPAYQR</option>
                             <option value="VIETCOMBANK">Vietcombank</option>
@@ -259,20 +259,20 @@
                     <button type="submit"
                             id="payNowButton"
                             form="confirmForm"
-                            class="w-full bg-brand-primary hover:bg-red-700 text-white font-black py-4 rounded-2xl shadow-lg shadow-brand-primary/25 transition-all duration-200 flex items-center justify-center gap-2 text-base uppercase tracking-wider">
+                            class="w-full bg-brand-primary hover:bg-red-700 text-white font-black py-4 rounded-none shadow-md shadow-brand-primary/20 transition-all duration-200 flex items-center justify-center gap-2 text-base uppercase tracking-wider">
                         Thanh Toán Ngay
                         <span class="material-symbols-outlined text-lg">arrow_forward</span>
                     </button>
 
-                    <p class="text-center text-[10px] text-zinc-600 mt-3">
+                    <p class="text-center text-[10px] text-slate-400 mt-3 font-medium">
                         Bằng việc bấm nút Thanh Toán, bạn đồng ý với
-                        <a href="#" class="text-zinc-400 underline">Điều khoản giao dịch</a> của chúng tôi.
+                        <a href="#" class="text-slate-600 underline">Điều khoản giao dịch</a> của chúng tôi.
                     </p>
                 </form>
 
                 {{-- Back --}}
                 <a href="{{ route('booking.select-combos', $showtime->id) }}"
-                   class="flex items-center justify-center gap-1 text-xs text-zinc-500 hover:text-white transition-colors py-2">
+                   class="flex items-center justify-center gap-1 text-xs text-slate-500 hover:text-brand-primary transition-colors py-2 font-bold uppercase tracking-wider">
                     <span class="material-symbols-outlined text-sm">arrow_back</span>
                     Quay lại chọn bắp nước
                 </a>
@@ -286,7 +286,6 @@
 <script>
 document.addEventListener('DOMContentLoaded', function () {
 
-    // ─── Config từ PHP ───────────────────────────────────────────
     const SHOWTIME_ID  = {{ $showtime->id }};
     const APPLY_URL    = "{{ route('booking.voucher.apply', $showtime->id) }}";
     const REMOVE_URL   = "{{ route('booking.voucher.remove', $showtime->id) }}";
@@ -331,7 +330,6 @@ document.addEventListener('DOMContentLoaded', function () {
         @endforeach
     };
 
-    // ─── Cập nhật tổng tiền UI ───────────────────────────────────
     function updateTotals(newDiscount, code) {
         discountAmount = newDiscount;
         const grand = Math.max(0, seatTotal + comboTotal - discountAmount);
@@ -354,22 +352,20 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     }
 
-    // ─── Hiển thị alert ──────────────────────────────────────────
     function showAlert(message, type) {
         const el = document.getElementById('voucherAlert');
-        el.className = 'mb-3 px-4 py-3 rounded-xl text-xs font-semibold flex items-start gap-2 ';
+        el.className = 'mb-3 px-4 py-3 rounded-none text-xs font-semibold flex items-start gap-2 ';
         if (type === 'success') {
-            el.className += 'bg-emerald-500/10 border border-emerald-500/30 text-emerald-400';
-            el.innerHTML = '<span class="material-symbols-outlined text-sm flex-shrink-0">check_circle</span><span>' + message + '</span>';
+            el.className += 'bg-emerald-50 border border-emerald-200 text-emerald-700';
+            el.innerHTML = '<span class="material-symbols-outlined text-sm flex-shrink-0 text-emerald-600">check_circle</span><span>' + message + '</span>';
         } else {
-            el.className += 'bg-red-500/10 border border-red-500/30 text-red-400';
-            el.innerHTML = '<span class="material-symbols-outlined text-sm flex-shrink-0">error</span><span>' + message + '</span>';
+            el.className += 'bg-red-50 border border-red-200 text-red-700';
+            el.innerHTML = '<span class="material-symbols-outlined text-sm flex-shrink-0 text-brand-primary">error</span><span>' + message + '</span>';
         }
         el.classList.remove('hidden');
         setTimeout(() => el.classList.add('hidden'), 5000);
     }
 
-    // ─── Áp dụng voucher ─────────────────────────────────────────
     document.getElementById('applyVoucherBtn').addEventListener('click', function () {
         const code = document.getElementById('voucherInput').value.trim();
         if (!code) { showAlert('Vui lòng nhập mã giảm giá.', 'error'); return; }
@@ -425,7 +421,6 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     });
 
-    // ─── Xóa voucher ─────────────────────────────────────────────
     document.getElementById('removeVoucherBtn').addEventListener('click', function () {
         fetch(REMOVE_URL, {
             method: 'POST',
@@ -441,7 +436,6 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     });
 
-    // ─── Sync hidden combos vào form ─────────────────────────────
     function syncHiddenCombos() {
         const container = document.getElementById('hiddenCombosContainer');
         let html = '';
@@ -454,7 +448,6 @@ document.addEventListener('DOMContentLoaded', function () {
     }
     syncHiddenCombos();
 
-    // ================= COUNTDOWN TIMER LOGIC =================
     if (typeof Swal === 'undefined') {
         const script = document.createElement('script');
         script.src = 'https://cdn.jsdelivr.net/npm/sweetalert2@11';
@@ -499,8 +492,8 @@ document.addEventListener('DOMContentLoaded', function () {
 
         if (distance <= 120000) {
             if (timerWrapper) {
-                timerWrapper.classList.remove('bg-zinc-900', 'border-zinc-700');
-                timerWrapper.classList.add('bg-red-600', 'border-red-500', 'animate-pulse');
+                timerWrapper.classList.remove('bg-white', 'border-slate-200');
+                timerWrapper.classList.add('bg-red-600', 'border-red-500', 'text-white', 'animate-pulse');
             }
         }
     }, 1000);

@@ -7,9 +7,9 @@
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
 
             {{-- ── Countdown Timer ── --}}
-            <div id="countdown-wrapper" class="fixed top-4 right-4 bg-zinc-900 text-white px-4 py-2 rounded-full font-bold shadow-lg z-50 flex items-center gap-2 border border-zinc-700">
-                <span>⏳ Thời gian giữ ghế:</span>
-                <span id="seat-countdown" class="text-lg">10:00</span>
+            <div id="countdown-wrapper" class="fixed top-4 right-4 bg-white text-slate-800 px-4 py-2 rounded-full font-bold shadow-md z-50 flex items-center gap-2 border border-slate-200">
+                <span class="text-xs text-slate-500 font-bold uppercase tracking-wider">⏳ Giữ ghế:</span>
+                <span id="seat-countdown" class="text-base font-black text-brand-primary">10:00</span>
             </div>
 
             {{-- ── Progress Steps ── --}}
@@ -26,8 +26,8 @@
                         <div class="z-10 flex flex-col items-center gap-2">
                             <div class="w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm border-2 transition-all duration-200
                                 {{ ($i + 1) < $currentStep ? 'bg-brand-primary border-brand-primary text-white' : '' }}
-                                {{ ($i + 1) === $currentStep ? 'bg-brand-primary border-brand-primary text-white ring-4 ring-brand-primary/30' : '' }}
-                                {{ ($i + 1) > $currentStep ? 'bg-white border-slate-300 text-slate-405' : '' }}">
+                                {{ ($i + 1) === $currentStep ? 'bg-brand-primary border-brand-primary text-white ring-4 ring-brand-primary/20' : '' }}
+                                {{ ($i + 1) > $currentStep ? 'bg-white border-slate-300 text-slate-400' : '' }}">
                                 @if(($i + 1) < $currentStep)
                                     <span class="material-symbols-outlined text-base">check</span>
                                 @else

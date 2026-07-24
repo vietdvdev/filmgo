@@ -3,28 +3,28 @@
 @section('title', 'Thanh Toán Demo - FilmGo')
 
 @section('content')
-<div class="min-h-screen bg-[#0F0F0F] text-white font-sans antialiased py-10">
+<div class="min-h-screen bg-slate-50 text-slate-850 font-sans antialiased py-10 selection:bg-brand-primary selection:text-white">
     <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div class="bg-[#1A1A1A] border border-zinc-800 rounded-3xl overflow-hidden">
+        <div class="bg-white border border-slate-200 rounded-none shadow-sm overflow-hidden">
             <div class="bg-brand-primary px-6 py-4">
-                <h2 class="text-lg font-black uppercase tracking-widest">Thanh Toán Giả Lập {{ $provider === 'momo' ? 'MoMo' : 'VNPay' }}</h2>
+                <h2 class="text-lg font-black uppercase tracking-widest text-white">Thanh Toán Giả Lập {{ $provider === 'momo' ? 'MoMo' : 'VNPay' }}</h2>
             </div>
 
             <div class="p-6 md:p-8 grid grid-cols-1 lg:grid-cols-[1.1fr_0.9fr] gap-8">
                 <div class="space-y-4">
-                    <div class="rounded-2xl border border-zinc-800 bg-zinc-900/70 p-5">
-                        <h3 class="text-sm font-black uppercase tracking-widest text-zinc-400 mb-3">Thông tin đơn hàng</h3>
-                        <div class="space-y-2 text-sm text-zinc-300">
-                            <div class="flex justify-between"><span>Mã đơn</span><span class="font-semibold text-white">{{ $booking->booking_code }}</span></div>
-                            <div class="flex justify-between"><span>Phim</span><span class="font-semibold text-white">{{ $booking->showtime->movie->title }}</span></div>
-                            <div class="flex justify-between"><span>Rạp</span><span class="font-semibold text-white">{{ $booking->showtime->room->cinema->name }}</span></div>
-                            <div class="flex justify-between"><span>Tổng tiền</span><span class="font-semibold text-brand-primary">{{ number_format($booking->total_amount) }}đ</span></div>
+                    <div class="rounded-none border border-slate-200 bg-slate-50 p-5">
+                        <h3 class="text-sm font-black uppercase tracking-widest text-slate-500 mb-3">Thông tin đơn hàng</h3>
+                        <div class="space-y-2 text-sm text-slate-700 font-medium">
+                            <div class="flex justify-between"><span>Mã đơn</span><span class="font-bold text-slate-900">{{ $booking->booking_code }}</span></div>
+                            <div class="flex justify-between"><span>Phim</span><span class="font-bold text-slate-900">{{ $booking->showtime->movie->title }}</span></div>
+                            <div class="flex justify-between"><span>Rạp</span><span class="font-bold text-slate-900">{{ $booking->showtime->room->cinema->name }}</span></div>
+                            <div class="flex justify-between"><span>Tổng tiền</span><span class="font-black text-brand-primary text-base">{{ number_format($booking->total_amount) }}đ</span></div>
                         </div>
                     </div>
 
-                    <div class="rounded-2xl border border-zinc-800 bg-zinc-900/70 p-5">
-                        <h3 class="text-sm font-black uppercase tracking-widest text-zinc-400 mb-3">Hướng dẫn demo</h3>
-                        <ul class="list-disc list-inside text-sm text-zinc-300 space-y-2">
+                    <div class="rounded-none border border-slate-200 bg-slate-50 p-5">
+                        <h3 class="text-sm font-black uppercase tracking-widest text-slate-500 mb-3">Hướng dẫn demo</h3>
+                        <ul class="list-disc list-inside text-sm text-slate-600 space-y-2 font-medium leading-relaxed">
                             <li>Trang này mô phỏng bước quét QR và hoàn tất thanh toán.</li>
                             <li>Bấm "Hoàn tất thanh toán" để giả lập giao dịch thành công.</li>
                             <li>Sau đó hệ thống sẽ chuyển về trang xác nhận.</li>
@@ -32,12 +32,12 @@
                     </div>
                 </div>
 
-                <div class="rounded-2xl border border-zinc-800 bg-zinc-900/70 p-6 flex flex-col items-center justify-center gap-4">
-                    <div class="w-56 h-56 rounded-2xl bg-white p-4 flex items-center justify-center">
-                        <div class="text-center text-black">
-                            <div class="text-3xl font-black mb-3">Demo</div>
-                            <div class="text-xs uppercase tracking-[0.25em] text-zinc-500">Thanh toán</div>
-                            <div class="mt-4 text-sm font-semibold">Quét mã QR</div>
+                <div class="rounded-none border border-slate-200 bg-slate-50 p-6 flex flex-col items-center justify-center gap-4">
+                    <div class="w-56 h-56 rounded-none bg-white p-4 flex items-center justify-center border border-slate-200 shadow-sm">
+                        <div class="text-center text-slate-800">
+                            <div class="text-3xl font-black mb-3 text-slate-900">Demo</div>
+                            <div class="text-xs uppercase tracking-[0.25em] text-slate-400 font-bold">Thanh toán</div>
+                            <div class="mt-4 text-sm font-semibold text-slate-700">Quét mã QR</div>
                         </div>
                     </div>
 
@@ -45,24 +45,24 @@
                         @csrf
                         <input type="hidden" name="signature_data" id="signature_data" value="" />
 
-                        <div class="rounded-2xl border border-zinc-800 bg-zinc-950/80 p-4 mb-5 text-left">
-                            <label class="block text-sm font-black uppercase tracking-widest text-zinc-400 mb-3">Ký tên xác nhận thanh toán</label>
-                            <div class="bg-white rounded-3xl border border-zinc-200/60 p-3">
-                                <canvas id="signatureCanvas" width="320" height="220" class="w-full rounded-3xl border border-zinc-200"></canvas>
+                        <div class="rounded-none border border-slate-200 bg-white p-4 mb-5 text-left shadow-sm">
+                            <label class="block text-sm font-black uppercase tracking-widest text-slate-600 mb-3">Ký tên xác nhận thanh toán</label>
+                            <div class="bg-white rounded-none border border-slate-300 p-2">
+                                <canvas id="signatureCanvas" width="320" height="220" class="w-full rounded-none border border-slate-200"></canvas>
                             </div>
-                            <div class="flex items-center justify-between gap-3 mt-3 text-xs text-zinc-500">
+                            <div class="flex items-center justify-between gap-3 mt-3 text-xs text-slate-500 font-medium">
                                 <span>Kéo chuột hoặc chạm vào vùng trên để ký.</span>
-                                <button type="button" id="clearSignature" class="text-brand-primary hover:text-white transition-colors">Xóa chữ ký</button>
+                                <button type="button" id="clearSignature" class="text-brand-primary hover:underline font-bold">Xóa chữ ký</button>
                             </div>
                         </div>
 
-                        <button id="submitDemoPayment" type="submit" disabled class="w-full bg-brand-primary/50 text-white font-black py-3 rounded-xl transition-all duration-200 uppercase tracking-wider disabled:opacity-40 disabled:cursor-not-allowed">
+                        <button id="submitDemoPayment" type="submit" disabled class="w-full bg-brand-primary hover:bg-red-700 text-white font-black py-3.5 rounded-none shadow-md shadow-brand-primary/20 transition-all duration-200 uppercase tracking-wider text-sm disabled:opacity-40 disabled:cursor-not-allowed">
                             Hoàn tất thanh toán giả lập
                         </button>
                     </form>
 
                     <a href="{{ route('booking.checkout', $booking->showtime_id) }}"
-                       class="text-sm text-zinc-500 hover:text-white transition-colors">
+                       class="text-xs text-slate-500 hover:text-brand-primary transition-colors font-bold uppercase tracking-wider mt-2">
                         Quay lại trang checkout
                     </a>
 
