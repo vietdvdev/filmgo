@@ -63,6 +63,11 @@ class Movie extends Model
         return $this->hasMany(Review::class, 'movie_id');
     }
 
+    public function formats(): BelongsToMany
+    {
+        return $this->belongsToMany(Format::class, 'movie_formats', 'movie_id', 'format_id');
+    }
+
     // Showtime is defined in Showtime cluster
     public function showtimes(): HasMany
     {

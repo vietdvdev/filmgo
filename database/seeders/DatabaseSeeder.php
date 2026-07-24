@@ -29,6 +29,7 @@ class DatabaseSeeder extends Seeder
             GenreSeeder::class,
             ActorSeeder::class,
             MovieSeeder::class,
+            FormatSeeder::class,
             ReviewSeeder::class,
             PriceRuleSeeder::class,
             HolidaySeeder::class,

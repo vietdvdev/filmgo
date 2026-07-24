@@ -223,6 +223,8 @@ Route::prefix('manager')->group(function () {
         Route::get('/showtimes/{id}/seats', [App\Http\Controllers\Manager\ManagerShowtimeController::class, 'seatStatus'])->name('manager.showtimes.seats');
 
         // API endpoints cho Vue Form (paths tương đối so với prefix /manager)
+        Route::get('/showtimes/api/formats-by-movie/{movieId}', [App\Http\Controllers\Manager\Api\ManagerShowtimeApiController::class, 'getFormatsByMovie'])->name('manager.showtimes.api.formats-by-movie');
+        Route::get('/showtimes/api/compatible-rooms', [App\Http\Controllers\Manager\Api\ManagerShowtimeApiController::class, 'getCompatibleRooms'])->name('manager.showtimes.api.compatible-rooms');
         Route::get('/showtimes/api/check-overlap', [App\Http\Controllers\Manager\Api\ManagerShowtimeApiController::class, 'checkOverlap'])->name('manager.showtimes.api.check-overlap');
         Route::get('/showtimes/api/suggest-price', [App\Http\Controllers\Manager\Api\ManagerShowtimeApiController::class, 'suggestPrice'])->name('manager.showtimes.api.suggest-price');
         Route::post('/showtimes/api/store', [App\Http\Controllers\Manager\Api\ManagerShowtimeApiController::class, 'store'])->name('manager.showtimes.api.store');

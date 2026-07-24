@@ -23,6 +23,7 @@ class StoreShowtimeRequest extends FormRequest
     {
         return [
             'movie_id'   => 'required|exists:movies,id',
+            'format_id'  => 'required|exists:formats,id',
             'cinema_id'  => 'required|exists:cinemas,id',
             'room_id'    => 'required|exists:rooms,id',
             'show_date'  => 'required|date|after_or_equal:today',
@@ -40,6 +41,8 @@ class StoreShowtimeRequest extends FormRequest
         return [
             'movie_id.required'   => 'Vui lòng chọn phim.',
             'movie_id.exists'     => 'Phim được chọn không tồn tại.',
+            'format_id.required'  => 'Vui lòng chọn định dạng chiếu.',
+            'format_id.exists'    => 'Định dạng chiếu được chọn không tồn tại.',
             'cinema_id.required'  => 'Vui lòng chọn rạp chiếu.',
             'cinema_id.exists'    => 'Rạp chiếu được chọn không tồn tại.',
             'room_id.required'    => 'Vui lòng chọn phòng chiếu.',
@@ -62,8 +65,11 @@ class StoreShowtimeRequest extends FormRequest
     {
         $validator->after(function ($validator) {
             $cinemaId = $this->input('cinema_id');
-            $roomId = $this->input('room_id');
+            $roomId   = $this->input('room_id');
+            $movieId  = $this->input('movie_id');
+            $formatId = $this->input('format_id');
 
+            // 1. Kiểm tra phòng chiếu thuộc rạp đã chọn
             if ($cinemaId && $roomId) {
                 $roomExists = \App\Models\Room::where('id', $roomId)
                     ->where('cinema_id', $cinemaId)
@@ -71,6 +77,16 @@ class StoreShowtimeRequest extends FormRequest
 
                 if (!$roomExists) {
                     $validator->errors()->add('room_id', 'Phòng chiếu được chọn không thuộc rạp chiếu đã chọn.');
+                }
+            }
+
+            // 2. Kiểm tra ràng buộc Ràng buộc Định dạng chiếu và Tiêu chuẩn Phòng chiếu (BƯỚC 3)
+            if ($movieId && $formatId && $roomId) {
+                $formatService = app(\App\Services\FormatService::class);
+                $formatErrors  = $formatService->validateShowtimeFormatAndRoom((int)$movieId, (int)$formatId, (int)$roomId);
+
+                foreach ($formatErrors as $field => $message) {
+                    $validator->errors()->add($field, $message);
                 }
             }
         });

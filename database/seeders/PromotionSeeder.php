@@ -21,7 +21,7 @@ class PromotionSeeder extends Seeder
                 'max_uses_per_user' => 1,
                 'start_date' => now()->subDay(),
                 'end_date' => now()->addMonth(),
-                'quantity' => 100,
+                'usage_limit' => 100,
                 'status' => 'active',
             ],
             [
@@ -32,7 +32,7 @@ class PromotionSeeder extends Seeder
                 'max_uses_per_user' => 1,
                 'start_date' => now()->subDay(),
                 'end_date' => now()->addMonth(),
-                'quantity' => 50,
+                'usage_limit' => 50,
                 'status' => 'active',
             ],
             [
@@ -43,7 +43,7 @@ class PromotionSeeder extends Seeder
                 'max_uses_per_user' => 1,
                 'start_date' => now()->subDay(),
                 'end_date' => now()->addMonth(),
-                'quantity' => 30,
+                'usage_limit' => 30,
                 'status' => 'active',
             ],
             [
@@ -54,7 +54,7 @@ class PromotionSeeder extends Seeder
                 'max_uses_per_user' => 10,
                 'start_date' => now()->subDay(),
                 'end_date' => now()->addYear(),
-                'quantity' => null,
+                'usage_limit' => null,
                 'status' => 'active',
             ]
         ];

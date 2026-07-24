@@ -64,8 +64,6 @@ class RoomSeeder extends Seeder
                             'seat_row'     => $rowLetter,
                             'seat_number'  => $num,
                             'status'       => 'active',
-                            'created_at'   => now(),
-                            'updated_at'   => now(),
                         ];
 
                         $totalGenerated++;

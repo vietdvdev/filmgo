@@ -19,6 +19,7 @@ class Showtime extends Model
      */
     protected $fillable = [
         'movie_id',
+        'format_id',
         'room_id',
         'show_date',
         'start_time',
@@ -35,9 +36,10 @@ class Showtime extends Model
      * @var array<string, string>
      */
     protected $casts = [
-        'movie_id' => 'integer',
-        'room_id' => 'integer',
-        'show_date' => 'date',
+        'movie_id'         => 'integer',
+        'format_id'        => 'integer',
+        'room_id'          => 'integer',
+        'show_date'        => 'date',
         'base_price'       => 'integer',
         'status'           => 'string',
         'is_auto_generated' => 'boolean',
@@ -51,6 +53,11 @@ class Showtime extends Model
     public function movie(): BelongsTo
     {
         return $this->belongsTo(Movie::class, 'movie_id')->withTrashed();
+    }
+
+    public function format(): BelongsTo
+    {
+        return $this->belongsTo(Format::class, 'format_id');
     }
 
     public function room(): BelongsTo

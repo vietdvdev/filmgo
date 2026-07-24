@@ -11,6 +11,8 @@ use App\Models\Showtime;
 use App\Models\ShowtimeSeat;
 use App\Models\Holiday;
 use App\Models\PriceRule;
+use App\Models\Format;
+use App\Services\FormatService;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -76,6 +78,44 @@ class ManagerShowtimeApiController extends Controller
 
         return response()->json($rooms);
     }
+
+    /**
+     * BƯỚC 1: Cascading Dropdown - Lấy danh sách định dạng (formats) được hỗ trợ bởi bộ phim.
+     * GET /manager/showtimes/api/formats-by-movie/{movieId}
+     */
+    public function getFormatsByMovie($movieId, FormatService $formatService)
+    {
+        $formats = $formatService->getFormatsByMovie((int) $movieId);
+
+        return response()->json($formats);
+    }
+
+    /**
+     * BƯỚC 2: Cascading Dropdown - Lấy danh sách các phòng chiếu phù hợp với định dạng đã chọn.
+     * GET /manager/showtimes/api/compatible-rooms?cinema_id=1&format_id=2
+     */
+    public function getCompatibleRooms(Request $request, FormatService $formatService)
+    {
+        $request->validate([
+            'cinema_id' => 'required|exists:cinemas,id',
+            'format_id' => 'required|exists:formats,id',
+        ]);
+
+        $cinemaId = $request->integer('cinema_id');
+        $formatId = $request->integer('format_id');
+
+        $cinemaIds = $this->getCinemaIds();
+        if (!in_array($cinemaId, $cinemaIds, true)) {
+            return response()->json([
+                'message' => 'Bạn không có quyền quản lý rạp chiếu này.'
+            ], 403);
+        }
+
+        $rooms = $formatService->getCompatibleRooms($cinemaId, $formatId);
+
+        return response()->json($rooms);
+    }
+
 
 
     /**
@@ -267,6 +307,7 @@ class ManagerShowtimeApiController extends Controller
         try {
             $showtime = Showtime::create([
                 'movie_id'   => $movie->id,
+                'format_id'  => $request->integer('format_id'),
                 'room_id'    => $room->id,
                 'show_date'  => $showDateStr,
                 'start_time' => $startTimeStr,
