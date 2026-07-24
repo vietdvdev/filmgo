@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Actor;
+use App\Models\Format;
 use App\Models\Genre;
 use App\Models\Movie;
 use Illuminate\Http\Request;
@@ -44,8 +45,9 @@ class MovieController extends Controller
 
     public function create()
     {
-        $genres = Genre::orderBy('name')->get();
-        return view('admin.movies.create', compact('genres'));
+        $genres  = Genre::orderBy('name')->get();
+        $formats = Format::orderBy('id')->get();
+        return view('admin.movies.create', compact('genres', 'formats'));
     }
 
     public function store(Request $request)
@@ -65,6 +67,8 @@ class MovieController extends Controller
             'genres.*'      => 'exists:genres,id',
             'actor_names'   => 'nullable|array',
             'actor_names.*' => 'nullable|string|max:255',
+            'formats'       => 'required|array|min:1',
+            'formats.*'     => 'exists:formats,id',
         ], [
             'title.required'        => 'Tên phim không được để trống.',
             'duration.required'     => 'Thời lượng không được để trống.',
@@ -75,6 +79,8 @@ class MovieController extends Controller
             'poster.image'          => 'File poster phải là hình ảnh.',
             'poster.mimes'          => 'Poster chỉ chấp nhận định dạng jpg, jpeg, png, webp.',
             'poster.max'            => 'Poster không được vượt quá 2MB.',
+            'formats.required'      => 'Vui lòng chọn ít nhất một định dạng chiếu.',
+            'formats.min'           => 'Vui lòng chọn ít nhất một định dạng chiếu.',
         ]);
 
         $posterPath = null;
@@ -100,6 +106,8 @@ class MovieController extends Controller
             $movie->genres()->attach($request->genres);
         }
 
+        $movie->formats()->sync($request->formats ?? []);
+
         $this->syncActorsByName($movie, $request->actor_names ?? []);
 
         return redirect()->route('admin.movies.index')->with('success', 'Thêm phim thành công!');
@@ -107,9 +115,11 @@ class MovieController extends Controller
 
     public function edit(Movie $movie)
     {
-        $genres         = Genre::orderBy('name')->get();
-        $selectedGenres = $movie->genres->pluck('id')->toArray();
-        return view('admin.movies.edit', compact('movie', 'genres', 'selectedGenres'));
+        $genres          = Genre::orderBy('name')->get();
+        $formats         = Format::orderBy('id')->get();
+        $selectedGenres  = $movie->genres->pluck('id')->toArray();
+        $selectedFormats = $movie->formats->pluck('id')->toArray();
+        return view('admin.movies.edit', compact('movie', 'genres', 'selectedGenres', 'formats', 'selectedFormats'));
     }
 
     public function update(Request $request, Movie $movie)
@@ -129,6 +139,8 @@ class MovieController extends Controller
             'genres.*'      => 'exists:genres,id',
             'actor_names'   => 'nullable|array',
             'actor_names.*' => 'nullable|string|max:255',
+            'formats'       => 'required|array|min:1',
+            'formats.*'     => 'exists:formats,id',
         ], [
             'title.required'        => 'Tên phim không được để trống.',
             'duration.required'     => 'Thời lượng không được để trống.',
@@ -138,6 +150,8 @@ class MovieController extends Controller
             'poster.image'          => 'File poster phải là hình ảnh.',
             'poster.mimes'          => 'Poster chỉ chấp nhận định dạng jpg, jpeg, png, webp.',
             'poster.max'            => 'Poster không được vượt quá 2MB.',
+            'formats.required'      => 'Vui lòng chọn ít nhất một định dạng chiếu.',
+            'formats.min'           => 'Vui lòng chọn ít nhất một định dạng chiếu.',
         ]);
 
         $posterPath = $movie->poster;
@@ -171,6 +185,8 @@ class MovieController extends Controller
         ]);
 
         $movie->genres()->sync($request->genres ?? []);
+
+        $movie->formats()->sync($request->formats ?? []);
 
         $this->syncActorsByName($movie, $request->actor_names ?? []);
 

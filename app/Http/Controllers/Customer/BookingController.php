@@ -18,17 +18,25 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 
+use App\Services\ShowtimeService;
+
 class BookingController extends Controller
 {
     protected $bookingService;
     protected $paymentService;
     protected $seatValidationService;
+    protected $showtimeService;
 
-    public function __construct(BookingService $bookingService, PaymentService $paymentService, \App\Services\SeatValidationService $seatValidationService)
-    {
+    public function __construct(
+        BookingService $bookingService, 
+        PaymentService $paymentService, 
+        \App\Services\SeatValidationService $seatValidationService,
+        ShowtimeService $showtimeService
+    ) {
         $this->bookingService = $bookingService;
         $this->paymentService = $paymentService;
         $this->seatValidationService = $seatValidationService;
+        $this->showtimeService = $showtimeService;
     }
 
     /**
@@ -37,6 +45,13 @@ class BookingController extends Controller
     public function selectSeats($showtimeId)
     {
         $showtime = Showtime::with(['movie', 'room.cinema'])->findOrFail($showtimeId);
+
+        // Kiểm tra xem suất chiếu có hợp lệ để đặt vé online hay không
+        $check = $this->showtimeService->validateBookable($showtime);
+        if (!$check['bookable']) {
+            return redirect()->route('movies.show', $showtime->movie_id)
+                ->with('error', $check['message']);
+        }
 
         $showtimeSeats = ShowtimeSeat::with('seat.seatType')
             ->where('showtime_id', $showtimeId)

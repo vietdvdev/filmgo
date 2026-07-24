@@ -51,6 +51,26 @@
           </p>
         </div>
 
+        <!-- Định dạng chiếu -->
+        <div>
+          <label for="format_id" class="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1">
+            Định Dạng Chiếu
+          </label>
+          <select id="format_id" v-model="form.format_id" required @change="onFormatChange"
+            :disabled="!form.movie_id || loadingFormats"
+            class="block w-full px-3 py-2.5 border border-slate-300 text-sm focus:outline-none focus:border-blue-600 focus:ring-1 focus:ring-blue-600 bg-white disabled:bg-slate-100 disabled:text-slate-400">
+            <option value="">
+              -- {{ !form.movie_id ? 'Chọn phim trước' : loadingFormats ? 'Đang tải định dạng...' : 'Chọn định dạng chiếu' }} --
+            </option>
+            <option v-for="f in formats" :key="f.id" :value="f.id">
+              {{ f.name }}
+            </option>
+          </select>
+          <p v-if="fieldErrors.format_id" class="mt-1 text-xs text-red-600 font-semibold">
+            {{ fieldErrors.format_id }}
+          </p>
+        </div>
+
         <!-- Rạp chiếu -->
         <div>
           <label for="cinema_id" class="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1">
@@ -75,13 +95,18 @@
             Chọn Phòng Chiếu
           </label>
           <select id="room_id" v-model="form.room_id" required @change="triggerOverlapCheck"
-            :disabled="!form.cinema_id || loadingRooms"
+            :disabled="!form.cinema_id || !form.format_id || loadingRooms"
             class="block w-full px-3 py-2.5 border border-slate-300 text-sm focus:outline-none focus:border-blue-600 focus:ring-1 focus:ring-blue-600 bg-white disabled:bg-slate-100 disabled:text-slate-400">
-            <option value="">-- {{ loadingRooms ? 'Đang tải danh sách phòng...' : 'Chọn phòng chiếu' }} --</option>
+            <option value="">
+              -- {{ loadingRooms ? 'Đang tải danh sách phòng...' : (!form.cinema_id || !form.format_id) ? 'Chọn rạp và định dạng trước' : 'Chọn phòng chiếu' }} --
+            </option>
             <option v-for="r in rooms" :key="r.id" :value="r.id">
               {{ r.room_name }} ({{ r.room_type }} – {{ r.capacity }} ghế)
             </option>
           </select>
+          <p v-if="rooms.length === 0 && form.cinema_id && form.format_id && !loadingRooms" class="mt-1 text-xs text-amber-600 font-semibold">
+            Không có phòng nào hỗ trợ định dạng chiếu này tại rạp đã chọn.
+          </p>
           <p v-if="fieldErrors.room_id" class="mt-1 text-xs text-red-600 font-semibold">
             {{ fieldErrors.room_id }}
           </p>
@@ -283,6 +308,7 @@ const isDatetimePast = (showDate, startTime) => {
 
 const form = reactive({
   movie_id:   '',
+  format_id:  '',
   cinema_id:  '',
   room_id:    '',
   show_date:  today,
@@ -291,10 +317,12 @@ const form = reactive({
 });
 
 const cinemas         = ref([]);
+const formats         = ref([]);
 const rooms           = ref([]);
 const fieldErrors     = reactive({});
 const checkingOverlap = ref(false);
 const loadingCinemas  = ref(false);
+const loadingFormats  = ref(false);
 const loadingRooms    = ref(false);
 const overlapError    = ref('');
 const overlapOk       = ref(false);
@@ -379,6 +407,55 @@ const fetchCinemas = async () => {
   }
 };
 
+// Fetch formats by movie
+const fetchFormats = async () => {
+  formats.value = [];
+  form.format_id = '';
+  form.room_id = '';
+  rooms.value = [];
+  overlapError.value = '';
+  overlapOk.value = false;
+
+  if (!form.movie_id) return;
+
+  loadingFormats.value = true;
+  try {
+    const url = urls.formatsByMovie.replace(':movie_id', form.movie_id);
+    const res = await axios.get(url);
+    formats.value = res.data;
+    if (formats.value.length === 1) {
+      form.format_id = formats.value[0].id;
+      await fetchCompatibleRooms();
+    }
+  } catch (e) {
+    addToast('Không thể tải danh sách định dạng chiếu.', 'error');
+  } finally {
+    loadingFormats.value = false;
+  }
+};
+
+// Fetch compatible rooms by cinema + format
+const fetchCompatibleRooms = async () => {
+  rooms.value = [];
+  form.room_id = '';
+  overlapError.value = '';
+  overlapOk.value = false;
+
+  if (!form.cinema_id || !form.format_id) return;
+
+  loadingRooms.value = true;
+  try {
+    const res = await axios.get(urls.compatibleRooms, {
+      params: { cinema_id: form.cinema_id, format_id: form.format_id }
+    });
+    rooms.value = res.data;
+  } catch (e) {
+    addToast('Không thể tải danh sách phòng chiếu phù hợp.', 'error');
+  } finally {
+    loadingRooms.value = false;
+  }
+};
+
 // Cinema Change Handler
 const onCinemaChange = async () => {
   form.room_id = '';
@@ -386,18 +463,19 @@ const onCinemaChange = async () => {
   overlapError.value = '';
   overlapOk.value = false;
 
-  if (!form.cinema_id) return;
+  if (!form.cinema_id || !form.format_id) return;
+  await fetchCompatibleRooms();
+};
 
-  loadingRooms.value = true;
-  try {
-    const url = urls.roomsByCinema.replace(':cinema_id', form.cinema_id);
-    const res = await axios.get(url);
-    rooms.value = res.data;
-  } catch (e) {
-    addToast('Không thể tải danh sách phòng chiếu của rạp này.', 'error');
-  } finally {
-    loadingRooms.value = false;
-  }
+// Format Change Handler
+const onFormatChange = async () => {
+  form.room_id = '';
+  rooms.value = [];
+  overlapError.value = '';
+  overlapOk.value = false;
+
+  if (!form.cinema_id || !form.format_id) return;
+  await fetchCompatibleRooms();
 };
 
 // Overlap check
@@ -454,7 +532,7 @@ const triggerPriceSuggestion = () => {
   }, 400);
 };
 
-const onMovieChange      = () => triggerOverlapCheck();
+const onMovieChange      = () => { fetchFormats(); triggerOverlapCheck(); };
 const onDateOrTimeChange = () => { triggerOverlapCheck(); triggerPriceSuggestion(); };
 const setPrice           = p => { standardPrice.value = p; };
 
@@ -471,6 +549,7 @@ const submitForm = async () => {
   try {
     const res = await axios.post(urls.store, {
       movie_id:   form.movie_id,
+      format_id:  form.format_id,
       cinema_id:  form.cinema_id,
       room_id:    form.room_id,
       show_date:  form.show_date,

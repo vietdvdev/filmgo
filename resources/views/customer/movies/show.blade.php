@@ -6,12 +6,19 @@
     <div class="bg-slate-50 w-full min-h-screen font-sans text-slate-850 antialiased py-12 selection:bg-brand-primary selection:text-white">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             
-            <!-- Back Button -->
-            <div class="mb-8">
+            <!-- Back Button & Flash Alerts -->
+            <div class="mb-8 space-y-4">
                 <a href="{{ route('movies.showing') }}" class="inline-flex items-center gap-2 text-xs font-black uppercase tracking-widest text-slate-400 hover:text-brand-primary transition-colors">
                     <span class="material-symbols-outlined text-base">arrow_back</span>
                     Quay lại danh sách phim
                 </a>
+
+                @if(session('error'))
+                    <div class="bg-red-50 border-l-4 border-brand-primary p-4 text-red-700 text-sm font-medium flex items-center gap-3 rounded-none">
+                        <span class="material-symbols-outlined text-red-500 text-xl shrink-0">error</span>
+                        <div>{{ session('error') }}</div>
+                    </div>
+                @endif
             </div>
 
             <!-- Movie Details Card -->
@@ -131,15 +138,32 @@
                                     </div>
                                     <div class="flex flex-wrap gap-3">
                                         @foreach($cinemaShowtimes as $showtime)
-                                            <a href="{{ route('booking.select-seats', $showtime->id) }}" 
-                                               class="group bg-white border border-slate-200 px-6 py-4 rounded-none text-center transition-all duration-200 hover:border-brand-primary hover:shadow-md">
-                                                <span class="block text-base font-black text-slate-800 group-hover:text-brand-primary">
-                                                    {{ \Carbon\Carbon::parse($showtime->start_time)->format('H:i') }}
-                                                </span>
-                                                <span class="block text-[10px] text-slate-400 font-bold mt-1 uppercase tracking-wider">
-                                                    {{ $showtime->room->room_name }} ({{ $showtime->room->room_type }})
-                                                </span>
-                                            </a>
+                                            @if($showtime->is_bookable)
+                                                <a href="{{ route('booking.select-seats', $showtime->id) }}" 
+                                                   class="group bg-white border border-slate-200 px-5 py-3.5 rounded-none text-center transition-all duration-200 hover:border-brand-primary hover:shadow-md flex flex-col items-center justify-between min-w-[120px]">
+                                                    <span class="block text-base font-black text-slate-800 group-hover:text-brand-primary">
+                                                        {{ \Carbon\Carbon::parse($showtime->start_time)->format('H:i') }}
+                                                    </span>
+                                                    <span class="block text-[10px] text-slate-400 font-bold mt-1 uppercase tracking-wider">
+                                                        {{ $showtime->room->room_name }} ({{ $showtime->room->room_type }})
+                                                    </span>
+                                                    <span class="mt-2 text-[10px] font-bold px-2.5 py-0.5 rounded-none bg-brand-primary/10 text-brand-primary border border-brand-primary/20 uppercase tracking-wider group-hover:bg-brand-primary group-hover:text-white transition-colors">
+                                                        Đặt vé
+                                                    </span>
+                                                </a>
+                                            @else
+                                                <div class="bg-slate-100/90 border border-slate-200 px-5 py-3.5 rounded-none text-center opacity-85 cursor-not-allowed flex flex-col items-center justify-between min-w-[120px]">
+                                                    <span class="block text-base font-black text-slate-500">
+                                                        {{ \Carbon\Carbon::parse($showtime->start_time)->format('H:i') }}
+                                                    </span>
+                                                    <span class="block text-[10px] text-slate-400 font-bold mt-1 uppercase tracking-wider">
+                                                        {{ $showtime->room->room_name }} ({{ $showtime->room->room_type }})
+                                                    </span>
+                                                    <span class="mt-2 text-[10px] font-bold px-2 py-0.5 rounded-none {{ $showtime->badge_class }} border uppercase tracking-wider">
+                                                        {{ $showtime->status_label }}
+                                                    </span>
+                                                </div>
+                                            @endif
                                         @endforeach
                                     </div>
                                 </div>
