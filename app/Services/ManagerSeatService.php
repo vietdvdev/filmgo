@@ -28,6 +28,7 @@ class ManagerSeatService
             throw new NotFoundHttpException('Phòng chiếu không tồn tại trong hệ thống.');
         }
 
+        // Kiểm tra phòng thuộc đúng rạp được phân công cho manager
         if ($room->cinema_id !== $cinemaId) {
             throw new AuthorizationException('Bạn không có quyền quản lý phòng chiếu của rạp khác.');
         }

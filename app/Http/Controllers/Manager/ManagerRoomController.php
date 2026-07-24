@@ -9,6 +9,8 @@ use App\Services\RoomSeatSyncService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 use Carbon\Carbon;
 
@@ -47,13 +49,19 @@ class ManagerRoomController extends Controller
 
         $request->validate([
             'cinema_id' => 'required|integer|in:' . implode(',', $cinemaIds),
-            'room_name' => 'required|string|max:100',
+            'room_name' => [
+                'required', 'string', 'max:100',
+                Rule::unique('rooms', 'room_name')
+                    ->where('cinema_id', $request->cinema_id)
+                    ->whereNull('deleted_at'),
+            ],
             'capacity'  => 'required|integer|min:1|max:500',
             'room_type' => 'required|in:2D,3D,IMAX,4DX',
         ], [
             'cinema_id.required' => 'Vui lòng chọn rạp chiếu.',
             'cinema_id.in'       => 'Rạp chiếu không hợp lệ.',
             'room_name.required' => 'Tên phòng chiếu không được để trống.',
+            'room_name.unique'   => 'Tên phòng chiếu này đã tồn tại trong rạp được chọn.',
             'capacity.required'  => 'Sức chứa không được để trống.',
             'room_type.required' => 'Loại phòng chiếu không được để trống.',
         ]);
@@ -84,12 +92,19 @@ class ManagerRoomController extends Controller
         $room = Room::whereIn('cinema_id', $cinemaIds)->findOrFail($id);
 
         $request->validate([
-            'room_name' => 'required|string|max:100',
+            'room_name' => [
+                'required', 'string', 'max:100',
+                Rule::unique('rooms', 'room_name')
+                    ->where('cinema_id', $room->cinema_id)
+                    ->whereNull('deleted_at')
+                    ->ignore($room->id),
+            ],
             'capacity'  => 'required|integer|min:1|max:500',
             'room_type' => 'required|in:2D,3D,IMAX,4DX',
             'status'    => 'required|in:active,maintenance,inactive',
         ], [
             'room_name.required' => 'Tên phòng chiếu không được để trống.',
+            'room_name.unique'   => 'Tên phòng chiếu này đã tồn tại trong rạp này.',
             'capacity.required'  => 'Sức chứa không được để trống.',
             'room_type.required' => 'Loại phòng chiếu không được để trống.',
         ]);
@@ -103,6 +118,17 @@ class ManagerRoomController extends Controller
     {
         $cinemaIds = $this->getCinemaIds();
         $room = Room::whereIn('cinema_id', $cinemaIds)->findOrFail($id);
+
+        if ($room->showtimes()->whereIn('status', ['upcoming', 'active', 'showing'])->exists()) {
+            return redirect()->route('manager.rooms.index')
+                ->with('error', 'Không thể xóa phòng chiếu đang có suất chiếu hoạt động!');
+        }
+
+        if ($room->seats()->whereHas('showtimeSeats', fn($q) => $q->where('status', 'booked'))->exists()) {
+            return redirect()->route('manager.rooms.index')
+                ->with('error', 'Không thể xóa phòng chiếu đang có vé đã bán!');
+        }
+
         $room->delete();
 
         return redirect()->route('manager.rooms.index')->with('success', 'Đã xóa phòng chiếu thành công.');

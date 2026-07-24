@@ -83,9 +83,15 @@ class CinemaController extends Controller
 
     public function destroy(Cinema $cinema)
     {
-        if ($cinema->rooms()->count() > 0) {
+        // Kiểm tra cả phòng đang tồn tại (kể cả soft-deleted)
+        if ($cinema->rooms()->withTrashed()->count() > 0) {
             return redirect()->route('admin.cinemas.index')
                 ->with('error', 'Không thể xóa rạp đang có phòng chiếu liên kết!');
+        }
+
+        if ($cinema->users()->exists()) {
+            return redirect()->route('admin.cinemas.index')
+                ->with('error', 'Không thể xóa rạp đang có Manager hoặc nhân viên được phân công!');
         }
 
         $cinema->delete();

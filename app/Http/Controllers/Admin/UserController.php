@@ -85,6 +85,15 @@ class UserController extends Controller
         $user = User::create($validated);
         $user->roles()->sync($validated['roles'] ?? []);
 
+        // Ngăn tổ hợp role xung đột: customer không được đi kèm admin/manager/staff
+        $assignedNames = $user->roles()->pluck('name');
+        if ($assignedNames->contains('customer') && $assignedNames->intersect(['admin', 'manager', 'staff'])->isNotEmpty()) {
+            $user->roles()->detach();
+            return back()->withInput()->withErrors([
+                'roles' => 'Không thể gán role customer cùng với admin/manager/staff.',
+            ]);
+        }
+
         return redirect()->route('admin.users.index')
             ->with('success', 'Thêm người dùng thành công.');
     }
@@ -125,6 +134,14 @@ class UserController extends Controller
 
         $user->update($validated);
         $user->roles()->sync($validated['roles'] ?? []);
+
+        // Ngăn tổ hợp role xung đột: customer không được đi kèm admin/manager/staff
+        $assignedNames = $user->roles()->pluck('name');
+        if ($assignedNames->contains('customer') && $assignedNames->intersect(['admin', 'manager', 'staff'])->isNotEmpty()) {
+            return back()->withInput()->withErrors([
+                'roles' => 'Không thể gán role customer cùng với admin/manager/staff.',
+            ]);
+        }
 
         if ($request->filled('return')) {
             return redirect(urldecode($request->return))

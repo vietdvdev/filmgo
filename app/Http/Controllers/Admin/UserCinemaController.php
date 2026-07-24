@@ -104,6 +104,13 @@ class UserCinemaController extends Controller
             ->with('error', 'Chỉ được phân công Manager.');
     }
 
+    // Kiểm tra user có đang bị khóa không
+    if ($user->status === 'locked') {
+        return back()
+            ->withInput()
+            ->with('error', 'Không thể phân công tài khoản đang bị khóa.');
+    }
+
     $existsManager = UserCinema::where('cinema_id', $request->cinema_id)
         ->whereHas('user.roles', function ($q) {
             $q->where('name', 'manager');
@@ -229,7 +236,7 @@ class UserCinemaController extends Controller
         $hasFutureShowtimes = $assignment->cinema
             ->rooms()
             ->whereHas('showtimes', function ($q) {
-                $q->where('start_time', '>', now());
+                $q->whereRaw("CONCAT(show_date, ' ', start_time) > ?", [now()]);
             })
             ->exists();
 

@@ -6,7 +6,6 @@
 
     <div class="w-full">
 
-        ```
         {{-- Header --}}
         <div class="mb-8 flex items-center justify-between">
             <div>
@@ -215,7 +214,6 @@
             </div>
 
         </div>
-        ```
 
     </div>
 @endsection
