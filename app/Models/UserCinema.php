@@ -32,8 +32,16 @@ class UserCinema extends Model
     protected $fillable = [
         'user_id',
         'cinema_id',
-        'created_at',
     ];
+
+    protected static function booted(): void
+    {
+        static::creating(function ($model) {
+            if (empty($model->created_at)) {
+                $model->created_at = now();
+            }
+        });
+    }
 
     /**
      * The attributes that should be cast.

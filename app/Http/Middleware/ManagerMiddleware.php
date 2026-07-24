@@ -24,8 +24,8 @@ class ManagerMiddleware
         // Chỉ role 'manager' được phép vào khu vực Manager
         if ($user->roles()->where('name', 'manager')->exists()) {
             // === TRƯỜNG HỢP 3: Manager chưa được phân công rạp ===
-            // Vẫn cho vào nhưng redirect về trang thông báo "blank slate", KHÔNG logout
-            if (!$user->cinemas()->exists()) {
+            // Cho vào nhưng redirect về trang thông báo, trừ khi đang ở route no-cinema
+            if (!$user->cinemas()->exists() && $request->routeIs('manager.no-cinema') === false) {
                 return redirect()->route('manager.no-cinema');
             }
 

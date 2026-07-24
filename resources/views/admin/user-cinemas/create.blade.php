@@ -50,13 +50,9 @@
                             </option>
 
                             @foreach ($users as $user)
-                                {{-- Kiểm tra user có role là manager và status là active (giả định cột trạng thái là status) --}}
-                                @if ($user->roles->first() && $user->roles->first()->name === 'manager' && $user->status === 'active')
+                                @if ($user->roles->contains('name', 'manager') && $user->status === 'active')
                                     <option value="{{ $user->id }}" {{ old('user_id') == $user->id ? 'selected' : '' }}>
-
-                                        {{ $user->full_name }}
-
-                                        ({{ $user->roles->first()->name }})
+                                        {{ $user->full_name }} (manager)
                                     </option>
                                 @endif
                             @endforeach

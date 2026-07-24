@@ -52,27 +52,14 @@
 
         @foreach ($users as $user)
             @php
-                // Điều kiện 1: Phải có role 'manager' và trạng thái 'active'
-                $isManagerActive = $user->roles->first() && $user->roles->first()->name === 'manager' && $user->status === 'active';
-                
-                // Điều kiện 2: Hoặc đây chính là người đang được phân công trong bản ghi này (để tránh lỗi hiển thị khi sửa)
+                $isManagerActive = $user->roles->contains('name', 'manager') && $user->status === 'active';
                 $isCurrentAssigned = old('user_id', $assignment->user_id) == $user->id;
             @endphp
 
             @if ($isManagerActive || $isCurrentAssigned)
-                <option value="{{ $user->id }}"
-                    {{ $isCurrentAssigned ? 'selected' : '' }}>
-
-                    {{ $user->full_name }}
-
-                    @if ($user->roles->first())
-                        ({{ $user->roles->first()->name }})
-                    @endif
-                    
-                    @if ($user->status !== 'active')
-                        - [Tạm khóa]
-                    @endif
-
+                <option value="{{ $user->id }}" {{ $isCurrentAssigned ? 'selected' : '' }}>
+                    {{ $user->full_name }} (manager)
+                    @if ($user->status !== 'active') - [Tạm khóa] @endif
                 </option>
             @endif
         @endforeach

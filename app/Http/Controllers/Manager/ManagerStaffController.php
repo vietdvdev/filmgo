@@ -142,13 +142,26 @@ class ManagerStaffController extends Controller
     }
 
     /**
+     * Tìm nhân viên thuộc rạp của Manager đang đăng nhập.
+     * Throw 403 nếu nhân viên không thuộc rạp được phân công.
+     */
+    private function findStaffInMyCinemas(int $id): User
+    {
+        $cinemaIds = $this->managerCinemaIds();
+
+        return User::whereHas('roles', fn($q) => $q->where('name', 'staff'))
+            ->whereHas('cinemas', fn($q) => $q->whereIn('cinemas.id', $cinemaIds))
+            ->findOrFail($id);
+    }
+
+    /**
      * Cập nhật nhân viên
      */
 
     public function edit($id)
 {
-    $staff = User::with('cinemas')
-        ->findOrFail($id);
+    $staff = $this->findStaffInMyCinemas((int)$id);
+    $staff->load('cinemas');
 
     $cinemas = auth()->user()
         ->cinemas()
@@ -165,7 +178,7 @@ class ManagerStaffController extends Controller
 }
     public function update(Request $request, $id)
 {
-    $staff = User::findOrFail($id);
+    $staff = $this->findStaffInMyCinemas((int)$id);
 
     $request->validate([
     'full_name' => 'required|string|max:255',
@@ -192,10 +205,12 @@ class ManagerStaffController extends Controller
         'phone'     => $request->phone,
     ]);
 
-    UserCinema::updateOrCreate(
-        ['user_id' => $staff->id],
-        ['cinema_id' => $request->cinema_id]
-    );
+    // Xóa phân công cũ và tạo mới để tránh trường hợp staff được gán nhiều rạp
+    UserCinema::where('user_id', $staff->id)->delete();
+    UserCinema::create([
+        'user_id'   => $staff->id,
+        'cinema_id' => $request->cinema_id,
+    ]);
 
     return redirect()
         ->route('manager.staff.index')
@@ -207,13 +222,9 @@ class ManagerStaffController extends Controller
      */
     public function destroy($id)
     {
-        $staff = User::findOrFail($id);
+        $staff = $this->findStaffInMyCinemas((int)$id);
 
-        UserCinema::where(
-            'user_id',
-            $staff->id
-        )->delete();
-
+        UserCinema::where('user_id', $staff->id)->delete();
         $staff->delete();
 
         return redirect()
@@ -229,7 +240,7 @@ class ManagerStaffController extends Controller
      */
     public function toggleStatus($id)
     {
-        $staff = User::findOrFail($id);
+        $staff = $this->findStaffInMyCinemas((int)$id);
 
         $staff->update([
             'status' => $staff->status === 'active'
@@ -254,7 +265,7 @@ class ManagerStaffController extends Controller
             'password' => 'required|min:8|confirmed',
         ]);
 
-        $staff = User::findOrFail($id);
+        $staff = $this->findStaffInMyCinemas((int)$id);
 
         $staff->update([
             'password' => Hash::make($request->password),
