@@ -42,9 +42,11 @@ class FormatService
     {
         $formatUpper = strtoupper(trim($formatName));
 
+        // Strict matching: mỗi định dạng chiếu chỉ tương thích với đúng loại phòng tương ứng.
+        // VD: Phim 2D → chỉ hiện phòng 2D, Phim 3D → chỉ hiện phòng 3D, v.v.
         return match ($formatUpper) {
-            '2D'    => ['2D', '3D', 'IMAX', '4DX'],
-            '3D'    => ['3D', 'IMAX', '4DX'],
+            '2D'    => ['2D'],
+            '3D'    => ['3D'],
             'IMAX'  => ['IMAX'],
             '4DX'   => ['4DX'],
             default => [$formatUpper],

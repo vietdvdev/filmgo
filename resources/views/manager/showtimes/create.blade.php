@@ -26,13 +26,15 @@
         movies:       @json($movies),
         csrfToken:    "{{ csrf_token() }}",
         urls: {
-            myCinemas:     "{{ route('api.admin.my-cinemas') }}",
-            roomsByCinema: "{{ route('api.admin.cinemas.rooms', ['cinema_id' => ':cinema_id']) }}",
-            checkOverlap:  "{{ route('manager.showtimes.api.check-overlap') }}",
-            suggestPrice:  "{{ route('manager.showtimes.api.suggest-price') }}",
-            store:         "{{ route('manager.showtimes.api.store') }}",
-            redirect:      "{{ route('manager.showtimes.index') }}",
-            cancel:        "{{ route('manager.showtimes.index') }}"
+            myCinemas:       "{{ route('api.admin.my-cinemas') }}",
+            roomsByCinema:   "{{ route('api.admin.cinemas.rooms', ['cinema_id' => ':cinema_id']) }}",
+            formatsByMovie:  "{{ route('manager.showtimes.api.formats-by-movie', ['movieId' => ':movie_id']) }}",
+            compatibleRooms: "{{ route('manager.showtimes.api.compatible-rooms') }}",
+            checkOverlap:    "{{ route('manager.showtimes.api.check-overlap') }}",
+            suggestPrice:    "{{ route('manager.showtimes.api.suggest-price') }}",
+            store:           "{{ route('manager.showtimes.api.store') }}",
+            redirect:        "{{ route('manager.showtimes.index') }}",
+            cancel:          "{{ route('manager.showtimes.index') }}"
         }
     };
 </script>

@@ -9,8 +9,17 @@ use App\Models\Showtime;
 use Illuminate\Http\Request;
 use Carbon\Carbon;
 
+use App\Services\ShowtimeService;
+
 class MovieController extends Controller
 {
+    protected ShowtimeService $showtimeService;
+
+    public function __construct(ShowtimeService $showtimeService)
+    {
+        $this->showtimeService = $showtimeService;
+    }
+
     public function showing(Request $request)
     {
         $query = Movie::where('status', 'showing');
@@ -85,18 +94,18 @@ class MovieController extends Controller
 
         $selectedDate = $request->input('date', today()->toDateString());
 
-        $showtimes = Showtime::where('movie_id', $movie->id)
-            ->whereDate('show_date', '>=', today()->toDateString())
-            ->whereIn('status', ['upcoming', 'active', 'showing'])
-            ->with(['room', 'room.cinema'])
-            ->orderBy('start_time')
-            ->get();
+        $showtimes = $this->showtimeService->getCustomerShowtimesForMovie($movie->id);
 
-        $showtimesGrouped = $showtimes->groupBy('show_date')->map(function ($dateShowtimes) {
+        $showtimesGrouped = $showtimes->groupBy(function ($showtime) {
+            return $showtime->show_date ? $showtime->show_date->format('Y-m-d') : '';
+        })->map(function ($dateShowtimes) {
             return $dateShowtimes->groupBy(function ($showtime) {
-                return $showtime->room->cinema->name;
+                return $showtime->room && $showtime->room->cinema 
+                    ? $showtime->room->cinema->name 
+                    : 'Rạp chiếu';
             });
         });
+
         $availableDates = [];
         for ($i = 0; $i < 7; $i++) {
             $availableDates[] = today()->addDays($i)->toDateString();

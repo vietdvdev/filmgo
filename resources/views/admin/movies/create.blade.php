@@ -265,7 +265,46 @@
                         </div>
                     </div>
 
-                    <!-- Khối 3: Thao tác xuất bản (Publish Actions) -->
+                    <!-- Khối 3: Định Dạng Chiếu -->
+                    <div class="bg-surface-container-lowest rounded-lg border border-outline-variant shadow-ambient-sm p-stack-lg space-y-4">
+                        <div class="flex items-center gap-2 pb-3 border-b border-outline-variant/30 text-on-surface">
+                            <span class="material-symbols-outlined text-primary" style="font-variation-settings: 'FILL' 1;">hd</span>
+                            <h3 class="font-headline-sm text-headline-sm">Định Dạng Chiếu <span class="text-error">*</span></h3>
+                        </div>
+
+                        <p class="text-xs text-on-surface-variant">Chọn các định dạng mà bộ phim hỗ trợ. Manager chỉ có thể tạo suất chiếu theo đúng các định dạng này.</p>
+
+                        <div class="grid grid-cols-2 gap-2">
+                            @foreach($formats as $format)
+                                @php
+                                    $fmtColors = [
+                                        '2D'   => 'peer-checked:border-blue-500 peer-checked:bg-blue-500/10 peer-checked:text-blue-700',
+                                        '3D'   => 'peer-checked:border-purple-500 peer-checked:bg-purple-500/10 peer-checked:text-purple-700',
+                                        'IMAX' => 'peer-checked:border-amber-500 peer-checked:bg-amber-500/10 peer-checked:text-amber-700',
+                                        '4DX'  => 'peer-checked:border-emerald-500 peer-checked:bg-emerald-500/10 peer-checked:text-emerald-700',
+                                    ];
+                                    $colorClass = $fmtColors[$format->name] ?? 'peer-checked:border-primary peer-checked:bg-primary/10 peer-checked:text-primary';
+                                @endphp
+                                <input type="checkbox" name="formats[]" id="format_{{ $format->id }}"
+                                    value="{{ $format->id }}" class="hidden peer"
+                                    {{ in_array($format->id, old('formats', [])) ? 'checked' : '' }}>
+                                <label for="format_{{ $format->id }}"
+                                    class="cursor-pointer flex flex-col items-center justify-center gap-1 px-3 py-3 border border-outline-variant rounded-lg text-on-surface-variant hover:bg-surface-container-low {{ $colorClass }} transition-all duration-200 select-none">
+                                    <span class="font-black text-lg leading-none">{{ $format->name }}</span>
+                                    @if($format->surcharge_price > 0)
+                                        <span class="text-[10px] font-medium opacity-70">+{{ number_format($format->surcharge_price) }}₫</span>
+                                    @else
+                                        <span class="text-[10px] font-medium opacity-70">Tiêu chuẩn</span>
+                                    @endif
+                                </label>
+                            @endforeach
+                        </div>
+                        @error('formats')
+                            <p class="text-error font-body-md text-xs mt-1">{{ $message }}</p>
+                        @enderror
+                    </div>
+
+                    <!-- Khối 4: Thao tác xuất bản (Publish Actions) -->
                     <div class="bg-surface-container-lowest rounded-lg border border-outline-variant shadow-ambient-sm p-stack-lg space-y-4">
                         <div class="flex items-center gap-2 pb-2 text-on-surface">
                             <span class="material-symbols-outlined text-primary" style="font-variation-settings: 'FILL' 1;">task_alt</span>
