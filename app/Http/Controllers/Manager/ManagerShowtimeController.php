@@ -240,14 +240,16 @@ class ManagerShowtimeController extends Controller
             return back()->withInput()->withErrors(['movie_id' => 'Phim này đã ngừng chiếu, không thể tạo suất chiếu mới.']);
         }
 
-        $startTime   = Carbon::createFromFormat('Y-m-d H:i', $request->input('show_date') . ' ' . $request->input('start_time'));
+        $startTime   = Carbon::createFromFormat('Y-m-d H:i', $request->input('show_date') . ' ' . $request->input('start_time'), config('app.timezone'));
         $endTime     = $startTime->copy()->addMinutes($movie->duration);
         $startStr    = $startTime->format('H:i:s');
         $endStr      = $endTime->format('H:i:s');
         $showDateStr = $request->input('show_date');
 
-        // Bước 3: Kiểm tra trùng lịch
-        $overlapQuery = Showtime::where('room_id', $room->id)->where('show_date', $showDateStr);
+        // Bước 3: Kiểm tra trùng lịch (bỏ qua suất đã hủy)
+        $overlapQuery = Showtime::where('room_id', $room->id)
+            ->where('show_date', $showDateStr)
+            ->where('status', '!=', 'cancelled');
 
         if ($endStr <= $startStr) {
             // Phim chiếu qua nửa đêm
@@ -277,13 +279,14 @@ class ManagerShowtimeController extends Controller
         DB::beginTransaction();
         try {
             $showtime = Showtime::create([
-                'movie_id'         => $movie->id,
-                'room_id'          => $room->id,
-                'show_date'        => $showDateStr,
-                'start_time'       => $startStr,
-                'end_time'         => $endStr,
-                'base_price'       => $request->integer('base_price'),
-                'status'           => 'upcoming',
+                'movie_id'          => $movie->id,
+                'format_id'         => $request->integer('format_id'),
+                'room_id'           => $room->id,
+                'show_date'         => $showDateStr,
+                'start_time'        => $startStr,
+                'end_time'          => $endStr,
+                'base_price'        => $request->integer('base_price'),
+                'status'            => 'upcoming',
                 // [v2.0] Đánh dấu suất được tạo THỦ CÔNG bởi Manager
                 'is_auto_generated' => false,
             ]);

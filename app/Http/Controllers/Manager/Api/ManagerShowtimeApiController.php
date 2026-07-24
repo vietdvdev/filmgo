@@ -244,7 +244,8 @@ class ManagerShowtimeApiController extends Controller
         $showDateStr  = $request->input('show_date');
 
         $overlapQuery = Showtime::where('room_id', $room->id)
-            ->where('show_date', $showDateStr);
+            ->where('show_date', $showDateStr)
+            ->where('status', '!=', 'cancelled');  // Bỏ qua suất đã hủy
 
         if ($endTimeStr <= $startTimeStr) {
             $overlapQuery->where('start_time', '>=', $startTimeStr);
@@ -423,16 +424,23 @@ class ManagerShowtimeApiController extends Controller
                 'publish_at' => $publishAt,
             ]);
 
+            // [v2.0] Pre-load SeatType surcharge map để tránh N+1 query
+            $surchargeMap = \App\Models\SeatType::all()->pluck('surcharge_price', 'id');
+            $basePrice    = $showtime->base_price;
+
             $showtimeSeatsData = [];
-            Seat::where('room_id', $room->id)
-                ->select('id')
-                ->chunk(500, function ($seats) use ($showtime, &$showtimeSeatsData) {
+            \App\Models\Seat::where('room_id', $room->id)
+                ->select('id', 'seat_type_id')
+                ->chunk(500, function ($seats) use ($showtime, $basePrice, $surchargeMap, &$showtimeSeatsData) {
                     foreach ($seats as $seat) {
+                        $surcharge = (int) ($surchargeMap[$seat->seat_type_id] ?? 0);
                         $showtimeSeatsData[] = [
                             'showtime_id' => $showtime->id,
                             'seat_id'     => $seat->id,
                             'user_id'     => null,
                             'status'      => 'available',
+                            // [v2.0] Snapshot giá = base_price + surcharge loại ghế
+                            'price'       => $basePrice + $surcharge,
                             'locked_at'   => null,
                             'expires_at'  => null,
                         ];

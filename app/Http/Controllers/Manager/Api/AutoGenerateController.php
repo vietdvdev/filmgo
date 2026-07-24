@@ -64,7 +64,8 @@ class AutoGenerateController extends Controller
         $standardPrice = (int) $request->input('standard_price');
         $publishAtInput = $request->input('publish_at');
         $publishAt     = $publishAtInput ? Carbon::parse($publishAtInput, 'Asia/Ho_Chi_Minh')->setTimezone(config('app.timezone')) : null;
-        $status        = ($publishAt === null || $publishAt->lte(now())) ? 'active' : 'upcoming';
+        // [Fix] Trạng thái mặc định là 'upcoming' (chờ mở bán), chỉ active khi publish_at <= now
+        $status = ($publishAt !== null && $publishAt->lte(now())) ? 'active' : 'upcoming';
 
         try {
             // 2. CORE ALGORITHM: SMART SLOT FINDING
