@@ -68,6 +68,8 @@ class StoreShowtimeRequest extends FormRequest
             $roomId   = $this->input('room_id');
             $movieId  = $this->input('movie_id');
             $formatId = $this->input('format_id');
+            $showDate  = $this->input('show_date');
+            $startTime = $this->input('start_time');
 
             // 1. Kiểm tra phòng chiếu thuộc rạp đã chọn
             if ($cinemaId && $roomId) {
@@ -80,7 +82,7 @@ class StoreShowtimeRequest extends FormRequest
                 }
             }
 
-            // 2. Kiểm tra ràng buộc Ràng buộc Định dạng chiếu và Tiêu chuẩn Phòng chiếu (BƯỚC 3)
+            // 2. Kiểm tra ràng buộc Định dạng chiếu và Tiêu chuẩn Phòng chiếu
             if ($movieId && $formatId && $roomId) {
                 $formatService = app(\App\Services\FormatService::class);
                 $formatErrors  = $formatService->validateShowtimeFormatAndRoom((int)$movieId, (int)$formatId, (int)$roomId);
@@ -89,7 +91,22 @@ class StoreShowtimeRequest extends FormRequest
                     $validator->errors()->add($field, $message);
                 }
             }
+
+            // 3. Kiểm tra thời gian suất chiếu không ở trong quá khứ
+            if ($showDate && $startTime && !$validator->errors()->has('show_date') && !$validator->errors()->has('start_time')) {
+                $startDateTime = \Carbon\Carbon::createFromFormat(
+                    'Y-m-d H:i',
+                    $showDate . ' ' . $startTime,
+                    config('app.timezone')
+                );
+
+                if ($startDateTime->isPast()) {
+                    $validator->errors()->add(
+                        'start_time',
+                        'Thời gian bắt đầu suất chiếu không được ở trong quá khứ. Vui lòng chọn thời gian từ hiện tại trở đi.'
+                    );
+                }
+            }
         });
     }
 }
-
