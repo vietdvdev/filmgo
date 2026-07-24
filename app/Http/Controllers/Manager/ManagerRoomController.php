@@ -32,7 +32,7 @@ class ManagerRoomController extends Controller
             $query->where('room_name', 'like', '%' . $request->search . '%');
         }
 
-        $rooms = $query->orderBy('cinema_id')->orderBy('room_name')->paginate(10);
+        $rooms = $query->latest('id')->paginate(10);
 
         return view('manager.rooms.index', compact('rooms'));
     }
