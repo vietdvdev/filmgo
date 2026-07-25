@@ -335,6 +335,12 @@ Route::prefix('staff')->group(function () {
         // Danh sách vé đặt trong ngày của nhân viên rạp
         Route::get('/bookings', [App\Http\Controllers\Staff\StaffBookingController::class, 'index'])->name('staff.bookings.index');
 
+        // API Lấy danh sách QR Code của đơn hàng
+        Route::get('/bookings/{bookingId}/qr', [App\Http\Controllers\Staff\StaffBookingController::class, 'getTicketsQR'])->name('staff.bookings.qr');
+
+        // In vé và phiếu bắp nước qua máy in nhiệt tại quầy
+        Route::get('/bookings/{bookingId}/print-tickets', [App\Http\Controllers\Staff\StaffBookingController::class, 'printTickets'])->name('staff.bookings.print-tickets');
+
         // ── Phân hệ POS — Bán vé tại quầy ─────────────────────────────────
         // Trang giao diện POS chính (One-page SPA)
         Route::get('/pos', [App\Http\Controllers\Staff\PosController::class, 'index'])->name('staff.pos.index');

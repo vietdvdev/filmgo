@@ -4,6 +4,8 @@ namespace App\Services;
 
 use App\Models\Booking;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
+use SimpleSoftwareIO\QrCode\Facades\QrCode;
+use Symfony\Component\HttpFoundation\Response;
 
 class StaffBookingService
 {
@@ -51,5 +53,83 @@ class StaffBookingService
             // 6. Phân trang dữ liệu kết hợp duy trì tham số query string trên thanh địa chỉ
             ->paginate($perPage)
             ->withQueryString();
+    }
+
+    /**
+     * Truy vấn chi tiết một Booking và kiểm tra bảo mật theo Rạp nhân viên quản lý.
+     *
+     * @param int $bookingId ID của đơn hàng cần tra cứu.
+     * @param int $cinemaId ID của rạp nhân viên đang làm việc.
+     * @return Booking
+     */
+    public function getBookingForStaff(int $bookingId, int $cinemaId): Booking
+    {
+        $booking = Booking::with([
+            'user',
+            'showtime.movie',
+            'showtime.room.cinema',
+            'bookingDetails.showtimeSeat.seat',
+            'bookingDetails.ticket',
+            'combos',
+            'promotion',
+            'payments',
+        ])->findOrFail($bookingId);
+
+        // Bảo mật: Kiểm tra xem Booking này có thuộc rạp nhân viên quản lý hay không
+        if ($booking->showtime?->room?->cinema_id !== $cinemaId) {
+            abort(Response::HTTP_FORBIDDEN, 'Bạn không có quyền truy cập hoặc in vé thuộc rạp khác.');
+        }
+
+        return $booking;
+    }
+
+    /**
+     * Tạo mảng dữ liệu QR Code cho các vé thuộc đơn hàng bằng simplesoftwareio/simple-qrcode.
+     * Đảm bảo vị trí ghế luôn ghi rõ cả Hàng + Số ghế (Ví dụ: GHẾ A5, H1).
+     *
+     * @param Booking $booking
+     * @return array
+     */
+    public function generateTicketsQrData(Booking $booking): array
+    {
+        $ticketsData = [];
+
+        foreach ($booking->bookingDetails as $detail) {
+            $seat = $detail->showtimeSeat?->seat;
+            
+            // Format vị trí ghế chuẩn: Kết hợp Hàng ghế (seat_row) + Số ghế (seat_number) -> Ví dụ: A5, H1
+            $seatName = 'N/A';
+            if ($seat) {
+                $row = trim($seat->seat_row ?? '');
+                $num = trim((string) ($seat->seat_number ?? ''));
+
+                if (!empty($row) && !str_starts_with(strtoupper($num), strtoupper($row))) {
+                    $seatName = strtoupper($row) . $num;
+                } else {
+                    $seatName = strtoupper($num);
+                }
+            }
+
+            $ticket = $detail->ticket;
+
+            $qrContent = null;
+            if ($ticket && !empty($ticket->qr_code)) {
+                // Sinh mã QR (SVG/Base64) kích thước 200px từ cột qr_code của vé
+                if (class_exists(QrCode::class)) {
+                    $qrContent = (string) QrCode::size(200)->generate($ticket->qr_code);
+                } else {
+                    $qrContent = $ticket->qr_code;
+                }
+            }
+
+            $ticketsData[] = [
+                'ticket_id' => $ticket?->id,
+                'seat_name' => $seatName,
+                'qr_code'   => $ticket?->qr_code,
+                'qr_image'  => $qrContent,
+            ];
+        }
+
+        return $ticketsData;
     }
 }

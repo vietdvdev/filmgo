@@ -8,6 +8,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\View\View;
+use SimpleSoftwareIO\QrCode\Facades\QrCode;
 use Symfony\Component\HttpFoundation\Response;
 
 class StaffBookingController extends Controller
@@ -23,11 +24,6 @@ class StaffBookingController extends Controller
 
     /**
      * Hiển thị danh sách vé đặt trong ngày dành cho Nhân viên rạp.
-     * 
-     * Các bước xử lý:
-     * 1. Xác định Rạp làm việc của nhân viên qua $user->cinemas (Báo 403 nếu chưa phân công).
-     * 2. Validate và chuẩn hóa tham số date đầu vào.
-     * 3. Gọi Service lấy danh sách Booking đã Eager Load đầy đủ dữ liệu truyền ra View.
      *
      * @param Request $request
      * @return View|JsonResponse
@@ -37,34 +33,24 @@ class StaffBookingController extends Controller
         /** @var \App\Models\User|null $user */
         $user = Auth::user();
 
-        // ------------------------------------------------------------------
-        // BƯỚC 1: XÁC ĐỊNH RẠP CỦA NHÂN VIÊN
-        // ------------------------------------------------------------------
+        // 1. Xác định Rạp của nhân viên đang đăng nhập
         $cinema = $user?->cinemas()->first();
 
-        // Nếu nhân viên chưa được phân công làm việc tại rạp nào -> Báo lỗi 403 Forbidden
         if (!$cinema) {
             abort(Response::HTTP_FORBIDDEN, 'Bạn chưa được phân công làm việc tại rạp nào.');
         }
 
-        // ------------------------------------------------------------------
-        // BƯỚC 2: VALIDATE VÀ CHUẨN HÓA THAM SỐ ĐẦU VÀO
-        // ------------------------------------------------------------------
+        // Validate ngày từ Request (mặc định lấy hôm nay)
         $request->validate([
             'date' => ['nullable', 'date_format:Y-m-d'],
         ]);
 
-        // Mặc định lấy ngày hôm nay nếu không có tham số 'date' trên Request
-        $date = $request->input('date', now()->toDateString());
+        $date         = $request->input('date', now()->toDateString());
+        $selectedDate = $date;
 
-        // ------------------------------------------------------------------
-        // BƯỚC 3: GỌI SERVICE LẤY DANH SÁCH BOOKING ĐÃ TỐI ƯU TRUY VẤN
-        // ------------------------------------------------------------------
+        // 2. Lấy danh sách booking từ Service
         $bookings = $this->staffBookingService->getDailyBookingsByCinema($cinema->id, $date);
 
-        // ------------------------------------------------------------------
-        // BƯỚC 4: TRẢ VỀ VIEW HOẶC DỮ LIỆU JSON
-        // ------------------------------------------------------------------
         if ($request->wantsJson()) {
             return response()->json([
                 'status'  => 'success',
@@ -77,8 +63,64 @@ class StaffBookingController extends Controller
             ]);
         }
 
-        $selectedDate = $date;
-
         return view('staff.bookings.index', compact('bookings', 'cinema', 'date', 'selectedDate'));
+    }
+
+    /**
+     * API Lấy danh sách QR Code của đơn hàng (getTicketsQR).
+     *
+     * Bảo mật: Kiểm tra bookingId thuộc rạp nhân viên quản lý (trả về 403 nếu sai rạp).
+     * Xử lý: Sinh mã QR SVG/Base64 từ cột qr_code bằng QrCode::size(200)->generate($ticket->qr_code).
+     *
+     * @param int $bookingId
+     * @return JsonResponse
+     */
+    public function getTicketsQR(int $bookingId): JsonResponse
+    {
+        $user   = Auth::user();
+        $cinema = $user?->cinemas()->first();
+
+        if (!$cinema) {
+            abort(Response::HTTP_FORBIDDEN, 'Bạn chưa được phân công làm việc tại rạp nào.');
+        }
+
+        // Truy vấn Booking & Kiểm tra bảo mật theo rạp
+        $booking = $this->staffBookingService->getBookingForStaff($bookingId, $cinema->id);
+
+        // Sinh dữ liệu các vé thuộc đơn hàng (kèm tên ghế đầy đủ Hàng + Số VD: A5, H1)
+        $tickets = $this->staffBookingService->generateTicketsQrData($booking);
+
+        return response()->json([
+            'status'       => 'success',
+            'booking_id'   => $booking->id,
+            'booking_code' => $booking->booking_code,
+            'cinema_name'  => $cinema->name,
+            'tickets'      => $tickets,
+        ]);
+    }
+
+    /**
+     * In vé xem phim và Phiếu nhận Bắp nước trực tiếp tại quầy (Thermal Printer 80mm & Auto Print).
+     *
+     * @param int $bookingId
+     * @return View
+     */
+    public function printTickets(int $bookingId): View
+    {
+        $user   = Auth::user();
+        $cinema = $user?->cinemas()->first();
+
+        if (!$cinema) {
+            abort(Response::HTTP_FORBIDDEN, 'Bạn chưa được phân công làm việc tại rạp nào.');
+        }
+
+        // 1. Truy vấn Eager Loading đầy đủ quan hệ & Bảo mật đúng rạp
+        $booking = $this->staffBookingService->getBookingForStaff($bookingId, $cinema->id);
+
+        // 2. Sinh dữ liệu QR Code từng chiếc vé
+        $ticketsData = $this->staffBookingService->generateTicketsQrData($booking);
+
+        // 3. Trả về Blade View chuyên dùng cho máy in nhiệt (có sẵn window.print())
+        return view('staff.bookings.print', compact('booking', 'cinema', 'ticketsData'));
     }
 }
