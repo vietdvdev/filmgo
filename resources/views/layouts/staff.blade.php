@@ -98,6 +98,15 @@
                 <span class="text-label-md">Lịch Chiếu Hôm Nay</span>
             </a>
 
+            {{-- Quản lý vé khách đặt --}}
+            <a href="{{ route('staff.bookings.index') }}"
+               class="flex items-center gap-3 px-4 py-3 rounded-lg transition-colors duration-200
+                      {{ request()->routeIs('staff.bookings.*') ? 'bg-primary/10 text-primary font-bold' : 'text-on-surface-variant hover:bg-surface-container-low' }}">
+                <span class="material-symbols-outlined"
+                      style="font-variation-settings: 'FILL' {{ request()->routeIs('staff.bookings.*') ? 1 : 0 }}">confirmation_number</span>
+                <span class="text-label-md">Quản Lý Vé Đặt</span>
+            </a>
+
             {{-- POS — Bán vé tại quầy --}}
             <a href="{{ route('staff.pos.index') }}"
                class="flex items-center gap-3 px-4 py-3 rounded-lg transition-colors duration-200

@@ -48,6 +48,26 @@ Route::middleware('guest')->group(function () {
     Route::get('/login', [CustomerAuthController::class, 'showLoginForm'])->name('login');
     Route::post('/login', [CustomerAuthController::class, 'login']);
 
+    // Route tự động đăng nhập nhanh Khách hàng cho môi trường phát triển
+    Route::get('/customer/auto-login', function () {
+        $customer = \App\Models\User::where('email', 'customer@gmail.com')->first();
+        if (!$customer) {
+            $customer = \App\Models\User::create([
+                'full_name' => 'Khách Hàng FilmGo',
+                'email'     => 'customer@gmail.com',
+                'phone'     => '0912345678',
+                'password'  => \Illuminate\Support\Facades\Hash::make('123456'),
+                'status'    => 'active',
+            ]);
+            $customerRole = \App\Models\Role::where('name', 'customer')->first();
+            if ($customerRole) {
+                $customer->roles()->attach($customerRole->id);
+            }
+        }
+        \Illuminate\Support\Facades\Auth::login($customer);
+        return redirect()->route('home')->with('success', 'Đã tự động đăng nhập tài khoản Khách hàng!');
+    })->name('customer.auto-login');
+
     // Khôi phục mật khẩu
     Route::get('/forgot-password', [CustomerForgotPasswordController::class, 'showLinkRequestForm'])->name('password.request');
     Route::post('/forgot-password', [CustomerForgotPasswordController::class, 'sendResetLinkEmail'])->name('password.email');
@@ -311,6 +331,9 @@ Route::prefix('staff')->group(function () {
 
         // Lịch chiếu hôm nay
         Route::get('/showtimes', [App\Http\Controllers\Admin\StaffShowtimeController::class, 'index'])->name('staff.showtimes.index');
+
+        // Danh sách vé đặt trong ngày của nhân viên rạp
+        Route::get('/bookings', [App\Http\Controllers\Staff\StaffBookingController::class, 'index'])->name('staff.bookings.index');
 
         // ── Phân hệ POS — Bán vé tại quầy ─────────────────────────────────
         // Trang giao diện POS chính (One-page SPA)
