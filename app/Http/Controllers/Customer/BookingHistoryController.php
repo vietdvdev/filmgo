@@ -9,21 +9,34 @@ use Illuminate\Support\Facades\Auth;
 
 class BookingHistoryController extends Controller
 {
+    /**
+     * Danh sách lịch sử đặt vé của khách hàng hiện tại.
+     *
+     * Tối ưu:
+     * - withQueryString() để giữ nguyên query params khi chuyển trang.
+     * - Chỉ eager load relations cần thiết cho list view (bỏ combos/promotions).
+     * - Dùng select tường minh cho user để tránh load toàn bộ cột.
+     */
     public function index()
     {
         $bookings = Booking::with([
-                'showtime.movie',
-                'showtime.room.cinema',
-                'bookingDetails.showtimeSeat.seat',
-                'payments',
+                'showtime.movie:id,title,poster,duration',
+                'showtime.room.cinema:id,name',
+                'bookingDetails',           // Cần để đếm số vé trong list
+                'payments:id,booking_id,payment_method,payment_status',
             ])
             ->where('user_id', Auth::id())
             ->latest()
-            ->paginate(8);
+            ->paginate(8)
+            ->withQueryString();    // Giữ nguyên query params khi phân trang
 
         return view('customer.bookings.history', compact('bookings'));
     }
 
+    /**
+     * Chi tiết một đơn đặt vé.
+     * Eager load đầy đủ thông tin cần thiết để hiển thị trang chi tiết.
+     */
     public function show($id)
     {
         $booking = Booking::with([
