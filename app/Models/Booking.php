@@ -49,9 +49,51 @@ class Booking extends Model
     ];
 
 
+    // ────────────────────────────────────────────────────────────────
+    // Query Scopes — tái sử dụng điều kiện filter thường gặp
+    // ────────────────────────────────────────────────────────────────
+
     /**
-     * Relationships
+     * Lọc đơn đặt vé đã thanh toán thành công.
+     * Dùng: Booking::paid()->get()
      */
+    public function scopePaid(\Illuminate\Database\Eloquent\Builder $query): \Illuminate\Database\Eloquent\Builder
+    {
+        return $query->where('payment_status', 'paid');
+    }
+
+    /**
+     * Lọc đơn đặt vé đang chờ thanh toán.
+     * Dùng: Booking::pending()->get()
+     */
+    public function scopePending(\Illuminate\Database\Eloquent\Builder $query): \Illuminate\Database\Eloquent\Builder
+    {
+        return $query->where('payment_status', 'pending');
+    }
+
+    /**
+     * Lọc đơn đặt vé đã xác nhận (booking_status = confirmed).
+     * Dùng: Booking::confirmed()->get()
+     */
+    public function scopeConfirmed(\Illuminate\Database\Eloquent\Builder $query): \Illuminate\Database\Eloquent\Builder
+    {
+        return $query->where('booking_status', 'confirmed');
+    }
+
+    /**
+     * Lọc đơn đặt vé theo kênh (online, counter).
+     * Dùng: Booking::byChannel('counter')->get()
+     *
+     * @param  string  $channel  'online' | 'counter'
+     */
+    public function scopeByChannel(\Illuminate\Database\Eloquent\Builder $query, string $channel): \Illuminate\Database\Eloquent\Builder
+    {
+        return $query->where('channel', $channel);
+    }
+
+    // ────────────────────────────────────────────────────────────────
+    // Relationships
+    // ────────────────────────────────────────────────────────────────
 
     public function user(): BelongsTo
     {
