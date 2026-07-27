@@ -138,7 +138,11 @@ class PosController extends Controller
             return response()->json(['valid' => false, 'message' => 'Mã không hợp lệ hoặc đã hết hạn.'], 422);
         }
 
-        if ($promotion->quantity !== null && $promotion->bookings()->count() >= $promotion->quantity) {
+        /**
+         * Dùng cột used_count (đã đánh index) thay vì gọi bookings()->count().
+         * Tránh thêm 1 COUNT(*) JOIN query mỗi lần kiểm tra voucher tại POS.
+         */
+        if ($promotion->usage_limit !== null && $promotion->used_count >= $promotion->usage_limit) {
             return response()->json(['valid' => false, 'message' => 'Mã đã hết lượt sử dụng.'], 422);
         }
 
