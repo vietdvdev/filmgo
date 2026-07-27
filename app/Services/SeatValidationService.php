@@ -67,7 +67,11 @@ class SeatValidationService
         // Tự động giải phóng ghế hết hạn giữ (Rule 8 & 25)
         $this->releaseExpiredSeats($showtimeId);
 
-        // Lấy toàn bộ ghế của suất chiếu này (dùng để kiểm tra single seat)
+        /**
+         * Lấy toàn bộ ghế của suất chiếu này để kiểm tra Single Seat Rule.
+         * Dùng eager load 'seat' vì cần seat_row, seat_number, room_id để lọc.
+         * Key by showtime_seat_id để tra cứu O(1) thay vì O(N) khi kiểm tra.
+         */
         $allSeats = ShowtimeSeat::with('seat')
             ->where('showtime_id', $showtimeId)
             ->get()
@@ -264,12 +268,20 @@ class SeatValidationService
 
     /**
      * Tự động giải phóng ghế hết hạn giữ (Rule 8, 25, 27, 29).
+     *
+     * Tối ưu: Dùng scope scopeExpired() thay vì viết inline điều kiện để nhất quán và tái sử dụng.
+     * scope scopeExpired() đã được định nghĩa sẵn trong ShowtimeSeat model.
      */
     public function releaseExpiredSeats(int $showtimeId): void
     {
+        /**
+         * Câu lệnh này thực hiện 1 UPDATE duy nhất cho tất cả ghế hết hạn cùng một suất chiếu.
+         * Dùng scope expired() (được định nghĩa trong ShowtimeSeat model) để filter:
+         *   WHERE showtime_id = ? AND status IN ('holding', 'locked') AND expires_at < NOW()
+         * Index showtime_seats.expires_at + status đã được thêm ở migration trước đó.
+         */
         ShowtimeSeat::where('showtime_id', $showtimeId)
-            ->whereIn('status', ['holding', 'locked'])
-            ->where('expires_at', '<', now())
+            ->expired()   // Dùng scope: whereIn('status', ['holding', 'locked']) && expires_at < now()
             ->update([
                 'status'     => 'available',
                 'user_id'    => null,
