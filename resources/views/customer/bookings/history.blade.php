@@ -11,20 +11,26 @@
             <p class="text-xs font-bold text-gray-400 uppercase tracking-widest mb-1">Tài Khoản</p>
             <h1 class="text-2xl font-black text-gray-900 flex items-center gap-2">
                 <span class="material-symbols-outlined text-brand-primary">history</span>
-                Lịch Sử Đặt Vé
+                Lịch Sử Đặt Hàng & Đặt Vé
             </h1>
-            <p class="text-sm text-gray-500 mt-1">Tất cả đơn đặt vé của bạn tại FilmGo</p>
+            <p class="text-sm text-gray-500 mt-1">Tất cả đơn vé xem phim và đơn mua bắp nước của bạn tại FilmGo</p>
         </div>
 
         @if($bookings->isEmpty())
             <div class="flex flex-col items-center justify-center py-24 text-gray-400">
-                <span class="material-symbols-outlined text-6xl mb-4 text-gray-300">confirmation_number</span>
-                <p class="text-xl font-bold text-gray-800">Bạn chưa có đơn đặt vé nào</p>
-                <p class="text-sm mt-1 mb-6">Hãy đặt vé ngay để trải nghiệm FilmGo!</p>
-                <a href="{{ route('home') }}"
-                   class="px-6 py-3 bg-brand-primary hover:bg-red-700 text-white font-bold rounded-xl shadow-sm transition-colors text-sm">
-                    Khám Phá Phim
-                </a>
+                <span class="material-symbols-outlined text-6xl mb-4 text-gray-300">receipt_long</span>
+                <p class="text-xl font-bold text-gray-800">Bạn chưa có đơn hàng nào</p>
+                <p class="text-sm mt-1 mb-6">Hãy trải nghiệm dịch vụ của FilmGo ngay!</p>
+                <div class="flex gap-3">
+                    <a href="{{ route('home') }}"
+                       class="px-6 py-3 bg-brand-primary hover:bg-red-700 text-white font-bold rounded-xl shadow-sm transition-colors text-sm">
+                        Khám Phá Phim
+                    </a>
+                    <a href="{{ route('combo-shop.index') }}"
+                       class="px-6 py-3 bg-amber-500 hover:bg-amber-600 text-white font-bold rounded-xl shadow-sm transition-colors text-sm">
+                        Mua Bắp Nước
+                    </a>
+                </div>
             </div>
         @else
             <div class="space-y-4">
@@ -38,16 +44,22 @@
                     ];
                     $ps = $statusMap[$booking->payment_status] ?? $statusMap['pending'];
                     $seats = $booking->bookingDetails->map(fn($d) => optional(optional($d->showtimeSeat)->seat)->seat_row . optional(optional($d->showtimeSeat)->seat)->seat_number)->filter()->join(', ');
+                    $isComboOnly = ($booking->booking_type === 'combo_only' || !$booking->showtime_id);
                 @endphp
                 <div class="bg-white border border-gray-200/80 rounded-2xl overflow-hidden hover:border-gray-300 shadow-sm hover:shadow transition-all duration-200">
                     <div class="p-5 flex flex-col sm:flex-row sm:items-center gap-4">
 
                         {{-- Poster --}}
                         <div class="flex-shrink-0">
-                            @if(optional($booking->showtime->movie)->poster_url)
+                            @if(!$isComboOnly && optional(optional($booking->showtime)->movie)->poster_url)
                                 <img src="{{ $booking->showtime->movie->poster_url }}"
                                      alt="poster"
                                      class="w-14 h-20 object-cover rounded-lg border border-gray-100 shadow-sm">
+                            @elseif($isComboOnly)
+                                <div class="w-14 h-20 bg-amber-50 rounded-lg flex flex-col items-center justify-center border border-amber-200 text-amber-500">
+                                    <span class="material-symbols-outlined text-2xl">fastfood</span>
+                                    <span class="text-[9px] font-bold mt-0.5">F&B</span>
+                                </div>
                             @else
                                 <div class="w-14 h-20 bg-gray-50 rounded-lg flex items-center justify-center border border-gray-200">
                                     <span class="material-symbols-outlined text-gray-400 text-2xl">movie</span>
@@ -60,7 +72,11 @@
                             <div class="flex items-start justify-between gap-3 flex-wrap">
                                 <div>
                                     <p class="font-bold text-gray-900 text-base leading-tight truncate max-w-xs">
-                                        {{ optional($booking->showtime->movie)->title ?? '—' }}
+                                        @if($isComboOnly)
+                                            🍿 Đơn Hàng Bắp Nước &amp; Combo
+                                        @else
+                                            {{ optional(optional($booking->showtime)->movie)->title ?? 'Vé Xem Phim' }}
+                                        @endif
                                     </p>
                                     <p class="text-xs text-gray-400 font-mono mt-0.5">#{{ $booking->booking_code }}</p>
                                 </div>
@@ -72,19 +88,31 @@
 
                             <div class="grid grid-cols-2 sm:grid-cols-4 gap-x-4 gap-y-1.5 text-xs">
                                 <div>
-                                    <p class="text-gray-400 font-semibold mb-0.5">Rạp</p>
-                                    <p class="text-gray-800 font-bold truncate">{{ optional(optional(optional($booking->showtime)->room)->cinema)->name ?? '—' }}</p>
-                                </div>
-                                <div>
-                                    <p class="text-gray-400 font-semibold mb-0.5">Suất chiếu</p>
-                                    <p class="text-brand-primary font-bold">
-                                        {{ $booking->showtime ? \Carbon\Carbon::parse($booking->showtime->start_time)->format('H:i') : '—' }}
-                                        · {{ $booking->showtime ? $booking->showtime->show_date->format('d/m/Y') : '' }}
+                                    <p class="text-gray-400 font-semibold mb-0.5">Loại đơn</p>
+                                    <p class="text-gray-800 font-bold truncate">
+                                        {{ $isComboOnly ? 'Bắp Nước (F&B)' : (optional(optional(optional($booking->showtime)->room)->cinema)->name ?? 'Xem Phim') }}
                                     </p>
                                 </div>
                                 <div>
-                                    <p class="text-gray-400 font-semibold mb-0.5">Ghế</p>
-                                    <p class="text-gray-800 font-bold">{{ $seats ?: '—' }}</p>
+                                    <p class="text-gray-400 font-semibold mb-0.5">Suất chiếu / Thời gian</p>
+                                    <p class="text-brand-primary font-bold">
+                                        @if($isComboOnly)
+                                            Nhận tại quầy
+                                        @else
+                                            {{ $booking->showtime ? \Carbon\Carbon::parse($booking->showtime->start_time)->format('H:i') : '—' }}
+                                            · {{ $booking->showtime ? $booking->showtime->show_date->format('d/m/Y') : '' }}
+                                        @endif
+                                    </p>
+                                </div>
+                                <div>
+                                    <p class="text-gray-400 font-semibold mb-0.5">Ghế / Sản phẩm</p>
+                                    <p class="text-gray-800 font-bold truncate">
+                                        @if($isComboOnly)
+                                            Nhận tại rạp
+                                        @else
+                                            {{ $seats ?: '—' }}
+                                        @endif
+                                    </p>
                                 </div>
                                 <div>
                                     <p class="text-gray-400 font-semibold mb-0.5">Ngày đặt</p>

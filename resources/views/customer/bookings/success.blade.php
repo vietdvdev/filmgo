@@ -34,28 +34,30 @@
                     </div>
 
                     <!-- Details information table -->
+                    @if($booking->showtime)
                     <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
                         <div>
                             <span class="block text-neutral-400 font-semibold mb-0.5">Phim Điện Ảnh</span>
-                            <span class="font-extrabold text-neutral-800 uppercase leading-snug">{{ $booking->showtime->movie->title }}</span>
+                            <span class="font-extrabold text-neutral-800 uppercase leading-snug">{{ $booking->showtime->movie->title ?? 'N/A' }}</span>
                         </div>
                         <div>
                             <span class="block text-neutral-400 font-semibold mb-0.5">Rạp Chiếu / Phòng</span>
-                            <span class="font-bold text-neutral-800">{{ $booking->showtime->room->cinema->name }} - {{ $booking->showtime->room->room_name }}</span>
+                            <span class="font-bold text-neutral-800">{{ $booking->showtime->room->cinema->name ?? '' }} - {{ $booking->showtime->room->room_name ?? '' }}</span>
                         </div>
                         <div>
                             <span class="block text-neutral-400 font-semibold mb-0.5">Thời Gian Chiếu</span>
-                            <span class="font-bold text-indigo-600">{{ \Carbon\Carbon::parse($booking->showtime->start_time)->format('H:i') }} | {{ $booking->showtime->show_date->format('d/m/Y') }}</span>
+                            <span class="font-bold text-indigo-600">{{ $booking->showtime->start_time ? \Carbon\Carbon::parse($booking->showtime->start_time)->format('H:i') : '' }} | {{ $booking->showtime->show_date ? $booking->showtime->show_date->format('d/m/Y') : '' }}</span>
                         </div>
                         <div>
                             <span class="block text-neutral-400 font-semibold mb-0.5">Vị Trí Ghế</span>
                             <span class="font-bold text-neutral-800">
                                 @foreach($booking->bookingDetails as $detail)
-                                    <span class="inline-block bg-indigo-50 border border-indigo-100 text-indigo-700 px-1.5 py-0.5 rounded font-black mr-1 mb-1">{{ $detail->showtimeSeat->seat->seat_row . $detail->showtimeSeat->seat->seat_number }}</span>
+                                    <span class="inline-block bg-indigo-50 border border-indigo-100 text-indigo-700 px-1.5 py-0.5 rounded font-black mr-1 mb-1">{{ $detail->showtimeSeat->seat->seat_row ?? '' }}{{ $detail->showtimeSeat->seat->seat_number ?? '' }}</span>
                                 @endforeach
                             </span>
                         </div>
                     </div>
+                    @endif
 
                     <!-- Combos booked summary -->
                     @if($booking->combos->count() > 0)

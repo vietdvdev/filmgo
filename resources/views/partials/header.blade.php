@@ -23,6 +23,10 @@
                 <a href="#"
                     class="text-gray-300 hover:text-brand-primary font-medium text-sm transition-colors duration-200">Khuyến
                     Mãi</a>
+                <a href="{{ route('combo-shop.index') }}"
+                    class="text-gray-300 hover:text-brand-primary font-medium text-sm transition-colors duration-200 flex items-center gap-1">
+                    <span class="material-symbols-outlined text-base text-orange-400">fastfood</span> Bắp Nước &amp; Combo
+                </a>
                 <a href="#"
                     class="text-gray-300 hover:text-brand-primary font-medium text-sm transition-colors duration-200">Tin
                     Điện Ảnh</a>

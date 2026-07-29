@@ -7,6 +7,19 @@
     /* ── POS Layout: Full-height, no scroll ─── */
     #pos-root { height: calc(100vh - 64px); display: grid; grid-template-columns: 280px 1fr 340px; }
 
+    /* ── Tab Mode F&B: ẩn cột giữa (sơ đồ ghế), mở rộng cột trái ─── */
+    #pos-root.fnb-mode { grid-template-columns: 1fr 340px; }
+    #pos-root.fnb-mode #pos-col-seat { display: none; }
+
+    .pos-tab-btn {
+        flex: 1; padding: 6px; border-radius: 8px; font-size: 11px; font-weight: 700;
+        cursor: pointer; transition: all 0.2s; border: none; outline: none;
+        display: flex; align-items: center; justify-content: center; gap: 4px;
+    }
+    .pos-tab-btn.active { background: #3b82f6; color: #fff; box-shadow: 0 2px 8px rgba(59,130,246,0.4); }
+    .pos-tab-btn.fnb-active { background: #f97316; color: #fff; box-shadow: 0 2px 8px rgba(249,115,22,0.4); }
+    .pos-tab-btn:not(.active):not(.fnb-active) { background: #f3f4f6; color: #6b7280; }
+
     /* ── Seat Map ─── */
     .seat-btn {
         width: 36px; height: 36px; border-radius: 6px; border: 2px solid transparent;
@@ -65,6 +78,19 @@
                 </h2>
                 <span id="movie-count" class="text-[10px] font-bold px-2 py-0.5 bg-primary/10 text-primary rounded-full">—</span>
             </div>
+
+            {{-- Tab Switcher: Bán Vé / Bán F&B --}}
+            <div class="flex gap-1 p-1 rounded-xl mb-2" style="background:#f1f5f9">
+                <button class="pos-tab-btn active" id="tab-ticket" onclick="POS.switchMode('ticket')">
+                    <span class="material-symbols-outlined" style="font-size:14px">confirmation_number</span>
+                    Bán Vé
+                </button>
+                <button class="pos-tab-btn" id="tab-fnb" onclick="POS.switchMode('fnb')">
+                    <span class="material-symbols-outlined" style="font-size:14px">fastfood</span>
+                    Bán F&B
+                </button>
+            </div>
+
             <input type="date" id="pos-date" value="{{ today()->toDateString() }}"
                    class="w-full text-xs border border-gray-200 rounded-lg px-3 py-2 focus:ring-2 focus:ring-primary/30 focus:border-primary outline-none">
         </div>
@@ -76,12 +102,21 @@
                 <p class="text-xs">Đang tải danh sách phim...</p>
             </div>
         </div>
+        {{-- F&B Panel: sản phẩm đồ ăn (hiện khi mode fnb) --}}
+        <div id="fnb-panel" class="hidden flex-1 overflow-y-auto p-3">
+            <div class="text-center py-6 text-gray-400" id="fnb-loading">
+                <span class="material-symbols-outlined text-3xl block mb-2">hourglass_empty</span>
+                <p class="text-xs">Đang tải danh sách...</p>
+            </div>
+            <div id="fnb-product-list"></div>
+        </div>
     </div>
 
     {{-- ════════════════════════════════════════════════════════════
          CỘT GIỮA — Sơ đồ ghế real-time
     ════════════════════════════════════════════════════════════ --}}
-    <div class="flex flex-col overflow-hidden">
+    {{-- CỘT GIỮA — Sơ đồ ghế real-time --}}
+    <div class="flex flex-col overflow-hidden" id="pos-col-seat">
 
         {{-- Header suất chiếu đang chọn --}}
         <div id="seat-header" class="px-5 py-3 bg-white border-b border-gray-200 flex-shrink-0">
@@ -212,6 +247,59 @@
                            transition-all flex items-center justify-center gap-2">
                 <span class="material-symbols-outlined" style="font-size:20px">point_of_sale</span>
                 THANH TOÁN
+            </button>
+
+            {{-- Nút Bán F&B (chỉ hiện trong mode F&B) --}}
+            <button id="btn-checkout-fnb" onclick="_FNB.checkoutFnb()"
+                    disabled
+                    class="hidden w-full py-3.5 font-black text-sm rounded-xl
+                           disabled:opacity-40 disabled:cursor-not-allowed
+                           transition-all flex items-center justify-center gap-2 text-white"
+                    style="background:#f97316">
+                <span class="material-symbols-outlined" style="font-size:20px">fastfood</span>
+                BÁN F&amp;B
+            </button>
+        </div>
+    </div>
+</div>
+
+{{-- ════════════════════════════════════════════════════════════
+     MODAL THÀNH CÔNG BÁN F&B
+════════════════════════════════════════════════════════════ --}}
+<div id="fnb-success-modal"
+     class="hidden fixed inset-0 z-[60] flex items-center justify-center no-print"
+     role="dialog" aria-modal="true">
+    <div class="absolute inset-0 bg-black/60 backdrop-blur-sm" onclick="document.getElementById('fnb-success-modal').classList.add('hidden')"></div>
+    <div class="relative bg-white rounded-2xl shadow-2xl w-full max-w-sm mx-4 overflow-hidden">
+        {{-- Header --}}
+        <div class="px-6 pt-6 pb-4 text-center" style="background:linear-gradient(135deg,#f97316,#ea580c)">
+            <div class="w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-3"
+                 style="background:rgba(255,255,255,0.2)">
+                <span class="material-symbols-outlined text-white" style="font-size:36px; font-variation-settings:'FILL' 1">check_circle</span>
+            </div>
+            <h2 class="text-xl font-black text-white">Bán F&amp;B Thành Công!</h2>
+            <div class="mt-3 inline-flex items-center gap-2 px-4 py-1.5 rounded-full"
+                 style="background:rgba(255,255,255,0.2)">
+                <span class="text-white font-mono font-black tracking-widest text-base" id="fnb-success-code">—</span>
+            </div>
+        </div>
+        {{-- Items --}}
+        <div class="px-5 py-3">
+            <p class="text-xs font-bold uppercase text-gray-500 tracking-wider mb-2">Sản phẩm đã bán:</p>
+            <ul id="fnb-success-items" class="space-y-0.5 max-h-40 overflow-y-auto"></ul>
+            <div class="flex justify-between items-center mt-3 pt-3 border-t border-gray-100">
+                <span class="font-bold text-gray-700">Tổng cộng</span>
+                <span class="font-black text-orange-600 text-xl" id="fnb-success-total"></span>
+            </div>
+        </div>
+        {{-- Actions --}}
+        <div class="px-5 pb-5">
+            <button onclick="document.getElementById('fnb-success-modal').classList.add('hidden')"
+                    class="w-full py-3 font-black text-white rounded-xl transition-all"
+                    style="background:#f97316"
+                    onmouseover="this.style.background='#ea580c'"
+                    onmouseout="this.style.background='#f97316'">
+                Hoàn Tất &amp; Bán Tiếp
             </button>
         </div>
     </div>
@@ -1120,8 +1208,220 @@ const POS = (() => {
         confirmCheckout,
         openSuccessModal,
         handlePrintTicket, handleShowQR, resetPOS,
+        // F&B mode
+        switchMode, changeFnbCombo, changeFnbItem, checkoutFnb,
     };
 })();
+
+
+// ─── F&B MODE FUNCTIONS (outside IIFE, gán vào POS object qua switchMode etc.) ───
+// Đã export trong Public API: switchMode, changeFnbCombo, changeFnbItem, checkoutFnb
+
+const _FNB = (() => {
+    'use strict';
+    const fnbState = { combos:{}, comboInfo:{}, items:{}, itemInfo:{}, loaded:false };
+    const csrf = () => document.querySelector('meta[name="csrf-token"]').content;
+
+    async function apiFetch(url, opts={}) {
+        const r = await fetch(url, { headers:{'Content-Type':'application/json','X-CSRF-TOKEN':csrf(),'Accept':'application/json'}, ...opts });
+        return r.json();
+    }
+    function fmt(n){ return new Intl.NumberFormat('vi-VN').format(n||0)+'đ'; }
+    function toast(msg,type){ POS.init && document.dispatchEvent(new CustomEvent('pos-toast',{detail:{msg,type}})); }
+
+    async function switchMode(mode) {
+        const root      = document.getElementById('pos-root');
+        const tabTicket = document.getElementById('tab-ticket');
+        const tabFnb    = document.getElementById('tab-fnb');
+        const movieList = document.getElementById('movie-list');
+        const fnbPanel  = document.getElementById('fnb-panel');
+        const dateInput = document.getElementById('pos-date');
+        const btnCO     = document.getElementById('btn-checkout');
+        const btnFnb    = document.getElementById('btn-checkout-fnb');
+
+        if (mode === 'fnb') {
+            root.classList.add('fnb-mode');
+            tabTicket.classList.remove('active');
+            tabFnb.classList.add('fnb-active');
+            movieList.classList.add('hidden');
+            fnbPanel.classList.remove('hidden');
+            dateInput.style.display = 'none';
+            if (btnCO)  btnCO.classList.add('hidden');
+            if (btnFnb) btnFnb.classList.remove('hidden');
+            if (!fnbState.loaded) await loadFnbProducts();
+        } else {
+            root.classList.remove('fnb-mode');
+            tabFnb.classList.remove('fnb-active');
+            tabTicket.classList.add('active');
+            movieList.classList.remove('hidden');
+            fnbPanel.classList.add('hidden');
+            dateInput.style.display = '';
+            if (btnCO)  btnCO.classList.remove('hidden');
+            if (btnFnb) btnFnb.classList.add('hidden');
+        }
+    }
+
+    async function loadFnbProducts() {
+        const data    = await apiFetch('/staff/pos/api/combo-items');
+        const groups  = data.data || [];
+
+        // Cache item info
+        groups.forEach(g => g.items.forEach(i => { fnbState.itemInfo[i.id] = i; }));
+
+        // Cache combo info từ DOM data đã render (tránh request thêm)
+        document.querySelectorAll('[data-combo-id]').forEach(el => {
+            const id = el.dataset.comboId;
+            fnbState.comboInfo[id] = { name: el.dataset.comboName, price: Number(el.dataset.comboPrice) };
+        });
+
+        // Render product list
+        const listEl = document.getElementById('fnb-product-list');
+        const loading= document.getElementById('fnb-loading');
+        if (loading) loading.style.display = 'none';
+
+        let html = '';
+
+        // Combos (lấy từ data-combo-id trong DOM - đã render từ Blade)
+        const comboEls = document.querySelectorAll('[data-combo-id]');
+        if (comboEls.length) {
+            html += `<div class="mb-4"><p class="text-[10px] font-bold uppercase tracking-widest text-primary mb-2">🎁 COMBO GÓI</p>`;
+            comboEls.forEach(el => {
+                const id    = el.dataset.comboId;
+                const name  = el.dataset.comboName;
+                const price = el.dataset.comboPrice;
+                html += `<div class="flex items-center gap-2 mb-1.5 px-3 py-2 rounded-xl border border-gray-100 bg-white hover:border-primary/30 transition-colors">
+                    <div class="flex-1 min-w-0">
+                        <p class="text-xs font-bold text-gray-900 truncate">${name}</p>
+                        <p class="text-[10px] font-black text-primary">${fmt(Number(price))}</p>
+                    </div>
+                    <div class="flex items-center gap-1">
+                        <button onclick="_FNB.changeFnbCombo(${id},-1)" class="w-6 h-6 rounded bg-gray-100 hover:bg-gray-200 font-bold text-sm flex items-center justify-center">−</button>
+                        <span id="fnb-combo-qty-${id}" class="w-6 text-center text-xs font-black">0</span>
+                        <button onclick="_FNB.changeFnbCombo(${id},1)" class="w-6 h-6 rounded bg-primary hover:bg-blue-700 text-white font-bold text-sm flex items-center justify-center">+</button>
+                    </div></div>`;
+            });
+            html += '</div>';
+        }
+
+        // Đồ lẻ theo nhóm
+        groups.forEach(g => {
+            if (!g.items.length) return;
+            html += `<div class="mb-3"><p class="text-[10px] font-bold uppercase tracking-widest text-orange-600 mb-2">🍿 ${g.type}</p>`;
+            g.items.forEach(item => {
+                html += `<div class="flex items-center gap-2 mb-1.5 px-3 py-2 rounded-xl border border-gray-100 bg-white hover:border-orange-300 transition-colors">
+                    <div class="flex-1 min-w-0">
+                        <p class="text-xs font-bold text-gray-900 truncate">${item.name}</p>
+                        <p class="text-[10px] font-black text-orange-600">${fmt(item.price)} <span class="text-gray-400 font-normal">/${item.unit}</span></p>
+                    </div>
+                    <div class="flex items-center gap-1">
+                        <button onclick="_FNB.changeFnbItem(${item.id},-1)" class="w-6 h-6 rounded bg-gray-100 hover:bg-gray-200 font-bold text-sm flex items-center justify-center">−</button>
+                        <span id="fnb-item-qty-${item.id}" class="w-6 text-center text-xs font-black">0</span>
+                        <button onclick="_FNB.changeFnbItem(${item.id},1)" class="w-6 h-6 rounded bg-orange-500 hover:bg-orange-600 text-white font-bold text-sm flex items-center justify-center">+</button>
+                    </div></div>`;
+            });
+            html += '</div>';
+        });
+
+        listEl.innerHTML = html || '<p class="text-xs text-gray-400 text-center py-6">Chưa có sản phẩm nào</p>';
+        fnbState.loaded = true;
+    }
+
+    function changeFnbCombo(id, delta) {
+        const qty = Math.max(0, (fnbState.combos[id] ?? 0) + delta);
+        if (qty === 0) delete fnbState.combos[id]; else fnbState.combos[id] = qty;
+        const el = document.getElementById(`fnb-combo-qty-${id}`);
+        if (el) el.textContent = qty;
+        updateFnbCart();
+    }
+
+    function changeFnbItem(id, delta) {
+        const qty = Math.max(0, (fnbState.items[id] ?? 0) + delta);
+        if (qty === 0) delete fnbState.items[id]; else fnbState.items[id] = qty;
+        const el = document.getElementById(`fnb-item-qty-${id}`);
+        if (el) el.textContent = qty;
+        updateFnbCart();
+    }
+
+    function updateFnbCart() {
+        let total = 0, count = 0, html = '';
+
+        Object.entries(fnbState.combos).forEach(([id, qty]) => {
+            const p = fnbState.comboInfo[id];
+            if (!p || qty <= 0) return;
+            const sub = p.price * qty; total += sub; count += qty;
+            html += `<div class="flex justify-between items-center py-1.5 border-b border-gray-50 text-xs">
+                <div><p class="font-semibold text-gray-800 truncate max-w-[140px]">🎁 ${p.name}</p><p class="text-gray-400">${qty}x</p></div>
+                <span class="font-bold text-primary">${fmt(sub)}</span></div>`;
+        });
+        Object.entries(fnbState.items).forEach(([id, qty]) => {
+            const p = fnbState.itemInfo[id];
+            if (!p || qty <= 0) return;
+            const sub = p.price * qty; total += sub; count += qty;
+            html += `<div class="flex justify-between items-center py-1.5 border-b border-gray-50 text-xs">
+                <div><p class="font-semibold text-gray-800 truncate max-w-[140px]">🍿 ${p.name}</p><p class="text-gray-400">${qty}x</p></div>
+                <span class="font-bold text-orange-500">${fmt(sub)}</span></div>`;
+        });
+
+        const seatsEl = document.getElementById('cart-seats');
+        seatsEl.innerHTML = html || '<p class="text-xs text-gray-400 text-center py-4">Chưa chọn sản phẩm nào</p>';
+        document.getElementById('total-seat-count').textContent = count;
+        document.getElementById('total-seat-price').textContent = '—';
+        document.getElementById('total-combo-price').textContent = fmt(total);
+        document.getElementById('grand-total').textContent = fmt(total);
+        const btn = document.getElementById('btn-checkout-fnb');
+        if (btn) btn.disabled = count === 0;
+    }
+
+    async function checkoutFnb() {
+        const hasItems = Object.values(fnbState.combos).some(q=>q>0) || Object.values(fnbState.items).some(q=>q>0);
+        if (!hasItems) { alert('Vui lòng chọn ít nhất một sản phẩm!'); return; }
+
+        const pm     = document.querySelector('[id^="btn-cash"]')?.classList.contains('border-primary') ? 'cash' : 'transfer';
+        const phone  = document.getElementById('customer-phone')?.value.trim();
+        const voucher= document.getElementById('voucher-input')?.value.trim();
+        const btn    = document.getElementById('btn-checkout-fnb');
+
+        btn.disabled = true;
+        btn.innerHTML = '<span class="material-symbols-outlined animate-spin" style="font-size:18px">progress_activity</span> Đang xử lý...';
+
+        try {
+            const res = await apiFetch('/staff/pos/api/checkout-fnb', {
+                method:'POST',
+                body: JSON.stringify({ combos: fnbState.combos, combo_items: fnbState.items, payment_method: pm, customer_phone: phone||null, voucher_code: voucher||null }),
+            });
+            if (!res.success) { alert('Lỗi: ' + res.message); return; }
+
+            // Hiện modal success F&B
+            openFnbSuccessModal(res.booking);
+
+            // Reset
+            fnbState.combos = {}; fnbState.items = {};
+            document.querySelectorAll('[id^="fnb-combo-qty-"],[id^="fnb-item-qty-"]').forEach(el=>el.textContent='0');
+            updateFnbCart();
+        } catch(e) { alert('Lỗi kết nối: ' + e.message); }
+        finally {
+            btn.disabled = false;
+            btn.innerHTML = '<span class="material-symbols-outlined" style="font-size:18px">fastfood</span> BÁN F&B';
+        }
+    }
+
+    function openFnbSuccessModal(booking) {
+        const modal = document.getElementById('fnb-success-modal');
+        if (!modal) return;
+        document.getElementById('fnb-success-code').textContent = booking.booking_code;
+        document.getElementById('fnb-success-total').textContent = fmt(booking.final_total);
+        let rows = '';
+        (booking.combos||[]).forEach(c => rows += `<li class="text-xs py-1 border-b border-gray-100">🎁 ${c.quantity}x ${c.name} — ${fmt(c.subtotal)}</li>`);
+        (booking.combo_items||[]).forEach(i => rows += `<li class="text-xs py-1 border-b border-gray-100">🍿 ${i.quantity}x ${i.name} — ${fmt(i.subtotal)}</li>`);
+        document.getElementById('fnb-success-items').innerHTML = rows;
+        modal.classList.remove('hidden');
+    }
+
+    return { switchMode, changeFnbCombo, changeFnbItem, checkoutFnb, openFnbSuccessModal };
+})();
+
+// Bridge: expose F&B methods qua POS object (đã export trong IIFE)
+// switchMode etc. đã được gọi trực tiếp qua _FNB.xxx trong HTML
 
 document.addEventListener('DOMContentLoaded', POS.init);
 </script>

@@ -30,6 +30,7 @@ class Booking extends Model
         'payment_status',
         'booking_status',
         'channel',
+        'booking_type',
         'expired_at',
     ];
 
@@ -45,6 +46,7 @@ class Booking extends Model
         'payment_status'  => 'string',
         'booking_status'  => 'string',
         'channel'         => 'string',
+        'booking_type'    => 'string',
         'expired_at'      => 'datetime',
     ];
 
@@ -78,6 +80,24 @@ class Booking extends Model
     public function scopeConfirmed(\Illuminate\Database\Eloquent\Builder $query): \Illuminate\Database\Eloquent\Builder
     {
         return $query->where('booking_status', 'confirmed');
+    }
+
+    /**
+     * Lọc đơn combo-only (không có vé xem phim).
+     * Dùng: Booking::comboOnly()->get()
+     */
+    public function scopeComboOnly(\Illuminate\Database\Eloquent\Builder $query): \Illuminate\Database\Eloquent\Builder
+    {
+        return $query->where('booking_type', 'combo_only');
+    }
+
+    /**
+     * Lọc đơn đặt vé thông thường.
+     * Dùng: Booking::ticketOnly()->get()
+     */
+    public function scopeTicketOnly(\Illuminate\Database\Eloquent\Builder $query): \Illuminate\Database\Eloquent\Builder
+    {
+        return $query->where('booking_type', 'ticket');
     }
 
     /**
@@ -132,5 +152,13 @@ class Booking extends Model
     public function payments(): HasMany
     {
         return $this->hasMany(Payment::class, 'booking_id');
+    }
+
+    /**
+     * Danh sách đồ ăn/uống lẻ từng món trong đơn (dành cho đơn combo_only tại POS).
+     */
+    public function comboItems(): HasMany
+    {
+        return $this->hasMany(BookingComboItem::class, 'booking_id');
     }
 }
