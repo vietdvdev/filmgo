@@ -22,7 +22,8 @@ class MovieController extends Controller
 
     public function showing(Request $request)
     {
-        $query = Movie::where('status', 'showing');
+        // Eager load 'genres' để tránh N+1 query khi view render badge thể loại
+        $query = Movie::with('genres')->where('status', 'showing');
 
         if ($request->filled('genre_id')) {
             $query->whereHas('genres', function ($q) use ($request) {
@@ -36,7 +37,13 @@ class MovieController extends Controller
 
         $movies = $query->latest()->paginate(20)->withQueryString();
         $genres = Genre::orderBy('name')->get();
-        $ageLimits = Movie::where('status', 'showing')->distinct()->pluck('age_limit')->toArray();
+
+        // Chỉ lấy cột cần thiết, distinct giúp tránh scan toàn bảng
+        $ageLimits = Movie::where('status', 'showing')
+            ->distinct()
+            ->orderBy('age_limit')
+            ->pluck('age_limit')
+            ->toArray();
 
         return view(
             'customer.movies.showing',
@@ -46,7 +53,8 @@ class MovieController extends Controller
 
     public function upcoming(Request $request)
     {
-        $query = Movie::where('status', 'upcoming');
+        // Eager load 'genres' để tránh N+1 query khi view render badge thể loại
+        $query = Movie::with('genres')->where('status', 'upcoming');
 
         if ($request->filled('genre_id')) {
             $query->whereHas('genres', function ($q) use ($request) {
@@ -60,7 +68,13 @@ class MovieController extends Controller
 
         $movies = $query->orderBy('release_date')->paginate(20)->withQueryString();
         $genres = Genre::orderBy('name')->get();
-        $ageLimits = Movie::where('status', 'upcoming')->distinct()->pluck('age_limit')->toArray();
+
+        // Chỉ lấy cột cần thiết, distinct giúp tránh scan toàn bảng
+        $ageLimits = Movie::where('status', 'upcoming')
+            ->distinct()
+            ->orderBy('age_limit')
+            ->pluck('age_limit')
+            ->toArray();
 
         return view(
             'customer.movies.upcoming',
@@ -72,6 +86,7 @@ class MovieController extends Controller
     {
         $keyword = trim($request->keyword);
 
+        // Eager load 'actors' là cần thiết vì search cũng lọc theo tên diễn viên
         $movies = Movie::with('actors')
             ->where(function ($query) use ($keyword) {
                 $query->where('title', 'like', "%{$keyword}%")
@@ -90,6 +105,7 @@ class MovieController extends Controller
 
     public function show($id, Request $request)
     {
+        // Eager load đầy đủ relations cần thiết cho trang chi tiết phim
         $movie = Movie::with(['genres', 'actors', 'reviews.user'])->findOrFail($id);
 
         $selectedDate = $request->input('date', today()->toDateString());
@@ -100,8 +116,8 @@ class MovieController extends Controller
             return $showtime->show_date ? $showtime->show_date->format('Y-m-d') : '';
         })->map(function ($dateShowtimes) {
             return $dateShowtimes->groupBy(function ($showtime) {
-                return $showtime->room && $showtime->room->cinema 
-                    ? $showtime->room->cinema->name 
+                return $showtime->room && $showtime->room->cinema
+                    ? $showtime->room->cinema->name
                     : 'Rạp chiếu';
             });
         });

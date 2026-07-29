@@ -4,17 +4,20 @@ namespace App\Http\Controllers\Admin;
 
 use Illuminate\Routing\Controller as BaseController;
 use Illuminate\Http\Request;
-use App\Models\Booking;
-use App\Models\BookingDetail;
-use App\Models\Showtime;
-use App\Models\ShowtimeSeat;
 use App\Models\Movie;
-use Illuminate\Support\Facades\DB;
+use App\Models\Showtime;
+use App\Services\DashboardService;
 use Illuminate\Support\Facades\Cache;
 use Carbon\Carbon;
 
 class DashboardController extends BaseController
 {
+    /**
+     * Inject DashboardService để xử lý toàn bộ logic nghiệp vụ tại tầng Service.
+     * Controller chỉ đảm nhận việc nhận request, gọi service, trả về response.
+     */
+    public function __construct(protected DashboardService $dashboardService) {}
+
     /**
      * Trả về view của dashboard admin (truyền thống)
      */
@@ -25,154 +28,35 @@ class DashboardController extends BaseController
 
     /**
      * 1. API Thống kê KPI (Endpoint: /kpis)
-     * Nhận tham số start_date và end_date để lọc động. 
+     * Nhận tham số start_date và end_date để lọc động.
      * Tự động tính toán khoảng thời gian so sánh (quá khứ) có cùng độ dài để tính % tăng trưởng.
      * Sử dụng cache động theo khoảng thời gian.
      */
     public function kpis(Request $request)
     {
         $startDateInput = $request->query('start_date');
-        $endDateInput = $request->query('end_date');
+        $endDateInput   = $request->query('end_date');
 
         if ($startDateInput && $endDateInput) {
             $startDate = Carbon::parse($startDateInput)->startOfDay();
-            $endDate = Carbon::parse($endDateInput)->endOfDay();
+            $endDate   = Carbon::parse($endDateInput)->endOfDay();
         } else {
             // Mặc định là ngày hôm nay
             $startDate = today()->startOfDay();
-            $endDate = today()->endOfDay();
+            $endDate   = today()->endOfDay();
         }
 
         // Độ dài khoảng thời gian hiện tại để lùi lại khoảng thời gian so sánh tương đương
-        $diffInDays = $startDate->diffInDays($endDate) + 1;
+        $diffInDays    = $startDate->diffInDays($endDate) + 1;
         $prevStartDate = $startDate->copy()->subDays($diffInDays)->startOfDay();
-        $prevEndDate = $startDate->copy()->subDay()->endOfDay();
+        $prevEndDate   = $startDate->copy()->subDay()->endOfDay();
 
+        // Cache key động theo khoảng thời gian — TTL 5 phút
         $cacheKey = 'admin_dashboard_kpis_' . $startDate->format('Y-m-d') . '_' . $endDate->format('Y-m-d');
 
         $data = Cache::remember($cacheKey, 300, function () use ($startDate, $endDate, $prevStartDate, $prevEndDate) {
-            // --- 1.1 Tổng doanh thu ---
-            // Doanh thu vé kỳ này
-            $todayTicketRevenue = (int) BookingDetail::whereHas('booking', function ($q) use ($startDate, $endDate) {
-                $q->where('payment_status', 'paid')->whereBetween('created_at', [$startDate, $endDate]);
-            })->sum('price');
-
-            // Doanh thu combo kỳ này
-            $todayComboRevenue = (int) DB::table('booking_combos')
-                ->join('bookings', 'booking_combos.booking_id', '=', 'bookings.id')
-                ->where('bookings.payment_status', 'paid')
-                ->whereBetween('bookings.created_at', [$startDate, $endDate])
-                ->sum('booking_combos.subtotal');
-
-            $todayTotalRevenue = $todayTicketRevenue + $todayComboRevenue;
-
-            // Doanh thu vé kỳ trước
-            $yesterdayTicketRevenue = (int) BookingDetail::whereHas('booking', function ($q) use ($prevStartDate, $prevEndDate) {
-                $q->where('payment_status', 'paid')->whereBetween('created_at', [$prevStartDate, $prevEndDate]);
-            })->sum('price');
-
-            // Doanh thu combo kỳ trước
-            $yesterdayComboRevenue = (int) DB::table('booking_combos')
-                ->join('bookings', 'booking_combos.booking_id', '=', 'bookings.id')
-                ->where('bookings.payment_status', 'paid')
-                ->whereBetween('bookings.created_at', [$prevStartDate, $prevEndDate])
-                ->sum('booking_combos.subtotal');
-
-            $yesterdayTotalRevenue = $yesterdayTicketRevenue + $yesterdayComboRevenue;
-
-            // Tính % tăng trưởng doanh thu
-            $revenueGrowth = $this->calculateGrowth($todayTotalRevenue, $yesterdayTotalRevenue);
-            $ticketRevenueGrowth = $this->calculateGrowth($todayTicketRevenue, $yesterdayTicketRevenue);
-            $comboRevenueGrowth = $this->calculateGrowth($todayComboRevenue, $yesterdayComboRevenue);
-
-            // --- 1.2 Tổng số vé đã bán (status = booked trong booking_details của đơn đã paid) ---
-            $todayTicketsCount = BookingDetail::whereHas('booking', function ($q) use ($startDate, $endDate) {
-                $q->where('payment_status', 'paid')->whereBetween('created_at', [$startDate, $endDate]);
-            })->count();
-
-            $yesterdayTicketsCount = BookingDetail::whereHas('booking', function ($q) use ($prevStartDate, $prevEndDate) {
-                $q->where('payment_status', 'paid')->whereBetween('created_at', [$prevStartDate, $prevEndDate]);
-            })->count();
-
-            $ticketsGrowth = $this->calculateGrowth($todayTicketsCount, $yesterdayTicketsCount);
-
-            // --- 1.3 Tỷ lệ lấp đầy rạp (% ghế đã bán / tổng ghế các suất chiếu trong kỳ) ---
-            // Kỳ này
-            $todayShowtimeSeats = ShowtimeSeat::whereHas('showtime', function ($q) use ($startDate, $endDate) {
-                $q->whereBetween('show_date', [$startDate->format('Y-m-d'), $endDate->format('Y-m-d')]);
-            });
-            $todayTotalSeats = (clone $todayShowtimeSeats)->count();
-            $todayBookedSeats = (clone $todayShowtimeSeats)->where('status', 'booked')->count();
-            $todayOccupancyRate = $todayTotalSeats > 0 ? round(($todayBookedSeats / $todayTotalSeats) * 100, 2) : 0;
-
-            // Kỳ trước
-            $yesterdayShowtimeSeats = ShowtimeSeat::whereHas('showtime', function ($q) use ($prevStartDate, $prevEndDate) {
-                $q->whereBetween('show_date', [$prevStartDate->format('Y-m-d'), $prevEndDate->format('Y-m-d')]);
-            });
-            $yesterdayTotalSeats = (clone $yesterdayShowtimeSeats)->count();
-            $yesterdayBookedSeats = (clone $yesterdayShowtimeSeats)->where('status', 'booked')->count();
-            $yesterdayOccupancyRate = $yesterdayTotalSeats > 0 ? round(($yesterdayBookedSeats / $yesterdayTotalSeats) * 100, 2) : 0;
-
-            // Tăng trưởng tỷ lệ lấp đầy (đơn vị: điểm phần trăm)
-            $occupancyRateGrowth = round($todayOccupancyRate - $yesterdayOccupancyRate, 2);
-
-            // --- 1.4 Tỷ lệ thanh toán: % Online (momo, vnpay) vs % Tại quầy (pos/counter) ---
-            $todayBookings = Booking::where('payment_status', 'paid')
-                ->whereBetween('created_at', [$startDate, $endDate])
-                ->get();
-
-            $onlineRevenue = 0;
-            $counterRevenue = 0;
-
-            foreach ($todayBookings as $b) {
-                if ($b->channel === 'counter') {
-                    $counterRevenue += $b->final_total;
-                } else {
-                    $onlineRevenue += $b->final_total;
-                }
-            }
-
-            $totalPaymentRevenue = $onlineRevenue + $counterRevenue;
-            $onlinePercentage = $totalPaymentRevenue > 0 ? round(($onlineRevenue / $totalPaymentRevenue) * 100, 2) : 0;
-            $counterPercentage = $totalPaymentRevenue > 0 ? round(($counterRevenue / $totalPaymentRevenue) * 100, 2) : 0;
-
-            return [
-                'revenue' => [
-                    'today' => [
-                        'total' => $todayTotalRevenue,
-                        'ticket' => $todayTicketRevenue,
-                        'combo' => $todayComboRevenue,
-                    ],
-                    'yesterday' => [
-                        'total' => $yesterdayTotalRevenue,
-                        'ticket' => $yesterdayTicketRevenue,
-                        'combo' => $yesterdayComboRevenue,
-                    ],
-                    'growth' => [
-                        'total_pct' => $revenueGrowth,
-                        'ticket_pct' => $ticketRevenueGrowth,
-                        'combo_pct' => $comboRevenueGrowth,
-                    ]
-                ],
-                'tickets' => [
-                    'today' => $todayTicketsCount,
-                    'yesterday' => $yesterdayTicketsCount,
-                    'growth_pct' => $ticketsGrowth,
-                ],
-                'occupancy' => [
-                    'today_rate' => $todayOccupancyRate,
-                    'yesterday_rate' => $yesterdayOccupancyRate,
-                    'growth_points' => $occupancyRateGrowth,
-                    'today_booked_seats' => $todayBookedSeats,
-                    'today_total_seats' => $todayTotalSeats,
-                ],
-                'payment_methods' => [
-                    'online_pct' => $onlinePercentage,
-                    'counter_pct' => $counterPercentage,
-                    'online_revenue' => $onlineRevenue,
-                    'counter_revenue' => $counterRevenue,
-                ]
-            ];
+            // Ủy quyền toàn bộ logic tính toán cho DashboardService
+            return $this->dashboardService->getKpiData($startDate, $endDate, $prevStartDate, $prevEndDate);
         });
 
         return response()->json($data);
@@ -182,62 +66,37 @@ class DashboardController extends BaseController
      * 2.1 API Biểu đồ Doanh thu (charts/revenue)
      * Trả về doanh thu vé và combo nhóm theo từng ngày từ start_date đến end_date.
      * Mặc định là 7 ngày qua.
+     *
+     * Tối ưu: Dùng SQL GROUP BY DATE aggregate thay vì load tất cả booking vào memory.
      */
     public function chartsRevenue(Request $request)
     {
         $startDateInput = $request->query('start_date');
-        $endDateInput = $request->query('end_date');
+        $endDateInput   = $request->query('end_date');
 
         if ($startDateInput && $endDateInput) {
             $startDate = Carbon::parse($startDateInput)->startOfDay();
-            $endDate = Carbon::parse($endDateInput)->endOfDay();
+            $endDate   = Carbon::parse($endDateInput)->endOfDay();
         } else {
             // Mặc định là 7 ngày gần đây
             $startDate = now()->subDays(6)->startOfDay();
-            $endDate = now()->endOfDay();
+            $endDate   = now()->endOfDay();
         }
 
-        // Query gom các booking thành công của kỳ, eager load để chống N+1 query
-        $bookings = Booking::with(['bookingDetails', 'combos'])
-            ->where('payment_status', 'paid')
-            ->whereBetween('created_at', [$startDate, $endDate])
-            ->get()
-            ->groupBy(function ($booking) {
-                return $booking->created_at->format('Y-m-d');
-            });
+        // Cache theo khoảng ngày — TTL 5 phút
+        $cacheKey = 'admin_charts_revenue_' . $startDate->format('Y-m-d') . '_' . $endDate->format('Y-m-d');
 
-        $labels = [];
-        $ticketData = [];
-        $comboData = [];
+        $data = Cache::remember($cacheKey, 300, function () use ($startDate, $endDate) {
+            $result = $this->dashboardService->getRevenueChartData($startDate, $endDate);
 
-        $current = $startDate->copy();
-        while ($current->lte($endDate)) {
-            $dateStr = $current->format('Y-m-d');
-            $labels[] = $current->format('d/m');
+            return [
+                'labels'         => $result['labels'],
+                'ticket_revenue' => $result['ticketData'],
+                'combo_revenue'  => $result['comboData'],
+            ];
+        });
 
-            $dayBookings = $bookings->get($dateStr) ?? collect();
-
-            $ticketRevenue = 0;
-            $comboRevenue = 0;
-
-            foreach ($dayBookings as $b) {
-                $ticketRevenue += $b->bookingDetails->sum('price');
-                $comboRevenue += $b->combos->sum(function ($c) {
-                    return $c->pivot->subtotal;
-                });
-            }
-
-            $ticketData[] = $ticketRevenue;
-            $comboData[] = $comboRevenue;
-
-            $current->addDay();
-        }
-
-        return response()->json([
-            'labels' => $labels,
-            'ticket_revenue' => $ticketData,
-            'combo_revenue' => $comboData,
-        ]);
+        return response()->json($data);
     }
 
     /**
@@ -248,50 +107,60 @@ class DashboardController extends BaseController
     public function chartsTopMovies(Request $request)
     {
         $startDateInput = $request->query('start_date');
-        $endDateInput = $request->query('end_date');
+        $endDateInput   = $request->query('end_date');
 
         if ($startDateInput && $endDateInput) {
             $startDate = Carbon::parse($startDateInput)->startOfDay();
-            $endDate = Carbon::parse($endDateInput)->endOfDay();
+            $endDate   = Carbon::parse($endDateInput)->endOfDay();
         } else {
             // Mặc định là 30 ngày gần đây
             $startDate = now()->subDays(29)->startOfDay();
-            $endDate = now()->endOfDay();
+            $endDate   = now()->endOfDay();
         }
 
-        // Tổng số vé của tất cả các phim trong kỳ
-        $totalTicketsCount = BookingDetail::whereHas('booking', function ($q) use ($startDate, $endDate) {
-            $q->where('payment_status', 'paid')
-              ->whereBetween('created_at', [$startDate, $endDate]);
-        })->count();
+        // Cache theo khoảng ngày — TTL 5 phút
+        $cacheKey = 'admin_charts_top_movies_' . $startDate->format('Y-m-d') . '_' . $endDate->format('Y-m-d');
 
-        // Top 5 phim bán chạy nhất trong kỳ
-        $topMovies = Movie::join('showtimes', 'movies.id', '=', 'showtimes.movie_id')
-            ->join('bookings', 'showtimes.id', '=', 'bookings.showtime_id')
-            ->join('booking_details', 'bookings.id', '=', 'booking_details.booking_id')
-            ->where('bookings.payment_status', 'paid')
-            ->whereBetween('bookings.created_at', [$startDate, $endDate])
-            ->select('movies.id', 'movies.title', DB::raw('COUNT(booking_details.id) as tickets_count'))
-            ->groupBy('movies.id', 'movies.title')
-            ->orderByDesc('tickets_count')
-            ->limit(5)
-            ->get();
+        $data = Cache::remember($cacheKey, 300, function () use ($startDate, $endDate) {
+            // Tổng số vé của tất cả các phim trong kỳ — dùng JOIN thay vì whereHas
+            $totalTicketsCount = \Illuminate\Support\Facades\DB::table('booking_details')
+                ->join('bookings', 'booking_details.booking_id', '=', 'bookings.id')
+                ->where('bookings.payment_status', 'paid')
+                ->whereBetween('bookings.created_at', [$startDate, $endDate])
+                ->count();
 
-        $result = $topMovies->map(function ($movie) use ($totalTicketsCount) {
-            $percentage = $totalTicketsCount > 0 ? round(($movie->tickets_count / $totalTicketsCount) * 100, 2) : 0;
+            // Top 5 phim bán chạy nhất trong kỳ
+            $topMovies = Movie::join('showtimes', 'movies.id', '=', 'showtimes.movie_id')
+                ->join('bookings', 'showtimes.id', '=', 'bookings.showtime_id')
+                ->join('booking_details', 'bookings.id', '=', 'booking_details.booking_id')
+                ->where('bookings.payment_status', 'paid')
+                ->whereBetween('bookings.created_at', [$startDate, $endDate])
+                ->select('movies.id', 'movies.title', \Illuminate\Support\Facades\DB::raw('COUNT(booking_details.id) as tickets_count'))
+                ->groupBy('movies.id', 'movies.title')
+                ->orderByDesc('tickets_count')
+                ->limit(5)
+                ->get();
+
+            $result = $topMovies->map(function ($movie) use ($totalTicketsCount) {
+                $percentage = $totalTicketsCount > 0
+                    ? round(($movie->tickets_count / $totalTicketsCount) * 100, 2)
+                    : 0;
+
+                return [
+                    'title'         => $movie->title,
+                    'tickets_count' => (int) $movie->tickets_count,
+                    'percentage'    => $percentage,
+                ];
+            });
+
             return [
-                'title' => $movie->title,
-                'tickets_count' => (int) $movie->tickets_count,
-                'percentage' => $percentage,
+                'total_tickets_in_period' => $totalTicketsCount,
+                'top_movies'              => $result,
             ];
         });
 
-        return response()->json([
-            'total_tickets_in_period' => $totalTicketsCount,
-            'top_movies' => $result
-        ]);
+        return response()->json($data);
     }
-
 
     /**
      * 3.2 API Vận hành Real-time Suất chiếu hôm nay (ops/today-showtimes)
@@ -300,7 +169,7 @@ class DashboardController extends BaseController
      */
     public function opsTodayShowtimes(Request $request)
     {
-        $today = today()->format('Y-m-d');
+        $today   = today()->format('Y-m-d');
         $nowTime = now()->format('H:i:s');
 
         $showtimes = Showtime::with(['movie', 'room'])
@@ -318,31 +187,19 @@ class DashboardController extends BaseController
 
         $result = $showtimes->map(function ($showtime) {
             return [
-                'id' => $showtime->id,
-                'movie_title' => $showtime->movie->title,
-                'room_name' => $showtime->room->room_name,
-                'start_time' => Carbon::parse($showtime->start_time)->format('H:i'),
-                'end_time' => $showtime->end_time ? Carbon::parse($showtime->end_time)->format('H:i') : null,
-                'booked_seats' => $showtime->booked_seats,
-                'total_seats' => $showtime->total_seats,
-                'occupancy_percentage' => $showtime->total_seats > 0 
-                    ? round(($showtime->booked_seats / $showtime->total_seats) * 100, 2) 
+                'id'                   => $showtime->id,
+                'movie_title'          => $showtime->movie->title,
+                'room_name'            => $showtime->room->room_name,
+                'start_time'           => Carbon::parse($showtime->start_time)->format('H:i'),
+                'end_time'             => $showtime->end_time ? Carbon::parse($showtime->end_time)->format('H:i') : null,
+                'booked_seats'         => $showtime->booked_seats,
+                'total_seats'          => $showtime->total_seats,
+                'occupancy_percentage' => $showtime->total_seats > 0
+                    ? round(($showtime->booked_seats / $showtime->total_seats) * 100, 2)
                     : 0,
             ];
         });
 
         return response()->json($result);
     }
-
-    /**
-     * Helper tính tỷ lệ tăng trưởng
-     */
-    private function calculateGrowth($today, $yesterday)
-    {
-        if ($yesterday == 0) {
-            return $today > 0 ? 100 : 0;
-        }
-        return round((($today - $yesterday) / $yesterday) * 100, 2);
-    }
 }
-

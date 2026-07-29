@@ -5,11 +5,15 @@ namespace App\Services;
 use App\Models\Showtime;
 use Carbon\Carbon;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
 
 class ShowtimeService
 {
     /**
      * Lấy và xử lý danh sách suất chiếu của một bộ phim theo thời gian thực cho Khách hàng.
+     *
+     * Tối ưu: Thay vì gọi $showtime->saveQuietly() trong vòng lặp transform (N+1 UPDATE query),
+     * chúng ta thu thập các ID cần update vào mảng, sau đó thực hiện bulk update một lần duy nhất.
      *
      * @param int $movieId
      * @return Collection
@@ -19,30 +23,37 @@ class ShowtimeService
         $now = now();
         $todayStr = today()->toDateString();
 
-        // Lấy tất cả các suất chiếu từ hôm nay trở đi ngoại trừ suất đã bị hủy (cancelled)
+        /**
+         * Lấy suất chiếu kèm room.cinema để phục vụ groupBy rạp ở controller.
+         * Không load 'movie' vì movie đã được load ở controller và không cần duration ở đây.
+         */
         $showtimes = Showtime::where('movie_id', $movieId)
             ->whereDate('show_date', '>=', $todayStr)
             ->where('status', '!=', 'cancelled')
-            ->with(['movie', 'room', 'room.cinema'])
+            ->with(['room', 'room.cinema'])
             ->orderBy('start_time')
             ->get();
 
+        // Mảng collect các ID cần cập nhật theo status mới — để bulk update sau
+        $toUpdateFinished = [];
+        $toUpdateShowing  = [];
+
         // Xử lý cập nhật status và gắn thuộc tính hiển thị theo thời gian thực
-        $showtimes->transform(function ($showtime) use ($now) {
+        $showtimes->transform(function ($showtime) use ($now, &$toUpdateFinished, &$toUpdateShowing) {
             $showDateStr = $showtime->show_date ? $showtime->show_date->format('Y-m-d') : today()->toDateString();
             $startDateTime = Carbon::parse($showDateStr . ' ' . $showtime->start_time);
-            
+
             if ($showtime->end_time) {
                 $endDateTime = Carbon::parse($showDateStr . ' ' . $showtime->end_time);
             } else {
-                $duration = $showtime->movie ? ($showtime->movie->duration ?? 120) : 120;
-                $endDateTime = $startDateTime->copy()->addMinutes($duration);
+                // Fallback: dùng duration mặc định nếu không có end_time (dữ liệu cũ)
+                $endDateTime = $startDateTime->copy()->addMinutes(120);
             }
 
             $oldStatus = $showtime->status;
 
             if ($now->gte($endDateTime)) {
-                $realTimeStatus = 'finished'; // Đã chiếu
+                $realTimeStatus = 'finished'; // Đã chiếu xong
             } elseif ($now->gte($startDateTime)) {
                 $realTimeStatus = 'showing';  // Đang chiếu
             } elseif ($showtime->status === 'upcoming' && $showtime->publish_at && $showtime->publish_at->gt($now)) {
@@ -51,16 +62,26 @@ class ShowtimeService
                 $realTimeStatus = 'active';   // Mở bán / Đặt vé
             }
 
-            // Tự động cập nhật DB nếu trạng thái thay đổi sang showing hoặc finished
+            /**
+             * TRÁNH N+1 UPDATE: Thay vì saveQuietly() mỗi vòng lặp,
+             * chỉ thu thập ID vào mảng. Bulk UPDATE sẽ được thực hiện sau vòng lặp.
+             */
             if (in_array($realTimeStatus, ['finished', 'showing']) && $oldStatus !== $realTimeStatus && $oldStatus !== 'cancelled') {
+                // Cập nhật thuộc tính model ngay để hiển thị đúng
                 $showtime->status = $realTimeStatus;
-                $showtime->saveQuietly();
+
+                // Thu thập ID để bulk update
+                if ($realTimeStatus === 'finished') {
+                    $toUpdateFinished[] = $showtime->id;
+                } else {
+                    $toUpdateShowing[] = $showtime->id;
+                }
             }
 
             // Gắn các thông tin phụ trợ phục vụ hiển thị ở frontend customer
             $showtime->real_time_status = $realTimeStatus;
             $showtime->is_bookable = ($realTimeStatus === 'active');
-            
+
             switch ($realTimeStatus) {
                 case 'finished':
                     $showtime->status_label = 'Đã chiếu';
@@ -83,6 +104,17 @@ class ShowtimeService
             return $showtime;
         });
 
+        /**
+         * BULK UPDATE: Thực hiện tối đa 2 câu UPDATE thay vì N câu saveQuietly().
+         * Dùng whereIn() để cập nhật hàng loạt ID trong một lần truy vấn duy nhất.
+         */
+        if (!empty($toUpdateFinished)) {
+            Showtime::whereIn('id', $toUpdateFinished)->update(['status' => 'finished']);
+        }
+        if (!empty($toUpdateShowing)) {
+            Showtime::whereIn('id', $toUpdateShowing)->update(['status' => 'showing']);
+        }
+
         return $showtimes;
     }
 
@@ -97,7 +129,7 @@ class ShowtimeService
         $now = now();
         $showDateStr = $showtime->show_date ? $showtime->show_date->format('Y-m-d') : today()->toDateString();
         $startDateTime = Carbon::parse($showDateStr . ' ' . $showtime->start_time);
-        
+
         if ($showtime->end_time) {
             $endDateTime = Carbon::parse($showDateStr . ' ' . $showtime->end_time);
         } else {

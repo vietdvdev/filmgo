@@ -11,12 +11,16 @@ class BookingAdminService
 {
     public function getList(array $filters): LengthAwarePaginator
     {
+        /**
+         * Eager load chỉ những quan hệ cần thiết ở danh sách (index view).
+         * Loại bỏ 'bookingDetails.showtimeSeat.seat' — chỉ cần ở trang chi tiết.
+         * Dùng select cột tường minh để tránh load toàn bộ cột vào memory.
+         */
         $query = Booking::with([
-            'user',
-            'showtime.movie',
-            'showtime.room.cinema',
-            'bookingDetails.showtimeSeat.seat',
-            'payments',
+            'user:id,full_name,email,phone',
+            'showtime.movie:id,title',
+            'showtime.room.cinema:id,name',
+            'payments:id,booking_id,payment_method,payment_status,amount',
         ]);
 
         if (!empty($filters['search'])) {

@@ -15,6 +15,7 @@ use App\Models\ShowtimeSeat;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Log;
@@ -24,22 +25,32 @@ class ManagerShowtimeController extends Controller
     /**
      * Lấy danh sách ID các rạp mà user hiện tại được phân công.
      * Admin fallback về tất cả rạp.
+     *
+     * Tối ưu: Cache kết quả trong 10 phút — danh sách rạp phân công ít thay đổi.
+     * Cache key gắn với user_id để đảm bảo mỗi user có cache riêng biệt.
      */
     private function getCinemaIds(): array
     {
-        $user = Auth::user();
+        $user   = Auth::user();
+        $userId = $user->id;
 
-        if ($user->roles()->where('name', 'admin')->exists()) {
-            return Cinema::pluck('id')->toArray();
-        }
+        // Cache key theo user_id để tránh lấn lộn giữa các user
+        $cacheKey = "manager_cinema_ids_{$userId}";
 
-        $ids = $user->cinemas()->pluck('cinemas.id')->toArray();
+        return Cache::remember($cacheKey, 600, function () use ($user) {
+            // Kiểm tra role admin một lần duy nhất trong callback, kết quả được cache 10 phút
+            if ($user->roles()->where('name', 'admin')->exists()) {
+                return Cinema::pluck('id')->toArray();
+            }
 
-        if (empty($ids)) {
-            abort(403, 'Tài khoản của bạn chưa được phân công quản lý rạp nào. Vui lòng liên hệ Admin.');
-        }
+            $ids = $user->cinemas()->pluck('cinemas.id')->toArray();
 
-        return $ids;
+            if (empty($ids)) {
+                abort(403, 'Tài khoản của bạn chưa được phân công quản lý rạp nào. Vui lòng liên hệ Admin.');
+            }
+
+            return $ids;
+        });
     }
 
     public function index(Request $request)

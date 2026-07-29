@@ -55,9 +55,43 @@ class ShowtimeSeat extends Model
         'expires_at'  => 'datetime',
     ];
 
+    // ────────────────────────────────────────────────────────────────
+    // Query Scopes — tái sử dụng điều kiện filter thường gặp
+    // ────────────────────────────────────────────────────────────────
+
     /**
-     * Relationships
+     * Lọc các ghế đã hết thời gian giữ (holding/locked quá expires_at).
+     * Dùng: ShowtimeSeat::expired()->get()
+     * Hỗ trợ câu lệnh giải phóng ghế hết hạn trong Scheduler.
      */
+    public function scopeExpired(\Illuminate\Database\Eloquent\Builder $query): \Illuminate\Database\Eloquent\Builder
+    {
+        return $query
+            ->whereIn('status', ['holding', 'locked'])
+            ->where('expires_at', '<', now());
+    }
+
+    /**
+     * Lọc các ghế đang trống (có thể chọn được).
+     * Dùng: ShowtimeSeat::available()->get()
+     */
+    public function scopeAvailable(\Illuminate\Database\Eloquent\Builder $query): \Illuminate\Database\Eloquent\Builder
+    {
+        return $query->where('status', 'available');
+    }
+
+    /**
+     * Lọc các ghế đã được đặt xong (thanh toán thành công).
+     * Dùng: ShowtimeSeat::booked()->get()
+     */
+    public function scopeBooked(\Illuminate\Database\Eloquent\Builder $query): \Illuminate\Database\Eloquent\Builder
+    {
+        return $query->where('status', 'booked');
+    }
+
+    // ────────────────────────────────────────────────────────────────
+    // Relationships
+    // ────────────────────────────────────────────────────────────────
 
     public function showtime(): BelongsTo
     {

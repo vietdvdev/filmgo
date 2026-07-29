@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Builder;
 
 class Showtime extends Model
 {
@@ -46,9 +47,60 @@ class Showtime extends Model
         'publish_at'       => 'datetime',
     ];
 
+    // ────────────────────────────────────────────────────────────────
+    // Query Scopes — tái sử dụng điều kiện filter thường gặp
+    // ────────────────────────────────────────────────────────────────
+
     /**
-     * Relationships
+     * Lọc các suất chiếu đang mở bán (trạng thái = 'active').
+     * Dùng: Showtime::active()->get()
      */
+    public function scopeActive(Builder $query): Builder
+    {
+        return $query->where('status', 'active');
+    }
+
+    /**
+     * Lọc các suất chiếu sắp mở bán (trạng thái = 'upcoming').
+     * Dùng: Showtime::upcoming()->get()
+     */
+    public function scopeUpcoming(Builder $query): Builder
+    {
+        return $query->where('status', 'upcoming');
+    }
+
+    /**
+     * Lọc suất chiếu không bị hủy.
+     * Dùng: Showtime::notCancelled()->get()
+     */
+    public function scopeNotCancelled(Builder $query): Builder
+    {
+        return $query->where('status', '!=', 'cancelled');
+    }
+
+    /**
+     * Lọc suất chiếu theo ngày chiếu cụ thể.
+     * Dùng: Showtime::forDate('2026-07-27')->get()
+     *
+     * @param  string  $date  Định dạng Y-m-d
+     */
+    public function scopeForDate(Builder $query, string $date): Builder
+    {
+        return $query->whereDate('show_date', $date);
+    }
+
+    /**
+     * Lọc suất chiếu từ hôm nay trở đi.
+     * Dùng: Showtime::fromToday()->get()
+     */
+    public function scopeFromToday(Builder $query): Builder
+    {
+        return $query->whereDate('show_date', '>=', today()->toDateString());
+    }
+
+    // ────────────────────────────────────────────────────────────────
+    // Relationships
+    // ────────────────────────────────────────────────────────────────
 
     public function movie(): BelongsTo
     {

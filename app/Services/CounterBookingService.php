@@ -149,8 +149,12 @@ class CounterBookingService
                     && ($promotion->start_date === null || $now->gte($promotion->start_date))
                     && ($promotion->end_date   === null || $now->lte($promotion->end_date));
 
-                if ($isValid && $promotion->quantity !== null) {
-                    if ($promotion->bookings()->count() >= $promotion->quantity) {
+                /**
+                 * Dùng cột used_count (đã có sẵn) thay vì gọi bookings()->count().
+                 * Tránh thêm 1 COUNT query mỗi lần check voucher — đặc biệt quan trọng ở POS.
+                 */
+                if ($isValid && $promotion->usage_limit !== null) {
+                    if ($promotion->used_count >= $promotion->usage_limit) {
                         $isValid = false;
                     }
                 }
@@ -191,40 +195,79 @@ class CounterBookingService
                 'expired_at'      => now()->addMinutes(30),
             ]);
 
-            // ── 9. Tạo Booking Details + Tickets + khóa ghế ─────────────
+            /**
+             * 9. Tạo Booking Details + Tickets + khóa ghế.
+             *
+             * BATCH INSERT: Thay vì tạo từng record trong vòng lặp (N*3 queries),
+             * thu thập vào mảng rồi insert hàng loạt — giảm xuống còn 3 queries cố định.
+             */
+            $now2 = Carbon::now();
+            $bookingDetailsData = [];
+
             foreach ($showtimeSeats as $ss) {
-                $detail = BookingDetail::create([
+                $bookingDetailsData[] = [
                     'booking_id'       => $booking->id,
                     'showtime_seat_id' => $ss->id,
                     'price'            => $seatsPricing[$ss->id],
-                ]);
-
-                // Tạo vé điện tử ngay lập tức (prefix CTR để phân biệt vé quầy)
-                Ticket::create([
-                    'booking_detail_id' => $detail->id,
-                    'qr_code'           => 'CTR-' . Str::upper(Str::random(12)) . '-' . time(),
-                    'ticket_status'     => 'unused',
-                ]);
-
-                // Chốt ghế = booked ngay (khác với online là để holding)
-                // Ghi lại giá đã giao dịch để audit/báo cáo
-                $ss->update([
-                    'status'     => 'booked',
-                    'price'      => $seatsPricing[$ss->id], // Snapshot giá tại thời điểm bán
-                    'user_id'    => $customerId ?? $staffId,
-                    'locked_at'  => now(),
-                    'expires_at' => null,
-                ]);
+                    'created_at'       => $now2,
+                    'updated_at'       => $now2,
+                ];
             }
 
-            // ── 10. Lưu combo ────────────────────────────────────────────
-            foreach ($combosToInsert as $cData) {
-                BookingCombo::create([
+            // Batch insert tất cả booking_details — 1 query
+            BookingDetail::insert($bookingDetailsData);
+
+            // Lấy lại các detail vừa insert để tạo tickets
+            $insertedDetails = BookingDetail::where('booking_id', $booking->id)
+                ->get()
+                ->keyBy('showtime_seat_id');
+
+            $ticketsData = [];
+            foreach ($showtimeSeats as $ss) {
+                $detail = $insertedDetails->get($ss->id);
+                if ($detail) {
+                    $ticketsData[] = [
+                        'booking_detail_id' => $detail->id,
+                        // Prefix CTR phân biệt vé quầy, QR duy nhất bằng random + seat ID
+                        'qr_code'           => 'CTR-' . Str::upper(Str::random(12)) . '-' . $ss->id,
+                        'ticket_status'     => 'unused',
+                        'created_at'        => $now2,
+                        'updated_at'        => $now2,
+                    ];
+                }
+            }
+
+            // Batch insert tất cả tickets — 1 query
+            if (!empty($ticketsData)) {
+                Ticket::insert($ticketsData);
+            }
+
+            /**
+             * Batch UPDATE trạng thái ghế về 'booked' ngay lập tức (POS hoàn tất ngay).
+             * Dùng whereIn() — 1 UPDATE thay vì N UPDATE trong vòng lặp.
+             */
+            $seatIdsToUpdate = array_column($bookingDetailsData, 'showtime_seat_id');
+            ShowtimeSeat::whereIn('id', $seatIdsToUpdate)
+                ->update([
+                    'status'     => 'booked',
+                    'user_id'    => $customerId ?? $staffId,
+                    'locked_at'  => $now2,
+                    'expires_at' => null,
+                ]);
+
+            // ── 10. Lưu combo ─────────────────────────────────
+            if (!empty($combosToInsert)) {
+                // Batch insert combos — 1 query thay vì N query
+                $combosInsertData = array_map(fn ($cData) => [
                     'booking_id' => $booking->id,
                     'combo_id'   => $cData['combo_id'],
                     'quantity'   => $cData['quantity'],
                     'subtotal'   => $cData['subtotal'],
-                ]);
+                    'created_at' => $now2,
+                    'updated_at' => $now2,
+                ], $combosToInsert);
+
+                BookingCombo::insert($combosInsertData);
             }
 
             // ── 11. Gắn voucher ──────────────────────────────────────────
