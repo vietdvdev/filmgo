@@ -246,7 +246,7 @@ class CounterBookingService
                 ->update([
                     'status'     => 'booked',
                     'user_id'    => $customerId ?? $staffId,
-                    'locked_at'  => $now2,
+                    'locked_at'  => now(),
                     'expires_at' => null,
                 ]);
 

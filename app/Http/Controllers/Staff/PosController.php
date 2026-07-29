@@ -59,24 +59,25 @@ class PosController extends Controller
 
         $rooms = Room::where('cinema_id', $cinemaId)->pluck('id');
 
-        // Lấy phim đang chiếu hôm nay tại rạp, gộp theo phim (để hiện danh sách phim trước)
+        if ($rooms->isEmpty()) {
+            return response()->json(['data' => []]);
+        }
+
+        // Hiển thị tất cả suất chiếu trong ngày trừ cancelled (POS cần thấy cả finished để hỗ trợ)
         $movies = Movie::whereHas('showtimes', function ($q) use ($rooms, $date) {
             $q->whereIn('room_id', $rooms)
               ->whereDate('show_date', $date)
-              ->whereNotIn('status', ['cancelled', 'finished']);
+              ->whereNotIn('status', ['cancelled']);
         })
         ->with(['showtimes' => function ($q) use ($rooms, $date) {
             $q->whereIn('room_id', $rooms)
               ->whereDate('show_date', $date)
-              ->whereNotIn('status', ['cancelled', 'finished'])
+              ->whereNotIn('status', ['cancelled'])
               ->with('room:id,room_name,room_type')
               ->orderBy('start_time');
         }])
         ->get(['id', 'title', 'poster', 'duration', 'age_limit']);
 
-        $now = now();
-
-        // Ẩn những suất chiếu đã qua giờ kết thúc thực tế
         $result = $movies->map(fn($movie) => [
             'id'        => $movie->id,
             'title'     => $movie->title,
@@ -84,11 +85,6 @@ class PosController extends Controller
             'duration'  => $movie->duration,
             'age_limit' => $movie->age_limit,
             'showtimes' => $movie->showtimes
-                ->filter(function ($s) use ($now) {
-                    $showDate = \Carbon\Carbon::parse($s->show_date)->toDateString();
-                    if ($showDate !== today()->toDateString()) return true;
-                    return $now->lt(\Carbon\Carbon::parse($showDate . ' ' . $s->end_time));
-                })
                 ->map(fn($s) => [
                     'id'         => $s->id,
                     'start_time' => substr($s->start_time, 0, 5),
