@@ -183,15 +183,12 @@ class BookingService
              * Ghế được cập nhật batch bằng whereIn() thay vì update() từng cái.
              */
             $bookingDetailsData = [];
-            $now = Carbon::now();
 
             foreach ($showtimeSeats as $ss) {
                 $bookingDetailsData[] = [
                     'booking_id'       => $booking->id,
                     'showtime_seat_id' => $ss->id,
                     'price'            => $seatsPricing[$ss->id],
-                    'created_at'       => $now,
-                    'updated_at'       => $now,
                 ];
             }
 
@@ -211,8 +208,6 @@ class BookingService
                         // Mã QR duy nhất: prefix TKT + chuỗi random + seat ID để đảm bảo uniqueness
                         'qr_code'           => 'TKT-' . Str::upper(Str::random(12)) . '-' . $ss->id,
                         'ticket_status'     => 'unused',
-                        'created_at'        => $now,
-                        'updated_at'        => $now,
                     ];
                 }
             }
@@ -237,8 +232,6 @@ class BookingService
                     'combo_id'   => $cData['combo_id'],
                     'quantity'   => $cData['quantity'],
                     'subtotal'   => $cData['subtotal'],
-                    'created_at' => $now,
-                    'updated_at' => $now,
                 ], $combosToInsert);
 
                 // Batch insert tất cả combos — 1 query thay vì N query

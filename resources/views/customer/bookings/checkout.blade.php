@@ -43,6 +43,19 @@
             </div>
         </div>
 
+        @if(session('error'))
+            <div class="mb-6 px-4 py-3 bg-red-50 border border-red-200 text-red-700 text-sm font-semibold rounded-none flex items-center gap-2">
+                <span class="material-symbols-outlined text-brand-primary">error</span>
+                <span>{{ session('error') }}</span>
+            </div>
+        @endif
+        @if(session('success'))
+            <div class="mb-6 px-4 py-3 bg-emerald-50 border border-emerald-200 text-emerald-700 text-sm font-semibold rounded-none flex items-center gap-2">
+                <span class="material-symbols-outlined text-emerald-600">check_circle</span>
+                <span>{{ session('success') }}</span>
+            </div>
+        @endif
+
         {{-- ── Main Grid ── --}}
         <div class="grid grid-cols-1 lg:grid-cols-5 gap-6">
 

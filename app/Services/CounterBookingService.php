@@ -201,7 +201,6 @@ class CounterBookingService
              * BATCH INSERT: Thay vì tạo từng record trong vòng lặp (N*3 queries),
              * thu thập vào mảng rồi insert hàng loạt — giảm xuống còn 3 queries cố định.
              */
-            $now2 = Carbon::now();
             $bookingDetailsData = [];
 
             foreach ($showtimeSeats as $ss) {
@@ -209,8 +208,6 @@ class CounterBookingService
                     'booking_id'       => $booking->id,
                     'showtime_seat_id' => $ss->id,
                     'price'            => $seatsPricing[$ss->id],
-                    'created_at'       => $now2,
-                    'updated_at'       => $now2,
                 ];
             }
 
@@ -231,8 +228,6 @@ class CounterBookingService
                         // Prefix CTR phân biệt vé quầy, QR duy nhất bằng random + seat ID
                         'qr_code'           => 'CTR-' . Str::upper(Str::random(12)) . '-' . $ss->id,
                         'ticket_status'     => 'unused',
-                        'created_at'        => $now2,
-                        'updated_at'        => $now2,
                     ];
                 }
             }
@@ -263,8 +258,6 @@ class CounterBookingService
                     'combo_id'   => $cData['combo_id'],
                     'quantity'   => $cData['quantity'],
                     'subtotal'   => $cData['subtotal'],
-                    'created_at' => $now2,
-                    'updated_at' => $now2,
                 ], $combosToInsert);
 
                 BookingCombo::insert($combosInsertData);
