@@ -17,7 +17,18 @@
             <h2 class="font-headline-lg text-headline-lg text-on-surface">Thêm Combo Bắp Nước Mới</h2>
         </div>
 
-        <div class="bg-surface-container-lowest rounded-lg border border-outline-variant shadow-ambient-sm p-stack-lg max-w-2xl">
+        @if($errors->any())
+            <div class="flex items-start gap-3 p-4 bg-red-50 text-red-800 border border-red-200 rounded-lg shadow-sm">
+                <span class="material-symbols-outlined text-red-600 mt-0.5">error</span>
+                <ul class="font-body-md text-body-md font-medium list-disc pl-2 space-y-1">
+                    @foreach($errors->all() as $err)
+                        <li>{{ $err }}</li>
+                    @endforeach
+                </ul>
+            </div>
+        @endif
+
+        <div class="bg-surface-container-lowest rounded-lg border border-outline-variant shadow-ambient-sm p-stack-lg max-w-3xl">
             <form action="{{ route('admin.combos.store') }}" method="POST" enctype="multipart/form-data" class="space-y-6">
                 @csrf
 
@@ -56,7 +67,7 @@
                                 'Combo Thử Thách (1 Bắp Lớn + 1 Nước Lớn)',
                                 'Combo Snack (1 Bắp + 1 Nước + 1 Snack)'
                             ] as $tag)
-                                <span class="cursor-pointer bg-surface-container hover:bg-primary hover:text-on-primary transition-colors duration-150 px-3 py-1 rounded-full text-xs font-medium text-on-surface-variant border border-outline-variant/30" 
+                                <span class="cursor-pointer bg-surface-container hover:bg-primary hover:text-on-primary transition-colors duration-150 px-3 py-1 rounded-full text-xs font-medium text-on-surface-variant border border-outline-variant/30"
                                       onclick="document.getElementById('combo_name').value='{{ $tag }}'; updateCharCount(document.getElementById('combo_name'), 'comboNameCount', 255)">
                                     {{ $tag }}
                                 </span>
@@ -65,38 +76,135 @@
                     </div>
                 </div>
 
-                <!-- Giá bán -->
-                <div class="space-y-2">
-                    <label for="price" class="block font-label-md text-label-md text-on-surface">
-                        Giá Bán (VNĐ) <span class="text-error">*</span>
+                <!-- Thành phần chi tiết của Combo -->
+                <div class="space-y-3 p-4 bg-surface-container-low/60 rounded-xl border border-outline-variant/50">
+                    <div class="flex justify-between items-center">
+                        <div>
+                            <label class="block font-label-md text-label-md text-on-surface font-semibold flex items-center gap-2">
+                                <span class="material-symbols-outlined text-primary" style="font-size: 20px;">restaurant</span>
+                                Thành Phần Chi Tiết Trong Combo
+                            </label>
+                            <p class="text-xs text-on-surface-variant mt-0.5">Chọn các thành phần (Bắp lớn, Bắp nhỏ, Nước lớn, Nước nhỏ...) và số lượng.</p>
+                        </div>
+                        <a href="{{ route('admin.combo-items.index') }}" target="_blank" class="text-xs text-primary hover:underline flex items-center gap-1 font-medium">
+                            <span class="material-symbols-outlined" style="font-size: 14px;">open_in_new</span> Quản lý món thành phần
+                        </a>
+                    </div>
+
+                    @error('items')
+                        <div class="flex items-center gap-2 p-3 bg-red-50 border border-red-200 rounded-lg text-xs text-red-700 font-semibold">
+                            <span class="material-symbols-outlined text-sm">error</span> {{ $message }}
+                        </div>
+                    @enderror
+
+                    @if(isset($comboItems) && $comboItems->isNotEmpty())
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+                            @foreach($comboItems as $item)
+                                <div class="flex items-center justify-between p-3 bg-surface-container-lowest rounded-lg border border-outline-variant/40 hover:border-primary/50 transition-colors">
+                                    <div class="flex items-center gap-2.5 flex-1 min-w-0">
+                                        <input
+                                            type="checkbox"
+                                            id="item_chk_{{ $item->id }}"
+                                            class="w-4 h-4 text-primary rounded border-outline-variant focus:ring-primary flex-shrink-0"
+                                            onchange="toggleItemQty({{ $item->id }}, {{ $item->price }})"
+                                        >
+                                        <label for="item_chk_{{ $item->id }}" class="cursor-pointer select-none flex-1 min-w-0">
+                                            <div class="flex items-center gap-1 text-sm font-medium text-on-surface">
+                                                @if($item->type === 'popcorn')
+                                                    <span class="material-symbols-outlined text-amber-500 text-base flex-shrink-0">popcorn</span>
+                                                @elseif($item->type === 'drink')
+                                                    <span class="material-symbols-outlined text-blue-500 text-base flex-shrink-0">local_drink</span>
+                                                @elseif($item->type === 'snack')
+                                                    <span class="material-symbols-outlined text-orange-500 text-base flex-shrink-0">cookie</span>
+                                                @else
+                                                    <span class="material-symbols-outlined text-gray-500 text-base flex-shrink-0">restaurant</span>
+                                                @endif
+                                                <span class="truncate">{{ $item->name }}</span>
+                                            </div>
+                                            <div class="text-xs text-primary font-semibold mt-0.5 ml-5">{{ number_format($item->price) }} ₫ / {{ $item->unit }}</div>
+                                        </label>
+                                    </div>
+                                    <div class="flex items-center gap-1 flex-shrink-0 ml-2">
+                                        <span class="text-xs text-on-surface-variant">SL:</span>
+                                        <input
+                                            type="number"
+                                            id="item_qty_{{ $item->id }}"
+                                            name="items[{{ $item->id }}]"
+                                            value="{{ old('items.' . $item->id) }}"
+                                            disabled
+                                            min="1"
+                                            max="99"
+                                            placeholder="0"
+                                            data-price="{{ $item->price }}"
+                                            class="w-16 px-2 py-1 bg-surface-container border border-outline-variant rounded text-center text-sm font-semibold text-on-surface focus:outline-none focus:border-primary disabled:opacity-40 disabled:bg-surface-container/50"
+                                            oninput="recalculateTotal()"
+                                        >
+                                    </div>
+                                </div>
+                            @endforeach
+                        </div>
+
+                        <!-- Tổng giá gốc thành phần -->
+                        <div class="flex items-center justify-between pt-2 px-1">
+                            <div class="text-xs text-on-surface-variant font-medium flex items-center gap-1">
+                                <span class="material-symbols-outlined text-sm">calculate</span>
+                                Tổng giá gốc các thành phần đã chọn:
+                            </div>
+                            <div class="text-sm font-bold text-on-surface">
+                                <span id="totalBasePrice">0</span> ₫
+                            </div>
+                        </div>
+
+                        <div class="flex justify-end gap-2 pt-1">
+                            <button type="button" onclick="autoFillPrice()" class="text-xs font-semibold text-emerald-700 hover:text-emerald-800 bg-emerald-50 hover:bg-emerald-100 px-3 py-1.5 rounded-md border border-emerald-200 transition-colors flex items-center gap-1">
+                                <span class="material-symbols-outlined" style="font-size: 16px;">price_check</span> Điền giá gốc vào Giá bán thực tế
+                            </button>
+                            <button type="button" onclick="autoGenerateDescription()" class="text-xs font-semibold text-primary hover:text-blue-700 bg-blue-50 hover:bg-blue-100 px-3 py-1.5 rounded-md border border-blue-200 transition-colors flex items-center gap-1">
+                                <span class="material-symbols-outlined" style="font-size: 16px;">auto_fix_high</span> Tự động tạo Mô tả
+                            </button>
+                        </div>
+                    @else
+                        <div class="text-center py-4 text-xs text-on-surface-variant bg-surface-container/30 rounded-lg">
+                            Chưa có danh mục món thành phần. <a href="{{ route('admin.combo-items.index') }}" class="text-primary underline">Bấm vào đây để tạo (Bắp lớn, Nước lớn...)</a>
+                        </div>
+                    @endif
+                </div>
+
+                <!-- Giá bán thực tế (bán cho khách) -->
+                <div class="space-y-2 p-4 bg-amber-50/60 rounded-xl border border-amber-200/60">
+                    <label for="price" class="block font-label-md text-label-md text-on-surface font-semibold flex items-center gap-2">
+                        <span class="material-symbols-outlined text-amber-600" style="font-size: 20px;">sell</span>
+                        Giá Bán Thực Tế (VNĐ) <span class="text-error">*</span>
                     </label>
+                    <p class="text-xs text-on-surface-variant -mt-1">
+                        Đây là giá hiển thị và tính tiền khi khách hàng chọn combo. Có thể thấp hơn tổng giá gốc (giá ưu đãi).
+                    </p>
                     <input
                         type="number"
                         id="price"
                         name="price"
                         value="{{ old('price', 0) }}"
-                        class="w-full px-4 py-2 bg-surface-container-lowest border border-outline-variant rounded-lg font-body-md text-body-md text-on-surface focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-colors @error('price') border-error @enderror"
+                        class="w-full px-4 py-2.5 bg-white border border-amber-300 rounded-lg font-body-md text-body-md text-on-surface focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-400 transition-colors text-lg font-bold @error('price') border-error @enderror"
                         placeholder="0"
                         min="0"
                         required
                     >
-                    <p class="text-xs text-on-surface-variant">Giá bán hiển thị cho khách hàng (ví dụ: 75000, 115000...)</p>
                     @error('price')
                         <p class="text-error font-body-md text-xs mt-1">{{ $message }}</p>
                     @enderror
                 </div>
 
-                <!-- Mô tả / Thành phần -->
+                <!-- Mô tả / Ghi chú -->
                 <div class="space-y-2">
                     <label for="description" class="block font-label-md text-label-md text-on-surface">
-                        Mô Tả / Thành Phần Chi Tiết
+                        Mô Tả / Ghi Chú Hiển Thị
                     </label>
                     <textarea
                         id="description"
                         name="description"
                         rows="3"
                         class="w-full px-4 py-2 bg-surface-container-lowest border border-outline-variant rounded-lg font-body-md text-body-md text-on-surface focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-colors @error('description') border-error @enderror"
-                        placeholder="Ví dụ: 1 bắp ngọt lớn 60oz + 1 nước ngọt Coca-Cola 32oz..."
+                        placeholder="Ví dụ: 1 Bắp lớn vị caramel hoặc phô mai + 2 Nước ngọt lớn tự chọn..."
                     >{{ old('description') }}</textarea>
                     @error('description')
                         <p class="text-error font-body-md text-xs mt-1">{{ $message }}</p>
@@ -123,7 +231,6 @@
                                 <p class="text-error font-body-md text-xs mt-1">{{ $message }}</p>
                             @enderror
                         </div>
-                        
                         <!-- Preview Box -->
                         <div class="relative w-28 h-28 border border-outline-variant rounded-lg overflow-hidden bg-surface-container/40 flex items-center justify-center flex-shrink-0">
                             <img id="imagePreview" src="#" alt="Xem trước ảnh" class="w-full h-full object-cover hidden">
@@ -169,15 +276,75 @@
 </main>
 
 <script>
+    // Đơn giá của từng món (dùng trong JS tính toán)
+    const ITEM_PRICES = {
+        @if(isset($comboItems))
+            @foreach($comboItems as $item)
+                {{ $item->id }}: {{ $item->price }},
+            @endforeach
+        @endif
+    };
+
     function updateCharCount(input, countId, max) {
         document.getElementById(countId).textContent = input.value.length;
+    }
+
+    function toggleItemQty(itemId, itemPrice) {
+        const chk = document.getElementById('item_chk_' + itemId);
+        const qtyInput = document.getElementById('item_qty_' + itemId);
+        if (chk.checked) {
+            qtyInput.disabled = false;
+            if (!qtyInput.value || parseInt(qtyInput.value) <= 0) {
+                qtyInput.value = 1;
+            }
+        } else {
+            qtyInput.disabled = true;
+            qtyInput.value = '';
+        }
+        recalculateTotal();
+        autoGenerateDescription();
+    }
+
+    function recalculateTotal() {
+        let total = 0;
+        for (const [itemId, unitPrice] of Object.entries(ITEM_PRICES)) {
+            const chk = document.getElementById('item_chk_' + itemId);
+            const qty = document.getElementById('item_qty_' + itemId);
+            if (chk && chk.checked && qty && parseInt(qty.value) > 0) {
+                total += unitPrice * parseInt(qty.value);
+            }
+        }
+        document.getElementById('totalBasePrice').textContent = total.toLocaleString('vi-VN');
+        return total;
+    }
+
+    function autoFillPrice() {
+        const total = recalculateTotal();
+        document.getElementById('price').value = total;
+    }
+
+    function autoGenerateDescription() {
+        const parts = [];
+        @if(isset($comboItems))
+            @foreach($comboItems as $item)
+                (function() {
+                    const chk = document.getElementById('item_chk_{{ $item->id }}');
+                    const qty = document.getElementById('item_qty_{{ $item->id }}');
+                    if (chk && chk.checked && qty && qty.value > 0) {
+                        parts.push(qty.value + ' {{ $item->name }}');
+                    }
+                })();
+            @endforeach
+        @endif
+        if (parts.length > 0) {
+            document.getElementById('description').value = parts.join(' + ');
+        }
     }
 
     function previewFile(input) {
         const file = input.files[0];
         const preview = document.getElementById('imagePreview');
         const placeholder = document.getElementById('imagePlaceholder');
-
         if (file) {
             const reader = new FileReader();
             reader.onload = function(e) {
@@ -192,5 +359,23 @@
             placeholder.classList.remove('hidden');
         }
     }
+
+    // Khôi phục trạng thái checkbox khi validation fail (old input)
+    @if(isset($comboItems) && old('items'))
+        @foreach($comboItems as $item)
+            @if(old('items.' . $item->id))
+                (function() {
+                    const chk = document.getElementById('item_chk_{{ $item->id }}');
+                    const qty = document.getElementById('item_qty_{{ $item->id }}');
+                    if (chk && qty) {
+                        chk.checked = true;
+                        qty.disabled = false;
+                        qty.value = '{{ old("items." . $item->id) }}';
+                    }
+                })();
+            @endif
+        @endforeach
+        recalculateTotal();
+    @endif
 </script>
 @endsection

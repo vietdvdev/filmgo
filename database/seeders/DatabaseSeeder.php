@@ -35,6 +35,7 @@ class DatabaseSeeder extends Seeder
             HolidaySeeder::class,
             ShowtimeSeeder::class,
             ShowtimeSeatSeeder::class,
+            ComboItemSeeder::class,
             ComboSeeder::class,
             PromotionSeeder::class,
             BookingSeeder::class,

@@ -32,7 +32,7 @@ class PosController extends Controller
         $this->authorizeStaff();
 
         $cinemaId = $this->getCinemaId();
-        $combos   = Combo::where('status', 'active')->latest()->get(['id', 'combo_name', 'price', 'image', 'description']);
+        $combos   = Combo::with('items')->where('status', 'active')->latest()->get();
 
         return view('staff.pos.index', compact('cinemaId', 'combos'));
     }

@@ -4,20 +4,17 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Combo;
+use App\Models\ComboItem;
 use App\Services\ComboService;
 use Illuminate\Http\Request;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\View\View;
+use Illuminate\Validation\Rule;
 
 class ComboController extends Controller
 {
     protected ComboService $comboService;
 
-    /**
-     * ComboController constructor.
-     *
-     * @param ComboService $comboService
-     */
     public function __construct(ComboService $comboService)
     {
         $this->comboService = $comboService;
@@ -25,9 +22,6 @@ class ComboController extends Controller
 
     /**
      * Hiển thị danh sách combo.
-     *
-     * @param Request $request
-     * @return View
      */
     public function index(Request $request): View
     {
@@ -39,34 +33,35 @@ class ComboController extends Controller
 
     /**
      * Hiển thị form tạo mới combo.
-     *
-     * @return View
      */
     public function create(): View
     {
-        return view('admin.combos.create');
+        $comboItems = ComboItem::where('status', 'active')->orderBy('name')->get();
+
+        return view('admin.combos.create', compact('comboItems'));
     }
 
     /**
      * Lưu trữ combo mới vào database.
-     *
-     * @param Request $request
-     * @return RedirectResponse
      */
     public function store(Request $request): RedirectResponse
     {
         $request->validate([
-            'combo_name'    => 'required|string|max:255',
-            'price'         => 'required|integer|min:0',
-            'description'   => 'nullable|string',
-            'image'         => 'nullable|image|mimes:jpeg,png,jpg,webp|max:2048',
-            'status'        => 'required|in:active,inactive',
+            'combo_name'       => ['required', 'string', 'max:255', Rule::unique('combos', 'combo_name')->whereNull('deleted_at')],
+            'price'            => 'required|integer|min:0',
+            'description'      => 'nullable|string',
+            'image'            => 'nullable|image|mimes:jpeg,png,jpg,webp|max:2048',
+            'status'           => 'required|in:active,inactive',
+            'items'            => 'nullable|array',
+            'items.*.id'       => 'nullable|exists:combo_items,id',
+            'items.*.quantity' => 'nullable|integer|min:1',
         ], [
             'combo_name.required' => 'Tên combo không được để trống.',
             'combo_name.max'      => 'Tên combo không được vượt quá 255 ký tự.',
-            'price.required'      => 'Giá bán không được để trống.',
-            'price.integer'       => 'Giá bán phải là số nguyên.',
-            'price.min'           => 'Giá bán không được nhỏ hơn 0 ₫.',
+            'combo_name.unique'   => 'Tên combo này đã tồn tại, vui lòng chọn tên khác.',
+            'price.required'      => 'Giá bán thực tế không được để trống.',
+            'price.integer'       => 'Giá bán thực tế phải là số nguyên.',
+            'price.min'           => 'Giá bán thực tế không được nhỏ hơn 0 ₫.',
             'image.image'         => 'File upload phải là hình ảnh.',
             'image.mimes'         => 'Ảnh chỉ chấp nhận định dạng jpeg, png, jpg, webp.',
             'image.max'           => 'Dung lượng ảnh không được vượt quá 2MB.',
@@ -74,9 +69,19 @@ class ComboController extends Controller
             'status.in'           => 'Trạng thái hoạt động không hợp lệ.',
         ]);
 
+        $items = $request->input('items', []);
+
+        // Kiểm tra tổ hợp thành phần trùng lặp với Combo khác
+        if ($this->comboService->isDuplicateItemStructure($items)) {
+            return back()
+                ->withInput()
+                ->withErrors(['items' => 'Tổ hợp thành phần này đã tồn tại trong một Combo khác. Vui lòng thay đổi thành phần hoặc số lượng.']);
+        }
+
         $this->comboService->createCombo(
             $request->only('combo_name', 'price', 'description', 'status'),
-            $request->file('image')
+            $request->file('image'),
+            $items
         );
 
         return redirect()
@@ -86,36 +91,36 @@ class ComboController extends Controller
 
     /**
      * Hiển thị form chỉnh sửa combo.
-     *
-     * @param Combo $combo
-     * @return View
      */
     public function edit(Combo $combo): View
     {
-        return view('admin.combos.edit', compact('combo'));
+        $combo->load('items');
+        $comboItems = ComboItem::where('status', 'active')->orderBy('name')->get();
+
+        return view('admin.combos.edit', compact('combo', 'comboItems'));
     }
 
     /**
      * Cập nhật thông tin combo trong database.
-     *
-     * @param Request $request
-     * @param Combo $combo
-     * @return RedirectResponse
      */
     public function update(Request $request, Combo $combo): RedirectResponse
     {
         $request->validate([
-            'combo_name'    => 'required|string|max:255',
-            'price'         => 'required|integer|min:0',
-            'description'   => 'nullable|string',
-            'image'         => 'nullable|image|mimes:jpeg,png,jpg,webp|max:2048',
-            'status'        => 'required|in:active,inactive',
+            'combo_name'       => ['required', 'string', 'max:255', Rule::unique('combos', 'combo_name')->ignore($combo->id)->whereNull('deleted_at')],
+            'price'            => 'required|integer|min:0',
+            'description'      => 'nullable|string',
+            'image'            => 'nullable|image|mimes:jpeg,png,jpg,webp|max:2048',
+            'status'           => 'required|in:active,inactive',
+            'items'            => 'nullable|array',
+            'items.*.id'       => 'nullable|exists:combo_items,id',
+            'items.*.quantity' => 'nullable|integer|min:1',
         ], [
             'combo_name.required' => 'Tên combo không được để trống.',
             'combo_name.max'      => 'Tên combo không được vượt quá 255 ký tự.',
-            'price.required'      => 'Giá bán không được để trống.',
-            'price.integer'       => 'Giá bán phải là số nguyên.',
-            'price.min'           => 'Giá bán không được nhỏ hơn 0 ₫.',
+            'combo_name.unique'   => 'Tên combo này đã tồn tại, vui lòng chọn tên khác.',
+            'price.required'      => 'Giá bán thực tế không được để trống.',
+            'price.integer'       => 'Giá bán thực tế phải là số nguyên.',
+            'price.min'           => 'Giá bán thực tế không được nhỏ hơn 0 ₫.',
             'image.image'         => 'File upload phải là hình ảnh.',
             'image.mimes'         => 'Ảnh chỉ chấp nhận định dạng jpeg, png, jpg, webp.',
             'image.max'           => 'Dung lượng ảnh không được vượt quá 2MB.',
@@ -123,11 +128,21 @@ class ComboController extends Controller
             'status.in'           => 'Trạng thái hoạt động không hợp lệ.',
         ]);
 
+        $items = $request->input('items', []);
+
+        // Kiểm tra tổ hợp thành phần trùng lặp với Combo khác (bỏ qua Combo hiện tại)
+        if ($this->comboService->isDuplicateItemStructure($items, $combo->id)) {
+            return back()
+                ->withInput()
+                ->withErrors(['items' => 'Tổ hợp thành phần này đã tồn tại trong một Combo khác. Vui lòng thay đổi thành phần hoặc số lượng.']);
+        }
+
         $this->comboService->updateCombo(
             $combo,
             $request->only('combo_name', 'price', 'description', 'status'),
             $request->file('image'),
-            $request->boolean('remove_image')
+            $request->boolean('remove_image'),
+            $items
         );
 
         return redirect()
@@ -137,9 +152,6 @@ class ComboController extends Controller
 
     /**
      * Xóa combo (xóa mềm).
-     *
-     * @param Combo $combo
-     * @return RedirectResponse
      */
     public function destroy(Combo $combo): RedirectResponse
     {
