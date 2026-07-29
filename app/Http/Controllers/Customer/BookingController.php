@@ -567,6 +567,10 @@ class BookingController extends Controller
             'combos',
         ])->findOrFail($bookingId);
 
+        if ($booking->booking_type === 'combo_only' || !$booking->showtime_id) {
+            return redirect()->route('combo-shop.success', $booking->id);
+        }
+
         return view('customer.bookings.success', compact('booking'));
     }
 
@@ -903,8 +907,17 @@ class BookingController extends Controller
         if ($booking) {
             $isSuccess = ($request->get('vnp_ResponseCode') === '00') || ((int) $request->get('resultCode') === 0);
             if ($isSuccess) {
+                if ($booking->booking_type === 'combo_only' || !$booking->showtime_id) {
+                    return redirect()->route('combo-shop.success', $booking->id);
+                }
                 return redirect()->route('booking.success', $booking->id);
             }
+
+            if ($booking->booking_type === 'combo_only' || !$booking->showtime_id) {
+                return redirect()->route('combo-shop.checkout')
+                    ->with('error', 'Thanh toán không thành công. Vui lòng thử lại.');
+            }
+
             return redirect()->route('booking.checkout', $booking->showtime_id)
                 ->with('error', 'Thanh toán không thành công. Vui lòng thử lại.');
         }

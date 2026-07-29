@@ -5,10 +5,12 @@ namespace App\Http\Controllers\Staff;
 use App\Http\Controllers\Controller;
 use App\Models\Booking;
 use App\Models\Combo;
+use App\Models\ComboItem;
 use App\Models\Movie;
 use App\Models\Promotion;
 use App\Models\Room;
 use App\Models\Showtime;
+use App\Services\ComboOrderService;
 use App\Services\CounterBookingService;
 use Exception;
 use Illuminate\Http\JsonResponse;
@@ -17,7 +19,10 @@ use Illuminate\Support\Facades\Auth;
 
 class PosController extends Controller
 {
-    public function __construct(protected CounterBookingService $counterService) {}
+    public function __construct(
+        protected CounterBookingService $counterService,
+        protected ComboOrderService $comboOrderService
+    ) {}
 
     // ─────────────────────────────────────────────────────────────────────────
     // PHẦN 1: Load giao diện POS chính
@@ -212,6 +217,89 @@ class PosController extends Controller
     }
 
     // ─────────────────────────────────────────────────────────────────────────
+    // PHẦN 2B: API F&B — Bán Combo/Đồ Ăn Không Cần Suất Chiếu
+    // ─────────────────────────────────────────────────────────────────────────
+
+    /**
+     * API: Lấy danh sách đồ ăn/uống lẻ từng món (ComboItem).
+     * GET /staff/pos/api/combo-items
+     */
+    public function apiGetComboItems(): JsonResponse
+    {
+        $this->authorizeStaff();
+
+        $items = ComboItem::where('status', 'active')
+            ->orderBy('type')
+            ->orderBy('name')
+            ->get(['id', 'name', 'type', 'unit', 'price'])
+            ->groupBy('type')
+            ->map(fn($group, $type) => [
+                'type'  => $type ?: 'Khác',
+                'items' => $group->map(fn($i) => [
+                    'id'    => $i->id,
+                    'name'  => $i->name,
+                    'unit'  => $i->unit,
+                    'price' => $i->price,
+                ])->values(),
+            ])
+            ->values();
+
+        return response()->json(['data' => $items]);
+    }
+
+    /**
+     * API: Checkout đơn F&B tại quầy (không cần suất chiếu/ghế).
+     * POST /staff/pos/api/checkout-fnb
+     *
+     * Body:
+     * {
+     *   "combos"         : {"3": 2},           // Combo gói: {id: qty}
+     *   "combo_items"    : {"5": 1, "7": 2},   // Đồ lẻ: {id: qty}
+     *   "payment_method" : "cash",
+     *   "customer_phone" : "0901234567",         // Tuỳ chọn
+     *   "voucher_code"   : "SALE10"             // Tuỳ chọn
+     * }
+     */
+    public function apiCheckoutFnb(Request $request): JsonResponse
+    {
+        $this->authorizeStaff();
+
+        // ── Validate ──────────────────────────────────────────────────────
+        $validated = $request->validate([
+            'combos'           => 'nullable|array',
+            'combos.*'         => 'integer|min:0',
+            'combo_items'      => 'nullable|array',
+            'combo_items.*'    => 'integer|min:0',
+            'payment_method'   => 'required|in:cash,transfer',
+            'customer_phone'   => 'nullable|string|max:20',
+            'voucher_code'     => 'nullable|string|max:50',
+        ]);
+
+        try {
+            $booking = $this->comboOrderService->createCounterFnbOrder(
+                staffId:        Auth::id(),
+                combosData:     $validated['combos'] ?? [],
+                comboItemsData: $validated['combo_items'] ?? [],
+                paymentMethod:  $validated['payment_method'],
+                customerPhone:  $validated['customer_phone'] ?? null,
+                voucherCode:    $validated['voucher_code'] ?? null,
+            );
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Bán F&B thành công!',
+                'booking' => $this->formatFnbReceiptData($booking),
+            ]);
+
+        } catch (Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage(),
+            ], 422);
+        }
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
     // PHẦN 3: Helpers
     // ─────────────────────────────────────────────────────────────────────────
 
@@ -243,6 +331,32 @@ class PosController extends Controller
                 'name'     => $c->combo_name,
                 'quantity' => $c->pivot->quantity,
                 'subtotal' => $c->pivot->subtotal,
+            ])->toArray(),
+        ];
+    }
+
+    /**
+     * Định dạng dữ liệu receipt cho đơn F&B (không có vé/ghế).
+     */
+    private function formatFnbReceiptData(Booking $booking): array
+    {
+        return [
+            'booking_code'    => $booking->booking_code,
+            'total_amount'    => $booking->total_amount,
+            'discount_amount' => $booking->discount_amount,
+            'final_total'     => $booking->final_total,
+            'payment_method'  => $booking->payments->first()?->payment_method,
+            'combos' => $booking->combos->map(fn($c) => [
+                'name'     => $c->combo_name,
+                'quantity' => $c->pivot->quantity,
+                'subtotal' => $c->pivot->subtotal,
+            ])->toArray(),
+            'combo_items' => $booking->comboItems->map(fn($ci) => [
+                'name'       => $ci->comboItem?->name ?? 'Món ăn',
+                'unit'       => $ci->comboItem?->unit,
+                'quantity'   => $ci->quantity,
+                'unit_price' => $ci->unit_price,
+                'subtotal'   => $ci->subtotal,
             ])->toArray(),
         ];
     }

@@ -44,6 +44,7 @@ class BookingHistoryController extends Controller
                 'showtime.room.cinema',
                 'bookingDetails.showtimeSeat.seat.seatType',
                 'combos',
+                'comboItems.comboItem',
                 'promotions',
                 'payments',
             ])

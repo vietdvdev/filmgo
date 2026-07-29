@@ -10,7 +10,7 @@
         <div class="flex items-center gap-2 text-xs text-gray-500 mb-6">
             <a href="{{ route('booking.history.index') }}" class="hover:text-brand-primary transition-colors flex items-center gap-1 font-medium">
                 <span class="material-symbols-outlined text-sm">arrow_back</span>
-                Lịch sử đặt vé
+                Lịch sử đặt hàng
             </a>
             <span class="text-gray-300">/</span>
             <span class="text-gray-600 font-mono">#{{ $booking->booking_code }}</span>
@@ -26,6 +26,7 @@
             $ps = $statusMap[$booking->payment_status] ?? $statusMap['pending'];
             $payment = $booking->payments->first();
             $promotion = $booking->promotions->first();
+            $isComboOnly = ($booking->booking_type === 'combo_only' || !$booking->showtime_id);
         @endphp
 
         {{-- Header card --}}
@@ -33,19 +34,33 @@
             <div class="bg-brand-primary px-5 py-3 flex items-center justify-between">
                 <h2 class="text-xs font-black uppercase tracking-widest text-white flex items-center gap-2">
                     <span class="material-symbols-outlined text-sm">receipt_long</span>
-                    Chi Tiết Đơn Đặt Vé
+                    {{ $isComboOnly ? 'Chi Tiết Đơn Hàng Bắp Nước' : 'Chi Tiết Đơn Đặt Vé' }}
                 </h2>
                 <span class="text-xs font-black text-white/90 font-mono">#{{ $booking->booking_code }}</span>
             </div>
 
             <div class="p-5 flex flex-col sm:flex-row gap-4">
-                @if(optional($booking->showtime->movie)->poster_url)
+                @if(!$isComboOnly && optional(optional($booking->showtime)->movie)->poster_url)
                 <img src="{{ $booking->showtime->movie->poster_url }}"
                      alt="poster"
                      class="w-20 h-28 object-cover rounded-lg border border-gray-100 flex-shrink-0 shadow-sm">
+                @elseif($isComboOnly)
+                <div class="w-20 h-28 bg-amber-50 rounded-lg flex flex-col items-center justify-center border border-amber-200 text-amber-500 flex-shrink-0">
+                    <span class="material-symbols-outlined text-4xl">fastfood</span>
+                    <span class="text-xs font-bold mt-1">F&amp;B</span>
+                </div>
                 @endif
+
                 <div class="flex-1 space-y-1.5">
-                    <p class="font-black text-gray-900 text-lg leading-tight">{{ optional($booking->showtime->movie)->title ?? '—' }}</p>
+                    <p class="font-black text-gray-900 text-lg leading-tight">
+                        @if($isComboOnly)
+                            🍿 Đơn Hàng Bắp Nước &amp; Combo
+                        @else
+                            {{ optional(optional($booking->showtime)->movie)->title ?? 'Vé Xem Phim' }}
+                        @endif
+                    </p>
+
+                    @if(!$isComboOnly && $booking->showtime)
                     <div class="flex items-center gap-2 flex-wrap">
                         @if(optional($booking->showtime->movie)->age_limit)
                         <span class="px-2 py-0.5 text-[9px] font-black bg-brand-primary/10 text-brand-primary rounded border border-brand-primary/20 uppercase">
@@ -57,18 +72,24 @@
                         @endif
                     </div>
                     <p class="text-xs text-gray-500 pt-1">
-                        <span class="font-bold text-gray-800">{{ optional(optional(optional($booking->showtime)->room)->cinema)->name ?? '—' }}</span>
-                        @if(optional(optional($booking->showtime)->room)->room_name)
+                        <span class="font-bold text-gray-800">{{ optional(optional($booking->showtime->room)->cinema)->name ?? '—' }}</span>
+                        @if(optional($booking->showtime->room)->room_name)
                         · {{ $booking->showtime->room->room_name }}
                         @endif
                     </p>
                     <p class="text-xs text-brand-primary font-bold">
-                        {{ $booking->showtime ? \Carbon\Carbon::parse($booking->showtime->start_time)->format('H:i') : '—' }}
-                        @if($booking->showtime && $booking->showtime->end_time)
+                        {{ \Carbon\Carbon::parse($booking->showtime->start_time)->format('H:i') }}
+                        @if($booking->showtime->end_time)
                         – {{ \Carbon\Carbon::parse($booking->showtime->end_time)->format('H:i') }}
                         @endif
-                        · {{ $booking->showtime ? $booking->showtime->show_date->format('d/m/Y') : '—' }}
+                        · {{ $booking->showtime->show_date ? $booking->showtime->show_date->format('d/m/Y') : '' }}
                     </p>
+                    @else
+                    <p class="text-xs text-gray-500">
+                        Xuất trình mã đơn tại quầy F&B của rạp FilmGo để nhận sản phẩm.
+                    </p>
+                    @endif
+
                     <div class="pt-1">
                         <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold {{ $ps['bg'] }} {{ $ps['text'] }} border {{ $ps['border'] }}">
                             {{ $ps['label'] }}
@@ -78,7 +99,8 @@
             </div>
         </div>
 
-        {{-- Ghế đã chọn --}}
+        {{-- Ghế đã chọn (Nếu là đơn vé phim) --}}
+        @if($booking->bookingDetails && $booking->bookingDetails->isNotEmpty())
         <div class="bg-white border border-gray-200/80 rounded-2xl p-5 shadow-sm mb-4">
             <h3 class="text-xs font-black text-gray-500 uppercase tracking-widest mb-4 flex items-center gap-2">
                 <span class="material-symbols-outlined text-sm text-brand-primary">event_seat</span>
@@ -98,21 +120,42 @@
                 @endforeach
             </div>
         </div>
+        @endif
 
-        {{-- Combo (nếu có) --}}
-        @if($booking->combos->count() > 0)
+        {{-- Combo gói (nếu có) --}}
+        @if($booking->combos && $booking->combos->isNotEmpty())
         <div class="bg-white border border-gray-200/80 rounded-2xl p-5 shadow-sm mb-4">
             <h3 class="text-xs font-black text-gray-500 uppercase tracking-widest mb-4 flex items-center gap-2">
-                <span class="material-symbols-outlined text-sm text-brand-primary">fastfood</span>
-                Bắp Nước
+                <span class="material-symbols-outlined text-sm text-brand-primary">redeem</span>
+                Combo Ưu Đãi
             </h3>
             <div class="space-y-2">
                 @foreach($booking->combos as $combo)
                 <div class="flex items-center justify-between text-sm">
-                    <span class="text-gray-800 font-medium">{{ $combo->combo_name }}
+                    <span class="text-gray-800 font-medium">🎁 {{ $combo->combo_name }}
                         <span class="text-gray-400 ml-1 font-normal">×{{ $combo->pivot->quantity }}</span>
                     </span>
                     <span class="font-bold text-gray-800">{{ number_format($combo->pivot->subtotal) }}đ</span>
+                </div>
+                @endforeach
+            </div>
+        </div>
+        @endif
+
+        {{-- Đồ ăn lẻ (nếu có) --}}
+        @if($booking->comboItems && $booking->comboItems->isNotEmpty())
+        <div class="bg-white border border-gray-200/80 rounded-2xl p-5 shadow-sm mb-4">
+            <h3 class="text-xs font-black text-gray-500 uppercase tracking-widest mb-4 flex items-center gap-2">
+                <span class="material-symbols-outlined text-sm text-orange-500">local_dining</span>
+                Đồ Ăn / Thức Uống Lẻ
+            </h3>
+            <div class="space-y-2">
+                @foreach($booking->comboItems as $ci)
+                <div class="flex items-center justify-between text-sm">
+                    <span class="text-gray-800 font-medium">🍿 {{ $ci->comboItem->name ?? 'Món ăn' }}
+                        <span class="text-gray-400 ml-1 font-normal">×{{ $ci->quantity }}</span>
+                    </span>
+                    <span class="font-bold text-gray-800">{{ number_format($ci->subtotal) }}đ</span>
                 </div>
                 @endforeach
             </div>
@@ -126,16 +169,20 @@
                 Thanh Toán
             </h3>
             <div class="space-y-2 text-sm">
+                @if($booking->bookingDetails && $booking->bookingDetails->count() > 0)
                 <div class="flex justify-between text-gray-500">
                     <span>Tiền ghế ({{ $booking->bookingDetails->count() }} ghế)</span>
                     <span class="font-medium text-gray-800">{{ number_format($booking->bookingDetails->sum('price')) }}đ</span>
                 </div>
-                @if($booking->combos->count() > 0)
+                @endif
+
+                @if($booking->subtotal > 0)
                 <div class="flex justify-between text-gray-500">
-                    <span>Bắp nước</span>
-                    <span class="font-medium text-gray-800">{{ number_format($booking->combos->sum('pivot.subtotal')) }}đ</span>
+                    <span>Tạm tính</span>
+                    <span class="font-medium text-gray-800">{{ number_format($booking->subtotal) }}đ</span>
                 </div>
                 @endif
+
                 @if($booking->discount_amount > 0)
                 <div class="flex justify-between text-emerald-600 font-semibold">
                     <span>Giảm giá
@@ -148,6 +195,7 @@
                     <span>-{{ number_format($booking->discount_amount) }}đ</span>
                 </div>
                 @endif
+
                 <div class="border-t border-gray-100 pt-3 flex justify-between items-center">
                     <span class="text-xs font-bold text-gray-500 uppercase tracking-widest">Tổng Cộng</span>
                     <span class="text-2xl font-black text-brand-primary">
@@ -180,8 +228,8 @@
             @endif
         </div>
 
-        {{-- Vé điện tử & QR Code --}}
-        @if($booking->payment_status === 'paid')
+        {{-- Vé điện tử & QR Code (nếu là vé phim) --}}
+        @if(!$isComboOnly && $booking->showtime && $booking->payment_status === 'paid')
         <div class="mb-4">
             <div class="flex items-center justify-between mb-3">
                 <h3 class="text-xs font-black text-gray-500 uppercase tracking-widest flex items-center gap-2">

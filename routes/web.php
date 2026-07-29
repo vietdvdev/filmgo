@@ -20,6 +20,7 @@ use App\Http\Controllers\Customer\CustomerProfileController;
 use App\Http\Controllers\Customer\CustomerResetPasswordController;
 use App\Http\Controllers\Customer\HomeController;
 use App\Http\Controllers\Customer\MovieController as CustomerMovieController;
+use App\Http\Controllers\Customer\ComboShopController;
 use App\Http\Controllers\Manager\ManagerAuthController;
 use App\Http\Controllers\Manager\ManagerCinemaController;
 use App\Http\Controllers\Manager\ManagerStaffController;
@@ -111,11 +112,27 @@ Route::middleware('customer')->group(function () {
     // Lịch sử đặt vé
     Route::get('/booking/history', [App\Http\Controllers\Customer\BookingHistoryController::class, 'index'])->name('booking.history.index');
     Route::get('/booking/history/{id}', [App\Http\Controllers\Customer\BookingHistoryController::class, 'show'])->name('booking.history.show');
+
+    // ── Mua Combo / F&B riêng lẻ (không cần đặt vé) ──────────────────────────────
+    Route::get('/shop/combos', [ComboShopController::class, 'index'])->name('combo-shop.index');
+    Route::post('/shop/combos/cart', [ComboShopController::class, 'updateCart'])->name('combo-shop.cart');
+    Route::get('/shop/combos/checkout', [ComboShopController::class, 'checkout'])->name('combo-shop.checkout');
+    Route::post('/shop/combos/confirm', [ComboShopController::class, 'confirm'])->name('combo-shop.confirm');
+    Route::get('/shop/combos/success/{id}', [ComboShopController::class, 'success'])->name('combo-shop.success');
+    Route::get('/shop/combos/payment/qr/{id}/{provider}', [ComboShopController::class, 'paymentQrPage'])->name('combo-shop.payment.qr');
+    Route::get('/shop/combos/payment/demo/{id}/{provider}', [ComboShopController::class, 'demoPaymentPage'])->name('combo-shop.payment.demo');
+    Route::post('/shop/combos/payment/demo/{id}/{provider}/complete', [ComboShopController::class, 'demoPaymentComplete'])->name('combo-shop.payment.demo.complete');
+    Route::post('/shop/combos/voucher/apply', [ComboShopController::class, 'applyVoucher'])->name('combo-shop.voucher.apply');
+    Route::post('/shop/combos/voucher/remove', [ComboShopController::class, 'removeVoucher'])->name('combo-shop.voucher.remove');
 });
 
 // Thanh toán callback route không yêu cầu auth để nhận redirect/IPN từ đối tác
 Route::match(['get', 'post'], '/booking/vnpay-callback', [App\Http\Controllers\Customer\BookingController::class, 'vnpayCallback'])->name('booking.vnpay.callback');
 Route::match(['get', 'post'], '/booking/momo-callback', [App\Http\Controllers\Customer\BookingController::class, 'momoCallback'])->name('booking.momo.callback');
+
+// Combo Shop callbacks (không cần auth)
+Route::get('/shop/combos/vnpay-callback', [ComboShopController::class, 'vnpayCallback'])->name('combo-shop.vnpay.callback');
+Route::get('/shop/combos/momo-callback', [ComboShopController::class, 'momoCallback'])->name('combo-shop.momo.callback');
 
 // Toàn bộ các đường dẫn thuộc hệ thống Admin
 Route::prefix('admin')->group(function () {
@@ -359,6 +376,10 @@ Route::prefix('staff')->group(function () {
 
         // API: Checkout — tạo đơn + thanh toán ngay lập tức
         Route::post('/pos/api/checkout', [App\Http\Controllers\Staff\PosController::class, 'apiCheckout'])->name('staff.pos.api.checkout');
+
+        // API: Bán F&B đơn lẻ không cần suất chiếu
+        Route::get('/pos/api/combo-items', [App\Http\Controllers\Staff\PosController::class, 'apiGetComboItems'])->name('staff.pos.api.combo-items');
+        Route::post('/pos/api/checkout-fnb', [App\Http\Controllers\Staff\PosController::class, 'apiCheckoutFnb'])->name('staff.pos.api.checkout-fnb');
     });
 });
 

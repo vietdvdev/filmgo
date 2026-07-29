@@ -16,8 +16,8 @@
                         <h3 class="text-sm font-black uppercase tracking-widest text-slate-500 mb-3">Thông tin đơn hàng</h3>
                         <div class="space-y-2 text-sm text-slate-700 font-medium">
                             <div class="flex justify-between"><span>Mã đơn</span><span class="font-bold text-slate-900">{{ $booking->booking_code }}</span></div>
-                            <div class="flex justify-between"><span>Phim</span><span class="font-bold text-slate-900">{{ $booking->showtime->movie->title }}</span></div>
-                            <div class="flex justify-between"><span>Rạp</span><span class="font-bold text-slate-900">{{ $booking->showtime->room->cinema->name }}</span></div>
+                            <div class="flex justify-between"><span>Phim / Loại</span><span class="font-bold text-slate-900">{{ optional(optional($booking->showtime)->movie)->title ?? 'Combo / F&B' }}</span></div>
+                            <div class="flex justify-between"><span>Rạp</span><span class="font-bold text-slate-900">{{ optional(optional(optional($booking->showtime)->room)->cinema)->name ?? 'FilmGo Cinema' }}</span></div>
                             <div class="flex justify-between"><span>Tổng tiền</span><span class="font-black text-brand-primary text-base">{{ number_format($booking->total_amount) }}đ</span></div>
                         </div>
                     </div>
