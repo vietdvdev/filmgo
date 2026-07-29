@@ -702,7 +702,7 @@ class BookingController extends Controller
                 ]);
             }
 
-            $bookingCode = explode('_', $orderId)[0];
+            $bookingCode = preg_replace('/-\d+$/', '', (string) $orderId);
             $booking = Booking::where('booking_code', $bookingCode)->first();
 
             if (! $booking) {
@@ -896,8 +896,8 @@ class BookingController extends Controller
             return response()->json($payload, $statusCode);
         }
 
-        // Return URL từ browser khách hàng (GET) → redirect về trang success hoặc thất bại
-        $bookingCode = $request->get('vnp_TxnRef') ?? explode('_', $request->get('orderId', ''))[0];
+        $orderId = $request->get('orderId', '');
+        $bookingCode = $request->get('vnp_TxnRef') ?? ($orderId ? preg_replace('/-\d+$/', '', (string) $orderId) : null);
         $booking = $bookingCode ? Booking::where('booking_code', $bookingCode)->first() : null;
 
         if ($booking) {
