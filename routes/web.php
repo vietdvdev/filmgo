@@ -10,6 +10,7 @@ use App\Http\Controllers\Admin\CinemaController;
 use App\Http\Controllers\Admin\UserCinemaController;
 use App\Http\Controllers\Admin\UserController;
 use App\Http\Controllers\Admin\ComboController;
+use App\Http\Controllers\Admin\ComboItemController;
 use App\Http\Controllers\Admin\ManagementAuthController;
 use App\Http\Controllers\Admin\PromotionController;
 use App\Http\Controllers\Admin\BookingController;
@@ -178,8 +179,10 @@ Route::prefix('admin')->group(function () {
         // 8. Quản lý phân công rạp
         Route::resource('user-cinemas', UserCinemaController::class)->names('admin.user-cinemas');
 
-        // 9. Quản lý Combo bắp nước
+        // 9. Quản lý Combo bắp nước & Thành phần
         Route::resource('combos', ComboController::class)->names('admin.combos');
+        Route::post('combo-items/{comboItem}/toggle-status', [ComboItemController::class, 'toggleStatus'])->name('admin.combo-items.toggle-status');
+        Route::resource('combo-items', ComboItemController::class)->names('admin.combo-items');
 
         // 10. Quản lý mã khuyến mãi (Promotions)
         Route::resource('promotions', PromotionController::class)->names('admin.promotions');

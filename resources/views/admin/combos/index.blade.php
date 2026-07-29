@@ -11,10 +11,16 @@
                 <h2 class="font-headline-lg text-headline-lg text-on-surface">Quản Lý Combo Bắp Nước</h2>
                 <p class="font-body-md text-body-md text-on-surface-variant mt-1">Danh mục các gói bắp rang, nước uống và đồ ăn nhẹ phục vụ khách hàng đặt kèm khi xem phim.</p>
             </div>
-            <a href="{{ route('admin.combos.create') }}" class="bg-primary text-on-primary font-label-md text-label-md px-4 py-2.5 rounded-lg hover:bg-blue-700 hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 flex items-center gap-2">
-                <span class="material-symbols-outlined" style="font-size: 18px;">add</span>
-                Thêm Combo Mới
-            </a>
+            <div class="flex items-center gap-3">
+                <a href="{{ route('admin.combo-items.index') }}" class="bg-surface-container-high text-on-surface font-label-md text-label-md px-4 py-2.5 rounded-lg hover:bg-surface-container-highest transition-colors flex items-center gap-2">
+                    <span class="material-symbols-outlined" style="font-size: 18px;">category</span>
+                    Quản Lý Món Thành Phần
+                </a>
+                <a href="{{ route('admin.combos.create') }}" class="bg-primary text-on-primary font-label-md text-label-md px-4 py-2.5 rounded-lg hover:bg-blue-700 hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 flex items-center gap-2">
+                    <span class="material-symbols-outlined" style="font-size: 18px;">add</span>
+                    Thêm Combo Mới
+                </a>
+            </div>
         </div>
 
         @if(session('success'))
@@ -62,7 +68,7 @@
                                 <th class="py-3.5 px-6 font-semibold" style="width:100px;">Hình Ảnh</th>
                                 <th class="py-3.5 px-6 font-semibold">Tên Combo</th>
                                 <th class="py-3.5 px-6 font-semibold">Giá Bán</th>
-                                <th class="py-3.5 px-6 font-semibold">Mô Tả / Thành Phần</th>
+                                <th class="py-3.5 px-6 font-semibold">Thành Phần & Mô Tả</th>
                                 <th class="py-3.5 px-6 font-semibold" style="width:120px;">Trạng Thái</th>
                                 <th class="py-3.5 px-6 font-semibold text-right" style="width:150px;">Thao Tác</th>
                             </tr>
@@ -88,8 +94,19 @@
                                             {{ number_format($combo->price) }} ₫
                                         </span>
                                     </td>
-                                    <td class="py-4 px-6 text-on-surface-variant max-w-xs truncate" title="{{ $combo->description }}">
-                                        {{ $combo->description ?: 'Không có mô tả' }}
+                                    <td class="py-4 px-6 text-on-surface-variant max-w-sm space-y-1">
+                                        @if($combo->items->isNotEmpty())
+                                            <div class="flex flex-wrap gap-1.5 mb-1">
+                                                @foreach($combo->items as $item)
+                                                    <span class="inline-flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 border border-blue-200">
+                                                        <span class="font-bold">{{ $item->pivot->quantity }}x</span> {{ $item->name }}
+                                                    </span>
+                                                @endforeach
+                                            </div>
+                                        @endif
+                                        <p class="text-xs text-on-surface-variant/80 truncate" title="{{ $combo->description }}">
+                                            {{ $combo->description ?: 'Không có mô tả chi tiết' }}
+                                        </p>
                                     </td>
                                     <td class="py-4 px-6">
                                         @if($combo->status === 'active')

@@ -84,6 +84,15 @@
                                                     <h3 class="font-bold text-slate-900 text-sm md:text-base tracking-tight leading-tight mb-1">
                                                         {{ $combo->combo_name }}
                                                     </h3>
+                                                    @if($combo->items->isNotEmpty())
+                                                        <div class="flex flex-wrap gap-1.5 mb-1.5">
+                                                            @foreach($combo->items as $item)
+                                                                <span class="inline-flex items-center gap-1 text-[11px] font-bold px-2 py-0.5 rounded-full bg-amber-50 text-amber-800 border border-amber-200">
+                                                                    <span>{{ $item->pivot->quantity }}x</span> {{ $item->name }}
+                                                                </span>
+                                                            @endforeach
+                                                        </div>
+                                                    @endif
                                                     <p class="text-xs text-slate-500 font-semibold leading-relaxed line-clamp-2">
                                                         {{ $combo->description }}
                                                     </p>

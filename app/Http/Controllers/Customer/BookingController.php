@@ -208,8 +208,8 @@ class BookingController extends Controller
         // Tính tổng tiền ghế
         $totalSeatPrice = $selectedSeats->sum('price');
 
-        // Lấy danh sách Combo bắp nước đang hoạt động
-        $combos = Combo::where('status', 'active')->latest()->get();
+        // Lấy danh sách Combo bắp nước đang hoạt động (kèm thành phần chi tiết)
+        $combos = Combo::with('items')->where('status', 'active')->latest()->get();
 
         // Lấy thông tin combo đã chọn trước đó trong session (nếu có)
         $savedCombosData = session()->get("booking.{$showtimeId}.combos", []);
