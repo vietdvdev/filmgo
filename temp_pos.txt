@@ -81,11 +81,11 @@
 
             {{-- Tab Switcher: Bán Vé / Bán F&B --}}
             <div class="flex gap-1 p-1 rounded-xl mb-2" style="background:#f1f5f9">
-                <button class="pos-tab-btn active" id="tab-ticket" onclick="_FNB.switchMode('ticket')">
+                <button class="pos-tab-btn active" id="tab-ticket" onclick="POS.switchMode('ticket')">
                     <span class="material-symbols-outlined" style="font-size:14px">confirmation_number</span>
                     Bán Vé
                 </button>
-                <button class="pos-tab-btn" id="tab-fnb" onclick="_FNB.switchMode('fnb')">
+                <button class="pos-tab-btn" id="tab-fnb" onclick="POS.switchMode('fnb')">
                     <span class="material-symbols-outlined" style="font-size:14px">fastfood</span>
                     Bán F&B
                 </button>
@@ -654,7 +654,7 @@ const POS = (() => {
                                 class="w-full flex items-center justify-between px-3 py-2 rounded-lg border text-left transition-all
                                        hover:border-primary hover:bg-primary/5
                                        ${state.currentShowtime?.id === s.id ? 'border-primary bg-primary/10' : 'border-gray-100 bg-white'}
-                                       ${s.status === 'cancelled' ? 'opacity-40 pointer-events-none' : ''}">
+                                       ${['finished','cancelled'].includes(s.status) ? 'opacity-40 pointer-events-none' : ''}">
                             <div>
                                 <span class="text-xs font-black text-gray-900">${s.start_time}</span>
                                 <span class="text-[10px] text-gray-400 ml-1">→ ${s.end_time}</span>
@@ -663,8 +663,8 @@ const POS = (() => {
                             <div class="text-right">
                                 <span class="text-[10px] font-bold text-primary">${formatMoney(s.base_price)}</span>
                                 <span class="block text-[9px] font-semibold mt-0.5 px-1.5 py-0.5 rounded-full
-                                    ${s.status === 'active' ? 'bg-green-100 text-green-700' : s.status === 'showing' ? 'bg-blue-100 text-blue-700' : s.status === 'finished' ? 'bg-gray-100 text-gray-500' : s.status === 'upcoming' ? 'bg-yellow-100 text-yellow-700' : 'bg-gray-100 text-gray-500'}">
-                                    ${s.status === 'active' ? 'Mở bán' : s.status === 'showing' ? 'Đang chiếu' : s.status === 'finished' ? 'Đã chiếu' : s.status === 'upcoming' ? 'Sắp chiếu' : s.status}
+                                    ${s.status === 'active' ? 'bg-green-100 text-green-700' : s.status === 'showing' ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-500'}">
+                                    ${s.status === 'active' ? 'Mở bán' : s.status === 'showing' ? 'Đang chiếu' : s.status}
                                 </span>
                             </div>
                         </button>
@@ -1044,7 +1044,7 @@ const POS = (() => {
         document.getElementById('success-booking-code').textContent = booking.booking_code;
         document.getElementById('success-movie').textContent = booking.showtime?.movie || '';
         document.getElementById('success-time').textContent = `${booking.showtime?.show_date || ''} ${booking.showtime?.start_time || ''}`;
-
+        
         const seatLabels = booking.seats ? booking.seats.map(s => s.label).join(', ') : '';
         document.getElementById('success-seats').textContent = seatLabels;
         document.getElementById('success-total').textContent = formatMoney(booking.final_total ?? booking.total_amount);
@@ -1101,7 +1101,7 @@ const POS = (() => {
         const qrPrintDiv = document.getElementById('pt-qr-print');
         qrPrintDiv.innerHTML = '';
         const qrContent = booking.seats && booking.seats[0] ? booking.seats[0].qr : booking.booking_code;
-
+        
         if (typeof QRCode !== 'undefined') {
             new QRCode(qrPrintDiv, {
                 text: qrContent,
@@ -1208,6 +1208,8 @@ const POS = (() => {
         confirmCheckout,
         openSuccessModal,
         handlePrintTicket, handleShowQR, resetPOS,
+        // F&B mode
+        switchMode, changeFnbCombo, changeFnbItem, checkoutFnb,
     };
 })();
 

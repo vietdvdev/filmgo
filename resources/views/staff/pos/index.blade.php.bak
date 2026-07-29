@@ -924,7 +924,7 @@ const POS = (() => {
         document.getElementById('success-booking-code').textContent = booking.booking_code;
         document.getElementById('success-movie').textContent = booking.showtime?.movie || '';
         document.getElementById('success-time').textContent = `${booking.showtime?.show_date || ''} ${booking.showtime?.start_time || ''}`;
-        
+
         const seatLabels = booking.seats ? booking.seats.map(s => s.label).join(', ') : '';
         document.getElementById('success-seats').textContent = seatLabels;
         document.getElementById('success-total').textContent = formatMoney(booking.final_total ?? booking.total_amount);
@@ -981,7 +981,7 @@ const POS = (() => {
         const qrPrintDiv = document.getElementById('pt-qr-print');
         qrPrintDiv.innerHTML = '';
         const qrContent = booking.seats && booking.seats[0] ? booking.seats[0].qr : booking.booking_code;
-        
+
         if (typeof QRCode !== 'undefined') {
             new QRCode(qrPrintDiv, {
                 text: qrContent,
