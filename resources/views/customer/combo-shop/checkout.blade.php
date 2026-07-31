@@ -159,7 +159,7 @@
                             </label>
                             <select name="bank_code" id="bank_code"
                                     class="w-full bg-slate-50 border border-slate-200 text-slate-800 text-sm font-semibold rounded-2xl px-4 py-3 focus:outline-none focus:border-blue-600">
-                                <option value="NCB">Ngân hàng NCB (Demo)</option>
+                                <option value="NCB">Ngân hàng NCB</option>
                                 <option value="VNPAYQR">Thanh toán qua VNPAYQR</option>
                                 <option value="VIETCOMBANK">Ngân hàng Vietcombank</option>
                                 <option value="VIETINBANK">Ngân hàng VietinBank</option>
