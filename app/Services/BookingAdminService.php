@@ -21,7 +21,7 @@ class BookingAdminService
             'showtime.movie:id,title',
             'showtime.room.cinema:id,name',
             'payments:id,booking_id,payment_method,payment_status,amount',
-        ]);
+        ])->excludeExpired();  // Ẩn các đơn đã bị hủy tự động do hết hạn giữ ghế
 
         if (!empty($filters['search'])) {
             $s = $filters['search'];

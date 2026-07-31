@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
@@ -59,7 +60,7 @@ class Booking extends Model
      * Lọc đơn đặt vé đã thanh toán thành công.
      * Dùng: Booking::paid()->get()
      */
-    public function scopePaid(\Illuminate\Database\Eloquent\Builder $query): \Illuminate\Database\Eloquent\Builder
+    public function scopePaid(Builder $query): Builder
     {
         return $query->where('payment_status', 'paid');
     }
@@ -68,7 +69,7 @@ class Booking extends Model
      * Lọc đơn đặt vé đang chờ thanh toán.
      * Dùng: Booking::pending()->get()
      */
-    public function scopePending(\Illuminate\Database\Eloquent\Builder $query): \Illuminate\Database\Eloquent\Builder
+    public function scopePending(Builder $query): Builder
     {
         return $query->where('payment_status', 'pending');
     }
@@ -77,7 +78,7 @@ class Booking extends Model
      * Lọc đơn đặt vé đã xác nhận (booking_status = confirmed).
      * Dùng: Booking::confirmed()->get()
      */
-    public function scopeConfirmed(\Illuminate\Database\Eloquent\Builder $query): \Illuminate\Database\Eloquent\Builder
+    public function scopeConfirmed(Builder $query): Builder
     {
         return $query->where('booking_status', 'confirmed');
     }
@@ -86,7 +87,7 @@ class Booking extends Model
      * Lọc đơn combo-only (không có vé xem phim).
      * Dùng: Booking::comboOnly()->get()
      */
-    public function scopeComboOnly(\Illuminate\Database\Eloquent\Builder $query): \Illuminate\Database\Eloquent\Builder
+    public function scopeComboOnly(Builder $query): Builder
     {
         return $query->where('booking_type', 'combo_only');
     }
@@ -95,9 +96,31 @@ class Booking extends Model
      * Lọc đơn đặt vé thông thường.
      * Dùng: Booking::ticketOnly()->get()
      */
-    public function scopeTicketOnly(\Illuminate\Database\Eloquent\Builder $query): \Illuminate\Database\Eloquent\Builder
+    public function scopeTicketOnly(Builder $query): Builder
     {
         return $query->where('booking_type', 'ticket');
+    }
+
+    /**
+     * Loại trừ các đơn hàng đã hết thời gian giữ ghế chờ thanh toán.
+     *
+     * Giữ lại đơn nếu THỎA MỘT TRONG:
+     *   - expired_at IS NULL       → đơn không có hạn (ví dụ: đặt tại quầy)
+     *   - expired_at > now()       → vẫn còn trong thời gian giữ ghế
+     *   - payment_status = 'paid'  → đã thanh toán thành công
+     *
+     * → Ẩn tất cả đơn hết hạn chưa thanh toán (cả đơn pending chưa kịp xử lý
+     *   lẫn đơn đã bị command hủy thành cancelled/failed).
+     *
+     * Dùng: Booking::excludeExpired()->get()
+     */
+    public function scopeExcludeExpired(Builder $query): Builder
+    {
+        return $query->where(function (Builder $q) {
+            $q->whereNull('expired_at')
+              ->orWhere('expired_at', '>', now())
+              ->orWhere('payment_status', 'paid');
+        });
     }
 
     /**
@@ -106,7 +129,7 @@ class Booking extends Model
      *
      * @param  string  $channel  'online' | 'counter'
      */
-    public function scopeByChannel(\Illuminate\Database\Eloquent\Builder $query, string $channel): \Illuminate\Database\Eloquent\Builder
+    public function scopeByChannel(Builder $query, string $channel): Builder
     {
         return $query->where('channel', $channel);
     }
