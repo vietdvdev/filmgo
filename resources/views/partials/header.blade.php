@@ -11,25 +11,22 @@
             </div>
 
             <!-- Navigation Links -->
-            <nav class="hidden md:flex space-x-8">
-                <a href="/"
-                    class="text-white hover:text-brand-primary font-medium text-sm transition-colors duration-200">Trang
-                    Chủ</a>
-                <a href="#"
-                    class="text-gray-300 hover:text-brand-primary font-medium text-sm transition-colors duration-200">Lịch
-                    Chiếu</a>
-                <a href="#"
-                    class="text-gray-300 hover:text-brand-primary font-medium text-sm transition-colors duration-200">Phim</a>
-                <a href="#"
-                    class="text-gray-300 hover:text-brand-primary font-medium text-sm transition-colors duration-200">Khuyến
-                    Mãi</a>
-                <a href="{{ route('combo-shop.index') }}"
-                    class="text-gray-300 hover:text-brand-primary font-medium text-sm transition-colors duration-200 flex items-center gap-1">
-                    <span class="material-symbols-outlined text-base text-orange-400">fastfood</span> Bắp Nước &amp; Combo
+            <nav class="flex items-center space-x-6 md:space-x-8">
+                <a href="{{ route('home') }}"
+                    class="{{ request()->routeIs('home') ? 'text-brand-primary font-bold' : 'text-gray-300 hover:text-brand-primary font-medium' }} text-sm transition-colors duration-200 flex items-center gap-1.5">
+                    <span class="material-symbols-outlined text-base">home</span>
+                    Trang Chủ
                 </a>
-                <a href="#"
-                    class="text-gray-300 hover:text-brand-primary font-medium text-sm transition-colors duration-200">Tin
-                    Điện Ảnh</a>
+                <a href="{{ route('movies.showing') }}"
+                    class="{{ request()->routeIs('movies.*') || request()->routeIs('booking.*') ? 'text-brand-primary font-bold' : 'text-gray-300 hover:text-brand-primary font-medium' }} text-sm transition-colors duration-200 flex items-center gap-1.5">
+                    <span class="material-symbols-outlined text-base">confirmation_number</span>
+                    Đặt Vé
+                </a>
+                <a href="{{ route('combo-shop.index') }}"
+                    class="{{ request()->routeIs('combo-shop.*') ? 'text-brand-primary font-bold' : 'text-gray-300 hover:text-brand-primary font-medium' }} text-sm transition-colors duration-200 flex items-center gap-1.5">
+                    <span class="material-symbols-outlined text-base text-orange-400">fastfood</span>
+                    Bán Combo
+                </a>
             </nav>
 
             <!-- Search Bar & Auth -->
