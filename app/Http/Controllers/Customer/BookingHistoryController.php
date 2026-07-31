@@ -26,6 +26,7 @@ class BookingHistoryController extends Controller
                 'payments:id,booking_id,payment_method,payment_status',
             ])
             ->where('user_id', Auth::id())
+            ->excludeExpired()             // Ẩn các đơn đã bị hủy do hết hạn giữ ghế
             ->latest()
             ->paginate(8)
             ->withQueryString();    // Giữ nguyên query params khi phân trang
