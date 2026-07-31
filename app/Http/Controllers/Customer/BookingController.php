@@ -19,6 +19,7 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 
 use App\Services\ShowtimeService;
+use App\Services\BookingEmailService;
 
 class BookingController extends Controller
 {
@@ -26,17 +27,20 @@ class BookingController extends Controller
     protected $paymentService;
     protected $seatValidationService;
     protected $showtimeService;
+    protected $bookingEmailService;
 
     public function __construct(
         BookingService $bookingService, 
         PaymentService $paymentService, 
         \App\Services\SeatValidationService $seatValidationService,
-        ShowtimeService $showtimeService
+        ShowtimeService $showtimeService,
+        BookingEmailService $bookingEmailService
     ) {
         $this->bookingService = $bookingService;
         $this->paymentService = $paymentService;
         $this->seatValidationService = $seatValidationService;
         $this->showtimeService = $showtimeService;
+        $this->bookingEmailService = $bookingEmailService;
     }
 
     /**
@@ -555,6 +559,9 @@ class BookingController extends Controller
         ShowtimeSeat::whereIn('id', $booking->bookingDetails->pluck('showtime_seat_id'))->update(['status' => 'booked']);
         session()->forget("booking.{$booking->showtime_id}");
 
+        // Gửi email xác nhận tới khách hàng
+        $this->bookingEmailService->sendConfirmationEmail($booking);
+
         return redirect()->route('booking.success', $booking->id)->with('success', 'Thanh toán giả lập thành công.');
     }
 
@@ -854,6 +861,9 @@ class BookingController extends Controller
             'response_code' => $responseCode,
             'message' => 'Thanh toán thành công và đã cập nhật trạng thái vé.',
         ]);
+
+        // Gửi email xác nhận tới khách hàng
+        $this->bookingEmailService->sendConfirmationEmail($booking);
     }
 
     /**
