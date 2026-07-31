@@ -9,6 +9,7 @@ use App\Models\ComboItem;
 use App\Models\Payment;
 use App\Services\ComboOrderService;
 use App\Services\PaymentService;
+use App\Services\BookingEmailService;
 use Exception;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -17,7 +18,8 @@ class ComboShopController extends Controller
 {
     public function __construct(
         protected ComboOrderService $comboOrderService,
-        protected PaymentService $paymentService
+        protected PaymentService $paymentService,
+        protected BookingEmailService $bookingEmailService
     ) {}
 
     // ─────────────────────────────────────────────────────────────────────────
@@ -304,6 +306,9 @@ class ComboShopController extends Controller
             ]);
         }
 
+        // Gửi email xác nhận tới khách hàng
+        $this->bookingEmailService->sendConfirmationEmail($booking);
+
         return redirect()->route('combo-shop.success', $booking->id)
             ->with('success', 'Thanh toán giả lập thành công!');
     }
@@ -342,6 +347,9 @@ class ComboShopController extends Controller
                     'paid_at'          => now(),
                 ]);
             }
+
+            // Gửi email xác nhận tới khách hàng
+            $this->bookingEmailService->sendConfirmationEmail($booking);
 
             return redirect()->route('combo-shop.success', $booking->id)
                 ->with('success', 'Thanh toán VNPay thành công!');
@@ -384,6 +392,9 @@ class ComboShopController extends Controller
                     'paid_at'          => now(),
                 ]);
             }
+
+            // Gửi email xác nhận tới khách hàng
+            $this->bookingEmailService->sendConfirmationEmail($booking);
 
             return redirect()->route('combo-shop.success', $booking->id)
                 ->with('success', 'Thanh toán MoMo thành công!');

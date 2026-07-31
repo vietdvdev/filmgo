@@ -84,7 +84,21 @@ class CustomerAuthController extends Controller
                 ]);
             }
 
-            if (Auth::attempt($credentials, $request->boolean('remember'))) {
+            try {
+                // Tự động chuyển đổi nếu mật khẩu trong database lưu dưới dạng thô chưa băm Bcrypt
+                if (!str_starts_with($user->password, '$2y$') && !str_starts_with($user->password, '$2b$') && !str_starts_with($user->password, '$2a$')) {
+                    if ($user->password === $credentials['password']) {
+                        $user->password = \Illuminate\Support\Facades\Hash::make($credentials['password']);
+                        $user->save();
+                    }
+                }
+
+                $isAttemptSuccessful = Auth::attempt($credentials, $request->boolean('remember'));
+            } catch (\RuntimeException $e) {
+                $isAttemptSuccessful = false;
+            }
+
+            if ($isAttemptSuccessful) {
                 $loggedInUser = Auth::user();
 
                 // Chặn admin/manager/staff đăng nhập vào portal Khách hàng
