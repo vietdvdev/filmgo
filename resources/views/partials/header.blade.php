@@ -24,7 +24,7 @@
                 </a>
                 <a href="{{ route('combo-shop.index') }}"
                     class="{{ request()->routeIs('combo-shop.*') ? 'text-brand-primary font-bold' : 'text-gray-300 hover:text-brand-primary font-medium' }} text-sm transition-colors duration-200 flex items-center gap-1.5">
-                    <span class="material-symbols-outlined text-base text-orange-400">fastfood</span>
+                    <span class="material-symbols-outlined text-base">fastfood</span>
                     Bán Combo
                 </a>
             </nav>
