@@ -27,7 +27,7 @@
                     <!-- Poster Column -->
                     <div class="col-span-1">
                         <div class="relative aspect-[2/3] bg-slate-100 rounded-none overflow-hidden border border-slate-200 shadow-sm">
-                            <img src="{{ $movie->poster ? asset('storage/' . $movie->poster) : asset('images/no-image.jpg') }}"
+                            <img src="{{ $movie->poster_url ?? asset('images/no-image.jpg') }}"
                                  alt="{{ $movie->title }}"
                                  class="w-full h-full object-cover">
                             <div class="absolute top-4 left-4 px-2.5 py-1 text-[9px] font-black bg-brand-primary text-white rounded-none border border-brand-primary/20 shadow-sm uppercase tracking-wider">
@@ -97,6 +97,27 @@
                     </div>
                 </div>
             </div>
+
+            @if($movie->trailer_url)
+                <div class="bg-white border border-slate-200 rounded-none shadow-sm overflow-hidden mb-12">
+                    <div class="p-6 md:p-8">
+                        <h2 class="text-xl font-black text-slate-900 uppercase tracking-tighter mb-4">Trailer</h2>
+                        <div class="aspect-video overflow-hidden rounded-none border border-slate-200 bg-black">
+                            @if($movie->trailer_embed_url)
+                                <iframe src="{{ $movie->trailer_embed_url }}"
+                                        class="w-full h-full"
+                                        frameborder="0"
+                                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                                        allowfullscreen></iframe>
+                            @else
+                                <div class="w-full h-full flex items-center justify-center bg-slate-950 text-white text-sm font-semibold p-4 text-center">
+                                    <a href="{{ $movie->trailer_url }}" target="_blank" rel="noreferrer" class="underline text-brand-primary">Xem trailer</a>
+                                </div>
+                            @endif
+                        </div>
+                    </div>
+                </div>
+            @endif
 
             <!-- Showtime List Section -->
             <div class="bg-white border border-slate-200 rounded-none shadow-sm p-6 md:p-8">
