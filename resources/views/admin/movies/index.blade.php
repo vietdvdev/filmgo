@@ -99,6 +99,7 @@
                                 <th class="py-3.5 px-4 font-semibold" style="width: 80px;">Poster</th>
                                 <th class="py-3.5 px-4 font-semibold" style="width: 25%;">Thông Tin Phim</th>
                                 <th class="py-3.5 px-4 font-semibold whitespace-nowrap">Thể Loại</th>
+                                <th class="py-3.5 px-4 font-semibold whitespace-nowrap" style="width: 160px;">Định Dạng</th>
                                 <th class="py-3.5 px-4 font-semibold whitespace-nowrap" style="width: 110px;">Thời Lượng</th>
                                 <th class="py-3.5 px-4 font-semibold whitespace-nowrap" style="width: 120px;">Khởi Chiếu</th>
                                 <th class="py-3.5 px-4 font-semibold whitespace-nowrap" style="width: 80px;">Độ Tuổi</th>
@@ -138,6 +139,15 @@
                                             @foreach($movie->genres as $genre)
                                                 <span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-semibold bg-blue-50 text-blue-700 border border-blue-200/50">
                                                     {{ $genre->name }}
+                                                </span>
+                                            @endforeach
+                                        </div>
+                                    </td>
+                                    <td class="py-4 px-4">
+                                        <div class="flex flex-wrap gap-1 max-w-[180px]">
+                                            @foreach($movie->formats as $format)
+                                                <span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-semibold bg-slate-50 text-slate-700 border border-slate-200/50">
+                                                    {{ $format->name }}
                                                 </span>
                                             @endforeach
                                         </div>
