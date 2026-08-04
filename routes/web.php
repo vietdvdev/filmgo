@@ -50,26 +50,6 @@ Route::middleware('guest')->group(function () {
     Route::get('/login', [CustomerAuthController::class, 'showLoginForm'])->name('login');
     Route::post('/login', [CustomerAuthController::class, 'login']);
 
-    // Route tự động đăng nhập nhanh Khách hàng cho môi trường phát triển
-    Route::get('/customer/auto-login', function () {
-        $customer = \App\Models\User::where('email', 'customer@gmail.com')->first();
-        if (!$customer) {
-            $customer = \App\Models\User::create([
-                'full_name' => 'Khách Hàng FilmGo',
-                'email'     => 'customer@gmail.com',
-                'phone'     => '0912345678',
-                'password'  => \Illuminate\Support\Facades\Hash::make('123456'),
-                'status'    => 'active',
-            ]);
-            $customerRole = \App\Models\Role::where('name', 'customer')->first();
-            if ($customerRole) {
-                $customer->roles()->attach($customerRole->id);
-            }
-        }
-        \Illuminate\Support\Facades\Auth::login($customer);
-        return redirect()->route('home')->with('success', 'Đã tự động đăng nhập tài khoản Khách hàng!');
-    })->name('customer.auto-login');
-
     // Khôi phục mật khẩu
     Route::get('/forgot-password', [CustomerForgotPasswordController::class, 'showLinkRequestForm'])->name('password.request');
     Route::post('/forgot-password', [CustomerForgotPasswordController::class, 'sendResetLinkEmail'])->name('password.email');
@@ -141,26 +121,6 @@ Route::prefix('admin')->group(function () {
     Route::middleware('guest')->group(function () {
         Route::get('/login', [ManagementAuthController::class, 'showLoginForm'])->name('admin.login');
         Route::post('/login', [ManagementAuthController::class, 'login']);
-
-        // Route tự động đăng nhập nhanh Admin cho môi trường phát triển
-        Route::get('/auto-login', function () {
-            $admin = \App\Models\User::where('email', 'admin@gmail.com')->first();
-            if (!$admin) {
-                $admin = \App\Models\User::create([
-                    'full_name' => 'Thùy Trang Admin',
-                    'email'     => 'admin@gmail.com',
-                    'phone'     => '0987654321',
-                    'password'  => \Illuminate\Support\Facades\Hash::make('123456'),
-                    'status'    => 'active',
-                ]);
-                $adminRole = \App\Models\Role::where('name', 'admin')->first();
-                if ($adminRole) {
-                    $admin->roles()->attach($adminRole->id);
-                }
-            }
-            \Illuminate\Support\Facades\Auth::login($admin);
-            return redirect()->route('admin.dashboard')->with('success', 'Đã tự động đăng nhập tài khoản Admin!');
-        })->name('admin.auto-login');
     });
 
     // Nhân sự quản trị đã đăng nhập (Admin, Manager, Staff)
