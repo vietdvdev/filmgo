@@ -148,6 +148,11 @@ class Booking extends Model
         return $this->belongsTo(Showtime::class, 'showtime_id')->withTrashed();
     }
 
+    public function staff(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'staff_id');
+    }
+
     /**
      * Mã khuyến mãi đã được áp dụng (snapshot FK).
      */

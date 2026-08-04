@@ -10,6 +10,9 @@
     /* ── Tab Mode F&B: ẩn cột giữa (sơ đồ ghế), mở rộng cột trái ─── */
     #pos-root.fnb-mode { grid-template-columns: 1fr 340px; }
     #pos-root.fnb-mode #pos-col-seat { display: none; }
+    #pos-root.fnb-mode #ticket-cart-panel { display: none; }
+    #pos-root.fnb-mode #total-seat-row { display: none; }
+    #pos-root.fnb-mode #right-fnb-list { display: none; }
 
     .pos-tab-btn {
         flex: 1; padding: 6px; border-radius: 8px; font-size: 11px; font-weight: 700;
@@ -39,6 +42,14 @@
 
     /* ── Print styles — Máy in nhiệt 80mm ─── */
     @@media print {
+        html, body {
+            margin: 0 !important;
+            padding: 0 !important;
+            width: 80mm !important;
+            max-width: 80mm !important;
+            min-height: auto !important;
+        }
+        * { box-sizing: border-box !important; }
         #pos-root, #checkout-modal, #success-modal, #pos-toast,
         aside, header { display: none !important; }
         #print-ticket-area { display: block !important; }
@@ -48,12 +59,21 @@
             margin: 0;
         }
         #print-ticket-area {
-            width: 72mm;
-            margin: 0 auto;
-            padding: 4mm 2mm;
+            width: 80mm;
+            max-width: 80mm;
+            margin: 0;
+            padding: 1mm 1.5mm 0.5mm;
             font-family: 'Courier New', Courier, monospace;
-            font-size: 11pt;
+            font-size: 10pt;
+            line-height: 1.1;
             color: #000;
+        }
+        #print-ticket-area div,
+        #print-ticket-area table,
+        #print-ticket-area td,
+        #print-ticket-area th {
+            margin: 0 !important;
+            padding: 0 !important;
         }
     }
     /* Ẩn trong giao diện thường */
@@ -77,6 +97,12 @@
                     Phim & Suất Chiếu
                 </h2>
                 <span id="movie-count" class="text-[10px] font-bold px-2 py-0.5 bg-primary/10 text-primary rounded-full">—</span>
+            </div>
+
+            <div class="mb-3">
+                <input id="pos-search" type="search" placeholder="Tìm phim, phòng, giờ..."
+                       class="w-full text-xs border border-gray-200 rounded-lg px-3 py-2 focus:ring-2 focus:ring-primary/30 focus:border-primary outline-none"
+                       autocomplete="off">
             </div>
 
             {{-- Tab Switcher: Bán Vé / Bán F&B --}}
@@ -151,20 +177,22 @@
     <div class="bg-white border-l border-gray-200 flex flex-col overflow-hidden">
 
         {{-- ── Giỏ hàng ghế ─────────────────────── --}}
-        <div class="px-4 py-3 border-b border-gray-100 flex-shrink-0">
-            <h3 class="text-xs font-bold text-gray-700 uppercase tracking-wider flex items-center gap-1.5">
-                <span class="material-symbols-outlined text-primary" style="font-size:16px">shopping_cart</span>
-                Giỏ hàng
-            </h3>
-        </div>
+        <div id="ticket-cart-panel">
+            <div class="px-4 py-3 border-b border-gray-100 flex-shrink-0">
+                <h3 class="text-xs font-bold text-gray-700 uppercase tracking-wider flex items-center gap-1.5">
+                    <span class="material-symbols-outlined text-primary" style="font-size:16px">shopping_cart</span>
+                    Giỏ hàng
+                </h3>
+            </div>
 
-        {{-- Danh sách ghế đã chọn --}}
-        <div id="cart-seats" class="px-4 py-2 flex-shrink-0 min-h-[80px] max-h-[160px] overflow-y-auto">
-            <p id="no-seat-msg" class="text-xs text-gray-400 text-center py-4">Chưa chọn ghế nào</p>
+            {{-- Danh sách ghế đã chọn --}}
+            <div id="cart-seats" class="px-4 py-2 flex-shrink-0 min-h-[80px] max-h-[160px] overflow-y-auto">
+                <p id="no-seat-msg" class="text-xs text-gray-400 text-center py-4">Chưa chọn ghế nào</p>
+            </div>
         </div>
 
         {{-- ── F&B Combos ──────────────────────── --}}
-        <div class="border-t border-gray-100 flex-shrink-0">
+        <div id="right-fnb-list" class="border-t border-gray-100 flex-shrink-0">
             <div class="px-4 py-2 bg-orange-50 border-b border-orange-100">
                 <h3 class="text-xs font-bold text-orange-700 uppercase tracking-wider flex items-center gap-1.5">
                     <span class="material-symbols-outlined" style="font-size:16px">fastfood</span>
@@ -214,7 +242,7 @@
 
         {{-- ── Tổng tiền ──────────────────────── --}}
         <div class="border-t border-gray-200 px-4 py-3 flex-shrink-0 bg-gray-50 space-y-1.5">
-            <div class="flex justify-between text-xs text-gray-600">
+            <div id="total-seat-row" class="flex justify-between text-xs text-gray-600">
                 <span>Tiền ghế (<span id="total-seat-count">0</span> ghế)</span>
                 <span id="total-seat-price">0đ</span>
             </div>
@@ -619,10 +647,14 @@ const POS = (() => {
     // ── Load danh sách phim theo ngày ─────────────────────────────────────────
     async function loadMovies() {
         const date = document.getElementById('pos-date').value;
+        const search = document.getElementById('pos-search')?.value.trim() || '';
         const listEl = document.getElementById('movie-list');
         listEl.innerHTML = `<div class="text-center py-8 text-gray-300"><span class="material-symbols-outlined text-4xl block mb-2">hourglass_empty</span><p class="text-xs">Đang tải...</p></div>`;
 
-        const data = await apiFetch(`/staff/pos/api/showtimes?date=${date}`);
+        const url = new URL(`/staff/pos/api/showtimes`, window.location.origin);
+        url.searchParams.set('date', date);
+        if (search) url.searchParams.set('search', search);
+        const data = await apiFetch(url.toString());
         const movies = data.data || [];
 
         document.getElementById('movie-count').textContent = movies.length + ' phim';
@@ -1180,6 +1212,14 @@ const POS = (() => {
     }
 
     // ── Format tiền ──────────────────────────────────────────────────────
+    function debounce(fn, delay) {
+        let timer;
+        return (...args) => {
+            clearTimeout(timer);
+            timer = setTimeout(() => fn(...args), delay);
+        };
+    }
+
     function formatMoney(n) {
         return new Intl.NumberFormat('vi-VN').format(n || 0) + 'đ';
     }
@@ -1188,6 +1228,7 @@ const POS = (() => {
     function init() {
         loadMovies();
         document.getElementById('pos-date').addEventListener('change', loadMovies);
+        document.getElementById('pos-search').addEventListener('input', debounce(loadMovies, 350));
 
         // Phím tắt F2: Tạo đơn mới nhanh khi đang hiển thị modal thành công
         document.addEventListener('keydown', (e) => {

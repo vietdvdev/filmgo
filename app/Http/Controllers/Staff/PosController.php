@@ -56,6 +56,7 @@ class PosController extends Controller
 
         $cinemaId = $this->getCinemaId();
         $date     = $request->input('date', today()->toDateString());
+        $search   = trim($request->input('search', '')); 
 
         $rooms = Room::where('cinema_id', $cinemaId)->pluck('id');
 
@@ -68,6 +69,23 @@ class PosController extends Controller
             $q->whereIn('room_id', $rooms)
               ->whereDate('show_date', $date)
               ->whereNotIn('status', ['cancelled']);
+        })
+        ->when($search !== '', function ($query) use ($search, $rooms, $date) {
+            $query->where(function ($q) use ($search, $rooms, $date) {
+                $q->where('title', 'like', "%{$search}%")
+                  ->orWhereHas('showtimes', function ($q2) use ($rooms, $date, $search) {
+                      $q2->whereIn('room_id', $rooms)
+                         ->whereDate('show_date', $date)
+                         ->whereNotIn('status', ['cancelled'])
+                         ->where(function ($q3) use ($search) {
+                             $q3->where('start_time', 'like', "%{$search}%")
+                                ->orWhere('end_time', 'like', "%{$search}%")
+                                ->orWhereHas('room', function ($q4) use ($search) {
+                                     $q4->where('room_name', 'like', "%{$search}%");
+                                });
+                         });
+                  });
+            });
         })
         ->with(['showtimes' => function ($q) use ($rooms, $date) {
             $q->whereIn('room_id', $rooms)
