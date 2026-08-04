@@ -317,6 +317,11 @@ Route::prefix('staff')->group(function () {
         // API: Bán F&B đơn lẻ không cần suất chiếu
         Route::get('/pos/api/combo-items', [App\Http\Controllers\Staff\PosController::class, 'apiGetComboItems'])->name('staff.pos.api.combo-items');
         Route::post('/pos/api/checkout-fnb', [App\Http\Controllers\Staff\PosController::class, 'apiCheckoutFnb'])->name('staff.pos.api.checkout-fnb');
+
+        // ── Quản lý tài khoản cá nhân nhân viên ─────────────────────────────
+        Route::get('/profile', [App\Http\Controllers\Staff\StaffProfileController::class, 'edit'])->name('staff.profile.edit');
+        Route::put('/profile', [App\Http\Controllers\Staff\StaffProfileController::class, 'updateProfile'])->name('staff.profile.update');
+        Route::put('/profile/password', [App\Http\Controllers\Staff\StaffProfileController::class, 'updatePassword'])->name('staff.profile.password');
     });
 });
 

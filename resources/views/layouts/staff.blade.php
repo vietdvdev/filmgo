@@ -124,19 +124,32 @@
                       style="font-variation-settings: 'FILL' {{ request()->routeIs('staff.pos.*') ? 1 : 0 }}">point_of_sale</span>
                 <span class="text-label-md">Bán Vé Tại Quầy (POS)</span>
             </a>
+
+            {{-- Tài khoản cá nhân --}}
+            <a href="{{ route('staff.profile.edit') }}"
+               class="flex items-center gap-3 px-4 py-3 rounded-lg transition-colors duration-200
+                      {{ request()->routeIs('staff.profile.*') ? 'bg-primary/10 text-primary font-bold' : 'text-on-surface-variant hover:bg-surface-container-low' }}">
+                <span class="material-symbols-outlined"
+                      style="font-variation-settings: 'FILL' {{ request()->routeIs('staff.profile.*') ? 1 : 0 }}">account_circle</span>
+                <span class="text-label-md">Tài Khoản Cá Nhân</span>
+            </a>
         </nav>
 
         {{-- Footer: user info + logout --}}
         <div class="px-2 mt-auto pt-4 border-t border-outline-variant/30">
-            <div class="flex items-center gap-3 px-4 py-3 mb-1">
-                <div class="w-9 h-9 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
-                    <span class="material-symbols-outlined text-primary text-lg">person</span>
-                </div>
+            <a href="{{ route('staff.profile.edit') }}" class="flex items-center gap-3 px-4 py-3 mb-1 rounded-xl hover:bg-surface-container-low transition-colors group">
+                @if(Auth::user()->avatar)
+                    <img src="{{ asset(Auth::user()->avatar) }}" class="w-9 h-9 rounded-full object-cover border border-primary/20 flex-shrink-0" alt="{{ Auth::user()->full_name }}">
+                @else
+                    <div class="w-9 h-9 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
+                        <span class="material-symbols-outlined text-primary text-lg">person</span>
+                    </div>
+                @endif
                 <div class="flex-1 min-w-0">
-                    <p class="text-sm font-bold text-on-surface truncate">{{ Auth::user()->full_name }}</p>
+                    <p class="text-sm font-bold text-on-surface truncate group-hover:text-primary transition-colors">{{ Auth::user()->full_name }}</p>
                     <p class="text-[11px] text-on-surface-variant truncate">{{ Auth::user()->email }}</p>
                 </div>
-            </div>
+            </a>
 
             <form id="staff-logout-form" action="{{ route('staff.logout') }}" method="POST" class="hidden">@csrf</form>
             <button type="button" onclick="document.getElementById('staff-logout-form').submit()"
