@@ -220,33 +220,6 @@ Route::prefix('manager')->group(function () {
     Route::middleware('guest')->group(function () {
         Route::get('/login', [ManagerAuthController::class, 'showLoginForm'])->name('manager.login');
         Route::post('/login', [ManagerAuthController::class, 'login'])->name('manager.login.submit');
-
-        // Route tự động đăng nhập nhanh Manager cho môi trường phát triển
-        Route::get('/auto-login', function () {
-            $manager = \App\Models\User::where('email', 'manager@filmgo.vn')->first();
-            if (!$manager) {
-                $manager = \App\Models\User::create([
-                    'full_name' => 'Nguyễn Văn Manager',
-                    'email'     => 'manager@filmgo.vn',
-                    'phone'     => '0988888888',
-                    'password'  => \Illuminate\Support\Facades\Hash::make('password'),
-                    'status'    => 'active',
-                ]);
-                $managerRole = \App\Models\Role::where('name', 'manager')->first();
-                if ($managerRole) {
-                    $manager->roles()->attach($managerRole->id);
-                }
-            }
-
-            // Đảm bảo Manager được phân công ít nhất 1 rạp
-            $firstCinema = \App\Models\Cinema::first();
-            if ($firstCinema && !$manager->cinemas()->where('cinemas.id', $firstCinema->id)->exists()) {
-                $manager->cinemas()->attach($firstCinema->id);
-            }
-
-            \Illuminate\Support\Facades\Auth::login($manager);
-            return redirect()->route('manager.showtimes.create')->with('success', 'Đã tự động đăng nhập tài khoản Manager!');
-        })->name('manager.auto-login');
     });
 
     // 1.5. Trang thông báo "Chưa được phân công rạp" (Case 3) — chỉ cần auth, không cần middleware manager
