@@ -9,4 +9,5 @@ Artisan::command('inspire', function () {
 })->purpose('Display an inspiring quote');
 
 Schedule::command('showtimes:update-status')->everyMinute();
+Schedule::command('movies:update-status')->everyMinute();
 Schedule::command('bookings:expire')->everyMinute();

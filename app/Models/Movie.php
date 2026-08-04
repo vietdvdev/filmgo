@@ -73,4 +73,23 @@ class Movie extends Model
     {
         return $this->hasMany(Showtime::class, 'movie_id');
     }
+
+    protected static function booted(): void
+    {
+        static::retrieved(function (Movie $movie) {
+            if ($movie->status === 'upcoming' && $movie->release_date !== null && $movie->release_date->lte(now()->startOfDay())) {
+                $movie->status = 'showing';
+                $movie->saveQuietly();
+            }
+        });
+    }
+
+    public function getCurrentStatusAttribute(): string
+    {
+        if ($this->status === 'upcoming' && $this->release_date !== null && $this->release_date->lte(now()->startOfDay())) {
+            return 'showing';
+        }
+
+        return $this->status;
+    }
 }

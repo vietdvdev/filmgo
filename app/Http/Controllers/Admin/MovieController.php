@@ -17,9 +17,9 @@ class MovieController extends Controller
         $tabFilter = $request->input('tab', 'active');
 
         if ($tabFilter === 'trash') {
-            $query = Movie::onlyTrashed()->with('genres');
+            $query = Movie::onlyTrashed()->with(['genres', 'formats']);
         } else {
-            $query = Movie::query()->with('genres');
+            $query = Movie::query()->with(['genres', 'formats']);
         }
 
         if ($request->filled('search')) {
