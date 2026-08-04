@@ -84,6 +84,43 @@ class Movie extends Model
         });
     }
 
+    public function getPosterUrlAttribute(): ?string
+    {
+        if (!$this->poster) {
+            return null;
+        }
+
+        if (str_starts_with($this->poster, 'http://') || str_starts_with($this->poster, 'https://')) {
+            return $this->poster;
+        }
+
+        if (str_starts_with($this->poster, 'storage/')) {
+            return asset($this->poster);
+        }
+
+        return asset('storage/' . ltrim($this->poster, '/'));
+    }
+
+    public function getTrailerEmbedUrlAttribute(): ?string
+    {
+        if (!$this->trailer_url) {
+            return null;
+        }
+
+        $url = $this->trailer_url;
+        if (preg_match('/youtu\.be\/([A-Za-z0-9_-]+)/', $url, $matches)) {
+            return 'https://www.youtube.com/embed/' . $matches[1];
+        }
+        if (preg_match('/youtube\.com\/watch\?v=([A-Za-z0-9_-]+)/', $url, $matches)) {
+            return 'https://www.youtube.com/embed/' . $matches[1];
+        }
+        if (preg_match('/youtube\.com\/embed\/([A-Za-z0-9_-]+)/', $url, $matches)) {
+            return $url;
+        }
+
+        return null;
+    }
+
     public function getCurrentStatusAttribute(): string
     {
         if ($this->status === 'upcoming' && $this->release_date !== null && $this->release_date->lte(now()->startOfDay())) {

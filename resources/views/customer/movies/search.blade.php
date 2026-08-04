@@ -35,7 +35,7 @@
                         
                         <!-- Premium Card Poster -->
                         <div class="relative aspect-[2/3] bg-slate-100 border border-slate-200 group-hover:border-brand-primary transition-all duration-500 rounded-none overflow-hidden group-hover:-translate-y-2 shadow-sm">
-                            <img src="{{ $movie->poster ? asset('storage/'.$movie->poster) : asset('images/no-image.jpg') }}"
+                            <img src="{{ $movie->poster_url ?? asset('images/no-image.jpg') }}"
                                 alt="{{ $movie->title }}"
                                 class="w-full h-full object-cover transition-transform duration-700 ease-out group-hover:scale-105"
                                 loading="lazy">
