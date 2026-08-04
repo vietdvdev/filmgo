@@ -107,6 +107,15 @@
                 <span class="text-label-md">Quản Lý Vé Đặt</span>
             </a>
 
+            {{-- Quản lý combo/F&B --}}
+            <a href="{{ route('staff.combo-bookings.index') }}"
+               class="flex items-center gap-3 px-4 py-3 rounded-lg transition-colors duration-200
+                      {{ request()->routeIs('staff.combo-bookings.*') ? 'bg-primary/10 text-primary font-bold' : 'text-on-surface-variant hover:bg-surface-container-low' }}">
+                <span class="material-symbols-outlined"
+                      style="font-variation-settings: 'FILL' {{ request()->routeIs('staff.combo-bookings.*') ? 1 : 0 }}">fastfood</span>
+                <span class="text-label-md">Quản Lý Combo</span>
+            </a>
+
             {{-- POS — Bán vé tại quầy --}}
             <a href="{{ route('staff.pos.index') }}"
                class="flex items-center gap-3 px-4 py-3 rounded-lg transition-colors duration-200

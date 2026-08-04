@@ -355,6 +355,10 @@ Route::prefix('staff')->group(function () {
         // Danh sách vé đặt trong ngày của nhân viên rạp
         Route::get('/bookings', [App\Http\Controllers\Staff\StaffBookingController::class, 'index'])->name('staff.bookings.index');
 
+        // Quản lý đơn combo/F&B tại rạp
+        Route::get('/combo-bookings', [App\Http\Controllers\Staff\StaffComboBookingController::class, 'index'])->name('staff.combo-bookings.index');
+        Route::get('/combo-bookings/{bookingId}/print-receipt', [App\Http\Controllers\Staff\StaffComboBookingController::class, 'printReceipt'])->name('staff.combo-bookings.print-receipt');
+
         // API Lấy danh sách QR Code của đơn hàng
         Route::get('/bookings/{bookingId}/qr', [App\Http\Controllers\Staff\StaffBookingController::class, 'getTicketsQR'])->name('staff.bookings.qr');
 

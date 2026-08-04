@@ -83,6 +83,43 @@ class StaffBookingService
         return $booking;
     }
 
+    public function getDailyComboBookingsByCinema(int $cinemaId, ?string $date = null, int $perPage = 15): LengthAwarePaginator
+    {
+        $targetDate = $date ?? now()->toDateString();
+
+        return Booking::query()
+            ->with(['user', 'combos', 'comboItems.comboItem', 'bookingDetails.ticket', 'payments'])
+            ->where('booking_type', 'combo_only')
+            ->where(function ($query) use ($cinemaId) {
+                $query->whereHas('staff.cinemas', function ($cinemaQuery) use ($cinemaId) {
+                    $cinemaQuery->where('cinemas.id', $cinemaId);
+                })->orWhereNull('staff_id');
+            })
+            ->whereDate('created_at', $targetDate)
+            ->orderBy('created_at', 'asc')
+            ->paginate($perPage)
+            ->withQueryString();
+    }
+
+    public function getComboBookingForStaff(int $bookingId, int $cinemaId): Booking
+    {
+        $booking = Booking::with([
+            'user',
+            'combos',
+            'comboItems.comboItem',
+            'bookingDetails.ticket',
+            'payments',
+        ])->findOrFail($bookingId);
+
+        $belongsToCinema = $booking->staff_id === null || ($booking->staff && $booking->staff->cinemas()->where('cinemas.id', $cinemaId)->exists());
+
+        if (!$belongsToCinema) {
+            abort(Response::HTTP_FORBIDDEN, 'Bạn không có quyền truy cập đơn combo ở rạp khác.');
+        }
+
+        return $booking;
+    }
+
     /**
      * Tạo mảng dữ liệu QR Code cho các vé thuộc đơn hàng bằng simplesoftwareio/simple-qrcode.
      * Đảm bảo vị trí ghế luôn ghi rõ cả Hàng + Số ghế (Ví dụ: GHẾ A5, H1).

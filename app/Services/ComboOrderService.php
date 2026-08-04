@@ -5,9 +5,11 @@ namespace App\Services;
 use App\Models\Booking;
 use App\Models\BookingCombo;
 use App\Models\BookingComboItem;
+use App\Models\BookingDetail;
 use App\Models\Combo;
 use App\Models\ComboItem;
 use App\Models\Payment;
+use App\Models\Ticket;
 use App\Models\Promotion;
 use App\Models\User;
 use Carbon\Carbon;
@@ -82,12 +84,15 @@ class ComboOrderService
             $this->insertCombos($booking->id, $combosToInsert);
             $this->insertComboItems($booking->id, $itemsToInsert);
 
-            // ── 7. Gắn voucher ────────────────────────────────────────────
+            // ── 7. Tạo booking detail + ticket QR cho đơn combo ───────
+            $this->createComboReceiptTicket($booking->id);
+
+            // ── 8. Gắn voucher ────────────────────────────────────────────
             if ($promotionId) {
                 $booking->promotions()->attach($promotionId);
             }
 
-            return $booking->load(['combos', 'comboItems.comboItem']);
+            return $booking->load(['combos', 'comboItems.comboItem', 'bookingDetails.ticket']);
         });
     }
 
@@ -170,13 +175,16 @@ class ComboOrderService
             $this->insertCombos($booking->id, $combosToInsert);
             $this->insertComboItems($booking->id, $itemsToInsert);
 
-            // ── 8. Gắn voucher ────────────────────────────────────────────
+            // ── 8. Tạo booking detail + ticket QR cho đơn combo ───────
+            $this->createComboReceiptTicket($booking->id);
+
+            // ── 9. Gắn voucher ────────────────────────────────────────────
             if ($promotionId) {
                 $booking->promotions()->attach($promotionId);
                 Promotion::where('id', $promotionId)->increment('used_count');
             }
 
-            // ── 9. Tạo bản ghi Payment ────────────────────────────────────
+            // ── 10. Tạo bản ghi Payment ───────────────────────────────────
             Payment::create([
                 'booking_id'       => $booking->id,
                 'transaction_code' => 'FNB-' . strtoupper(Str::random(10)),
@@ -186,7 +194,7 @@ class ComboOrderService
                 'paid_at'          => now(),
             ]);
 
-            return $booking->load(['combos', 'comboItems.comboItem', 'payments']);
+            return $booking->load(['combos', 'comboItems.comboItem', 'bookingDetails.ticket', 'payments']);
         });
     }
 
@@ -382,6 +390,21 @@ class ComboOrderService
         ], $itemsToInsert);
 
         BookingComboItem::insert($data);
+    }
+
+    private function createComboReceiptTicket(int $bookingId): void
+    {
+        $detail = BookingDetail::create([
+            'booking_id'       => $bookingId,
+            'showtime_seat_id' => null,
+            'price'            => 0,
+        ]);
+
+        Ticket::create([
+            'booking_detail_id' => $detail->id,
+            'qr_code'           => 'CB-' . strtoupper(Str::random(12)) . '-' . $detail->id,
+            'ticket_status'     => 'unused',
+        ]);
     }
 
     /**
