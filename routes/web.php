@@ -256,6 +256,11 @@ Route::prefix('manager')->group(function () {
 
         // Báo cáo & Thống kê
         Route::get('/reports', [App\Http\Controllers\Manager\ManagerReportController::class, 'index'])->name('manager.reports.index');
+
+        // ── Quản lý tài khoản cá nhân Manager ────────────────────────────
+        Route::get('/profile', [App\Http\Controllers\Manager\ManagerProfileController::class, 'edit'])->name('manager.profile.edit');
+        Route::put('/profile', [App\Http\Controllers\Manager\ManagerProfileController::class, 'updateProfile'])->name('manager.profile.update');
+        Route::put('/profile/password', [App\Http\Controllers\Manager\ManagerProfileController::class, 'updatePassword'])->name('manager.profile.password');
     });
 });
 

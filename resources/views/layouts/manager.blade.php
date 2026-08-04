@@ -85,20 +85,29 @@
                 <span class="material-symbols-outlined text-lg">insert_chart</span>
                 Báo Cáo Doanh Thu
             </a>
+            <a href="{{ route('manager.profile.edit') }}"
+               class="flex items-center gap-3 px-3 py-2.5 text-sm font-semibold transition-colors duration-200 rounded-none {{ request()->routeIs('manager.profile.*') ? 'bg-blue-600 text-white' : 'text-slate-300 hover:bg-slate-800 hover:text-white' }}">
+                <span class="material-symbols-outlined text-lg">account_circle</span>
+                Tài Khoản Cá Nhân
+            </a>
         </nav>
 
         <!-- Footer / User Info + Logout -->
         <div class="border-t border-slate-700 bg-slate-950 flex-shrink-0">
             {{-- Thông tin user --}}
-            <div class="flex items-center gap-3 px-4 py-3 border-b border-slate-800">
-                <div class="w-8 h-8 rounded-full bg-blue-600 flex items-center justify-center flex-shrink-0">
-                    <span class="material-symbols-outlined text-white text-base">person</span>
-                </div>
+            <a href="{{ route('manager.profile.edit') }}" class="flex items-center gap-3 px-4 py-3 border-b border-slate-800 hover:bg-slate-900 transition-colors group">
+                @if(auth()->user()->avatar)
+                    <img src="{{ asset(auth()->user()->avatar) }}" class="w-8 h-8 rounded-full object-cover border border-blue-500 flex-shrink-0" alt="{{ auth()->user()->full_name }}">
+                @else
+                    <div class="w-8 h-8 rounded-full bg-blue-600 flex items-center justify-center flex-shrink-0">
+                        <span class="material-symbols-outlined text-white text-base">person</span>
+                    </div>
+                @endif
                 <div class="flex-1 min-w-0">
-                    <p class="text-xs font-bold text-white truncate">{{ auth()->user()->full_name }}</p>
+                    <p class="text-xs font-bold text-white truncate group-hover:text-blue-400 transition-colors">{{ auth()->user()->full_name }}</p>
                     <p class="text-[10px] text-slate-400 truncate">{{ auth()->user()->email }}</p>
                 </div>
-            </div>
+            </a>
             {{-- Nút Đăng Xuất toàn chiều rộng --}}
             <form id="manager-logout-form" action="{{ route('manager.logout') }}" method="POST" class="hidden">
                 @csrf
