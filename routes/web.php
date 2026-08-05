@@ -14,6 +14,7 @@ use App\Http\Controllers\Admin\ComboItemController;
 use App\Http\Controllers\Admin\ManagementAuthController;
 use App\Http\Controllers\Admin\PromotionController;
 use App\Http\Controllers\Admin\BookingController;
+use App\Http\Controllers\Admin\AdminReportController;
 use App\Http\Controllers\Customer\CustomerAuthController;
 use App\Http\Controllers\Customer\CustomerForgotPasswordController;
 use App\Http\Controllers\Customer\CustomerProfileController;
@@ -168,6 +169,9 @@ Route::prefix('admin')->group(function () {
         // 11. Quản lý Vé & Đơn Hàng
         Route::get('bookings', [BookingController::class, 'index'])->name('admin.bookings.index');
         Route::get('bookings/{id}', [BookingController::class, 'show'])->name('admin.bookings.show');
+
+        // 12. Báo cáo doanh thu
+        Route::get('reports', [AdminReportController::class, 'index'])->name('admin.reports.index');
 
 
     });
