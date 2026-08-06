@@ -94,6 +94,11 @@ Route::middleware('customer')->group(function () {
     Route::get('/booking/history', [App\Http\Controllers\Customer\BookingHistoryController::class, 'index'])->name('booking.history.index');
     Route::get('/booking/history/{id}', [App\Http\Controllers\Customer\BookingHistoryController::class, 'show'])->name('booking.history.show');
 
+    // ── Loyalty & Quà tặng (Điểm thưởng) ──────────────────────────────
+    Route::get('/loyalty', [App\Http\Controllers\Customer\LoyaltyController::class, 'index'])->name('loyalty.index');
+    Route::get('/loyalty/history', [App\Http\Controllers\Customer\LoyaltyController::class, 'history'])->name('loyalty.history');
+    Route::post('/loyalty/redeem/{rewardId}', [App\Http\Controllers\Customer\LoyaltyController::class, 'redeem'])->name('loyalty.redeem');
+
     // ── Mua Combo / F&B riêng lẻ (không cần đặt vé) ──────────────────────────────
     Route::get('/shop/combos', [ComboShopController::class, 'index'])->name('combo-shop.index');
     Route::post('/shop/combos/cart', [ComboShopController::class, 'updateCart'])->name('combo-shop.cart');
