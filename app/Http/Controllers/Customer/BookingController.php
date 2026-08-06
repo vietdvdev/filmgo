@@ -862,6 +862,21 @@ class BookingController extends Controller
             'message' => 'Thanh toán thành công và đã cập nhật trạng thái vé.',
         ]);
 
+        // Cộng điểm thưởng cho khách hàng nếu đăng nhập
+        if ($booking->user_id) {
+            try {
+                $user = \App\Models\User::find($booking->user_id);
+                if ($user) {
+                    $loyaltyService = app(\App\Services\LoyaltyService::class);
+                    $points = $loyaltyService->calculatePointsFromAmount($booking->total_amount);
+                    $loyaltyService->addPoints($user, $points, "Đặt vé thành công: #{$booking->booking_code}");
+                }
+            } catch (\Exception $e) {
+                // Bỏ qua lỗi cộng điểm để không ảnh hưởng luồng thanh toán chính
+                \Illuminate\Support\Facades\Log::error('Lỗi cộng điểm thưởng: ' . $e->getMessage());
+            }
+        }
+
         // Gửi email xác nhận tới khách hàng
         $this->bookingEmailService->sendConfirmationEmail($booking);
     }
