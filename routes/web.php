@@ -99,6 +99,10 @@ Route::middleware('customer')->group(function () {
     Route::get('/loyalty/history', [App\Http\Controllers\Customer\LoyaltyController::class, 'history'])->name('loyalty.history');
     Route::post('/loyalty/redeem/{rewardId}', [App\Http\Controllers\Customer\LoyaltyController::class, 'redeem'])->name('loyalty.redeem');
 
+    // ── Vòng quay may mắn ──────────────────────────────
+    Route::get('/lucky-wheel', [App\Http\Controllers\Customer\LuckyWheelController::class, 'index'])->name('lucky-wheel.index');
+    Route::post('/lucky-wheel/spin', [App\Http\Controllers\Customer\LuckyWheelController::class, 'spin'])->name('lucky-wheel.spin');
+
     // ── Mua Combo / F&B riêng lẻ (không cần đặt vé) ──────────────────────────────
     Route::get('/shop/combos', [ComboShopController::class, 'index'])->name('combo-shop.index');
     Route::post('/shop/combos/cart', [ComboShopController::class, 'updateCart'])->name('combo-shop.cart');
