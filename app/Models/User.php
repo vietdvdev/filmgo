@@ -25,6 +25,8 @@ class User extends Authenticatable
         'password',
         'avatar',
         'status',
+        'points',
+        'membership_tier',
     ];
 
     /**
@@ -93,5 +95,43 @@ class User extends Authenticatable
     public function showtimeSeats(): HasMany
     {
         return $this->hasMany(ShowtimeSeat::class, 'user_id');
+    }
+
+    /**
+     * Loyalty Relationships
+     */
+    public function pointsTransactions(): HasMany
+    {
+        return $this->hasMany(PointsTransaction::class, 'user_id');
+    }
+
+    public function userRewards(): HasMany
+    {
+        return $this->hasMany(UserReward::class, 'user_id');
+    }
+
+    public function wheelSpins(): HasMany
+    {
+        return $this->hasMany(WheelSpin::class, 'user_id');
+    }
+
+    /**
+     * Helper: Kiểm tra và cập nhật hạng thành viên
+     * Bạc: < 500 điểm, Vàng: 500 - 999 điểm, Kim Cương: >= 1000 điểm
+     * (Có thể điều chỉnh theo logic của LoyaltyService)
+     */
+    public function checkAndUpdateTier(): void
+    {
+        $newTier = 'Bạc';
+        if ($this->points >= 1000) {
+            $newTier = 'Kim Cương';
+        } elseif ($this->points >= 500) {
+            $newTier = 'Vàng';
+        }
+
+        if ($this->membership_tier !== $newTier) {
+            $this->membership_tier = $newTier;
+            $this->save();
+        }
     }
 }
