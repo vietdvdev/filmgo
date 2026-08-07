@@ -50,4 +50,9 @@ class Format extends Model
     {
         return $this->hasMany(Showtime::class, 'format_id');
     }
+
+    public function rooms(): HasMany
+    {
+        return $this->hasMany(\App\Models\Room::class, 'format_id');
+    }
 }

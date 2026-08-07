@@ -125,7 +125,7 @@
                                         <span class="material-symbols-outlined" style="font-size:14px;">edit</span> Sửa
                                     </button>
                                     <button type="button"
-                                        onclick="openDeleteModal({{ $format->id }}, '{{ addslashes($format->name) }}', {{ $format->showtimes_count }})"
+                                        onclick="openDeleteModal({{ $format->id }}, '{{ addslashes($format->name) }}', {{ $format->showtimes_count }}, {{ $format->rooms_count }})"
                                         class="inline-flex items-center gap-1 text-xs font-bold px-3 py-2 rounded-lg bg-red-50 text-red-600 hover:bg-red-600 hover:text-white transition-all duration-200">
                                         <span class="material-symbols-outlined" style="font-size:14px;">delete</span> Xóa
                                     </button>
@@ -275,6 +275,7 @@
                     Tên định dạng <span class="text-red-500">*</span>
                 </label>
                 <input type="text" id="edit-name" name="name"
+                    value="{{ session('edit_id') ? old('name') : '' }}"
                     class="w-full border rounded-lg px-3 py-2.5 text-sm text-on-surface bg-surface-container-lowest focus:outline-none focus:ring-1 transition-colors
                         {{ $errors->has('name') && session('edit_id') ? 'border-red-400 focus:border-red-400 focus:ring-red-400' : 'border-outline-variant focus:border-primary focus:ring-primary' }}"
                     required>
@@ -292,7 +293,14 @@
                 <label class="block text-xs font-bold text-on-surface-variant mb-1.5 uppercase tracking-wider">Mô tả</label>
                 <textarea id="edit-description" name="description" rows="2"
                     placeholder="Mô tả ngắn về định dạng chiếu..."
-                    class="w-full border border-outline-variant rounded-lg px-3 py-2.5 text-sm text-on-surface bg-surface-container-lowest focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-colors resize-none"></textarea>
+                    class="w-full border border-outline-variant rounded-lg px-3 py-2.5 text-sm text-on-surface bg-surface-container-lowest focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-colors resize-none">{{ session('edit_id') ? old('description') : '' }}</textarea>
+                @error('description')
+                    @if(session('edit_id'))
+                    <p class="text-red-500 text-xs mt-1 flex items-center gap-1">
+                        <span class="material-symbols-outlined text-[13px]">error</span>{{ $message }}
+                    </p>
+                    @endif
+                @enderror
             </div>
 
             {{-- Giá phụ thu + Trạng thái --}}
@@ -302,6 +310,7 @@
                         Giá phụ thu (đ) <span class="text-red-500">*</span>
                     </label>
                     <input type="number" id="edit-surcharge" name="surcharge_price" min="0"
+                        value="{{ session('edit_id') ? old('surcharge_price') : '' }}"
                         class="w-full border rounded-lg px-3 py-2.5 text-sm text-on-surface bg-surface-container-lowest focus:outline-none focus:ring-1 transition-colors
                             {{ $errors->has('surcharge_price') && session('edit_id') ? 'border-red-400 focus:border-red-400 focus:ring-red-400' : 'border-outline-variant focus:border-primary focus:ring-primary' }}"
                         required>
@@ -319,8 +328,8 @@
                     </label>
                     <select id="edit-status" name="status"
                         class="w-full border border-outline-variant rounded-lg px-3 py-2.5 text-sm text-on-surface bg-surface-container-lowest focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-colors">
-                        <option value="active">Hoạt động</option>
-                        <option value="inactive">Tạm dừng</option>
+                        <option value="active" {{ session('edit_id') && old('status') === 'active' ? 'selected' : '' }}>Hoạt động</option>
+                        <option value="inactive" {{ session('edit_id') && old('status') === 'inactive' ? 'selected' : '' }}>Tạm dừng</option>
                     </select>
                 </div>
             </div>
@@ -413,14 +422,18 @@
     function closeEditModal() { animateClose('edit-modal','edit-modal-content'); }
 
     // ── Delete ───────────────────────────────────────────────────────
-    function openDeleteModal(id, name, showtimesCount) {
+    function openDeleteModal(id, name, showtimesCount, roomsCount) {
         document.getElementById('delete-form').action = `/admin/formats/${id}`;
         document.getElementById('delete-name').textContent = `«${name}»`;
         const warning = document.getElementById('delete-warning');
         const submit  = document.getElementById('delete-submit');
-        if (showtimesCount > 0) {
+        const total   = (showtimesCount || 0) + (roomsCount || 0);
+        if (total > 0) {
+            const parts = [];
+            if (showtimesCount > 0) parts.push(`${showtimesCount} suất chiếu`);
+            if (roomsCount > 0)     parts.push(`${roomsCount} phòng chiếu`);
             document.getElementById('delete-warning-text').textContent =
-                `Không thể xóa! Định dạng này đang được dùng bởi ${showtimesCount} suất chiếu.`;
+                `Không thể xóa! Định dạng này đang được dùng bởi ${parts.join(' và ')}.`;
             warning.classList.remove('hidden');
             submit.disabled = true;
         } else {
@@ -435,13 +448,14 @@
     // ── Tự động mở lại modal khi có lỗi validation ───────────────────
     @if($errors->any())
         @if(session('edit_id'))
-            // Lỗi từ update → mở modal sửa
-            document.addEventListener('DOMContentLoaded', () => {
-                // Không có đủ data để mở lại edit modal tự động — hiển thị lỗi inline đã đủ
-            });
+        document.addEventListener('DOMContentLoaded', () => {
+            const modal = document.getElementById('edit-modal');
+            modal.classList.remove('hidden');
+            animateOpen('edit-modal-content');
+            document.getElementById('edit-form').action = `/admin/formats/{{ session('edit_id') }}`;
+        });
         @else
-            // Lỗi từ store → mở modal thêm
-            document.addEventListener('DOMContentLoaded', () => openCreateModal());
+        document.addEventListener('DOMContentLoaded', () => openCreateModal());
         @endif
     @endif
 
