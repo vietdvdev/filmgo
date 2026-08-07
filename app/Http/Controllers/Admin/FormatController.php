@@ -17,10 +17,24 @@ class FormatController extends Controller
             $query->where('name', 'like', '%' . $request->search . '%');
         }
 
-        $formats = $query->orderBy('id', 'desc')->paginate(15)->withQueryString();
+        if ($request->filled('status')) {
+            $query->where('status', $request->status);
+        }
+
+        $sortable = ['name', 'surcharge_price', 'showtimes_count', 'rooms_count', 'created_at'];
+        $sort     = in_array($request->sort, $sortable) ? $request->sort : 'created_at';
+        $dir      = $request->dir === 'asc' ? 'asc' : 'desc';
+
+        if (in_array($sort, ['showtimes_count', 'rooms_count'])) {
+            $query->orderBy($sort, $dir);
+        } else {
+            $query->orderBy($sort, $dir);
+        }
+
+        $formats = $query->paginate(10)->withQueryString();
         $editId  = session('edit_id');
 
-        return view('admin.formats.index', compact('formats', 'editId'));
+        return view('admin.formats.index', compact('formats', 'editId', 'sort', 'dir'));
     }
 
     public function store(Request $request)

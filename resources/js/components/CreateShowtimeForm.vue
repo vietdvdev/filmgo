@@ -193,19 +193,22 @@
             </p>
           </div>
 
-          <!-- Ô 2: PHỤ THU NGÀY/GIỜ -->
+          <!-- Ô 2: PHỤ THU NGÀY/GIỜ + ĐỊNH DẠNG -->
           <div class="bg-amber-50/50 border border-amber-200/70 p-4 flex flex-col justify-between">
             <div>
-              <h4 class="text-xs font-bold uppercase tracking-wider text-slate-700 mb-2">2. PHỤ THU NGÀY/GIỜ</h4>
+              <h4 class="text-xs font-bold uppercase tracking-wider text-slate-700 mb-2">2. PHỤ THU</h4>
               <div class="text-lg font-bold text-amber-800">
-                + {{ surchargeAmt.toLocaleString() }} ₫
+                + {{ (surchargeAmt + formatSurcharge).toLocaleString() }} ₫
               </div>
-              <p v-if="priceReason" class="text-[11px] text-amber-700 mt-1 italic leading-tight">
-                Reason: {{ priceReason }}
-              </p>
-              <p v-else class="text-[11px] text-slate-400 mt-1 italic">
-                Không có phụ thu ngày thường
-              </p>
+              <div class="mt-1 space-y-0.5">
+                <p v-if="priceReason" class="text-[11px] text-amber-700 italic leading-tight">
+                  Ngày/giờ: {{ surchargeAmt.toLocaleString() }}đ ({{ priceReason }})
+                </p>
+                <p v-else class="text-[11px] text-slate-400 italic">Ngày/giờ: 0đ</p>
+                <p v-if="formatSurcharge > 0" class="text-[11px] text-indigo-700 italic leading-tight">
+                  Định dạng: +{{ formatSurcharge.toLocaleString() }}đ
+                </p>
+              </div>
             </div>
           </div>
 
@@ -390,12 +393,18 @@ const removeToast = id => {
   toasts.value = toasts.value.filter(t => t.id !== id);
 };
 
-const standardPrice = ref(80000);
-const surchargeAmt  = ref(0);
+const BASE_PRICE      = 80000;
+const standardPrice   = ref(BASE_PRICE);
+const surchargeAmt    = ref(0);   // phụ thu ngày/giờ/lễ từ API suggestPrice
 
-const computedActualPrice = computed(() => {
-  return Number(standardPrice.value || 0) + Number(surchargeAmt.value || 0);
+const formatSurcharge = computed(() => {
+  const f = formats.value.find(f => f.id == form.format_id);
+  return f ? Number(f.surcharge_price || 0) : 0;
 });
+
+const computedActualPrice = computed(() =>
+  Number(standardPrice.value || 0) + Number(surchargeAmt.value || 0) + formatSurcharge.value
+);
 
 // Load cinemas
 const fetchCinemas = async () => {
@@ -541,10 +550,9 @@ const triggerPriceSuggestion = () => {
       const res = await axios.get(urls.suggestPrice, {
         params: { show_date: form.show_date, start_time: form.start_time }
       });
-      // Bug fix: Gán suggested_price trực tiếp vào standardPrice thay vì hardcode 80000
-      // Bởi vì suggested_price đã bao gồm cả base + điều chỉnh ngày lễ/rule
-      standardPrice.value = res.data.suggested_price;
-      surchargeAmt.value  = 0; // surcharge đã được gộp vào suggested_price
+      // Tách phụ thu ngày/giờ = suggested_price - BASE_PRICE
+      // standardPrice luôn giữ nguyên BASE_PRICE để người dùng có thể chỉnh
+      surchargeAmt.value  = Number(res.data.suggested_price || BASE_PRICE) - BASE_PRICE;
       priceReason.value   = res.data.reason || '';
     } catch (e) { /* silent */ }
   }, 400);
