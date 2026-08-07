@@ -61,6 +61,20 @@
                 </div>
 
                 <div>
+                    <label for="format_id" class="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1">Định dạng chiếu</label>
+                    <select id="format_id" name="format_id"
+                            class="block w-full px-3 py-2 border border-slate-300 text-sm rounded-none focus:outline-none focus:border-blue-600 focus:ring-1 focus:ring-blue-600">
+                        <option value="">— Không chọn —</option>
+                        @foreach($formats as $format)
+                            <option value="{{ $format->id }}" {{ old('format_id', $room->format_id) == $format->id ? 'selected' : '' }}>
+                                {{ $format->name }}{{ $format->surcharge_price > 0 ? ' (+'.number_format($format->surcharge_price,0,',','.').'đ)' : '' }}
+                            </option>
+                        @endforeach
+                    </select>
+                    <p class="text-xs text-slate-400 mt-1">Tuỳ chọn. Định dạng sẽ ảnh hưởng đến giá phụ thu suất chiếu.</p>
+                </div>
+
+                <div>
                     <label for="status" class="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1">Trạng thái hoạt động</label>
                     <select id="status" name="status" required
                             class="block w-full px-3 py-2 border border-slate-300 text-sm rounded-none focus:outline-none focus:border-blue-600 focus:ring-1 focus:ring-blue-600">

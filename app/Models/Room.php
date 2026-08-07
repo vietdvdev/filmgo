@@ -22,20 +22,17 @@ class Room extends Model
         'room_name',
         'capacity',
         'room_type',
+        'format_id',
         'status',
     ];
 
-    /**
-     * The attributes that should be cast.
-     *
-     * @var array<string, string>
-     */
     protected $casts = [
         'cinema_id' => 'integer',
         'room_name' => 'string',
-        'capacity' => 'integer',
+        'capacity'  => 'integer',
         'room_type' => 'string',
-        'status' => 'string',
+        'format_id' => 'integer',
+        'status'    => 'string',
     ];
 
     /**
@@ -45,6 +42,11 @@ class Room extends Model
     public function cinema(): BelongsTo
     {
         return $this->belongsTo(Cinema::class, 'cinema_id');
+    }
+
+    public function format(): BelongsTo
+    {
+        return $this->belongsTo(Format::class, 'format_id');
     }
 
     public function seats(): HasMany
