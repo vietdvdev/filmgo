@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Manager;
 
 use App\Http\Controllers\Controller;
 use App\Models\Room;
+use App\Models\Format;
 use App\Models\Showtime;
 use App\Services\RoomSeatSyncService;
 use Illuminate\Http\JsonResponse;
@@ -26,7 +27,7 @@ class ManagerRoomController extends Controller
         $cinemaIds = $this->getCinemaIds();
 
         $query = Room::whereIn('cinema_id', $cinemaIds)
-            ->with('cinema');
+            ->with(['cinema', 'format']);
 
         if ($request->filled('search')) {
             $query->where('room_name', 'like', '%' . $request->search . '%');
@@ -40,7 +41,8 @@ class ManagerRoomController extends Controller
     public function create()
     {
         $cinemas = Auth::user()->cinemas()->get();
-        return view('manager.rooms.create', compact('cinemas'));
+        $formats = Format::where('status', 'active')->orderBy('name')->get();
+        return view('manager.rooms.create', compact('cinemas', 'formats'));
     }
 
     public function store(Request $request)
@@ -71,6 +73,7 @@ class ManagerRoomController extends Controller
             'room_name' => $request->room_name,
             'capacity'  => $request->capacity,
             'room_type' => $request->room_type,
+            'format_id' => $request->format_id ?: null,
             'status'    => 'active',
         ]);
 
@@ -82,8 +85,9 @@ class ManagerRoomController extends Controller
         $cinemaIds = $this->getCinemaIds();
         $room = Room::whereIn('cinema_id', $cinemaIds)->findOrFail($id);
         $cinemas = Auth::user()->cinemas()->get();
+        $formats = Format::where('status', 'active')->orderBy('name')->get();
 
-        return view('manager.rooms.edit', compact('room', 'cinemas'));
+        return view('manager.rooms.edit', compact('room', 'cinemas', 'formats'));
     }
 
     public function update(Request $request, $id)
@@ -109,7 +113,7 @@ class ManagerRoomController extends Controller
             'room_type.required' => 'Loại phòng chiếu không được để trống.',
         ]);
 
-        $room->update($request->only(['room_name', 'capacity', 'room_type', 'status']));
+        $room->update($request->only(['room_name', 'capacity', 'room_type', 'format_id', 'status']));
 
         return redirect()->route('manager.rooms.index')->with('success', 'Cập nhật phòng chiếu thành công!');
     }

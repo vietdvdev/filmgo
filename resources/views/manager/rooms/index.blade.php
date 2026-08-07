@@ -53,6 +53,7 @@
                     <th class="py-3 px-6">Tên Phòng</th>
                     <th class="py-3 px-6">Sức Chứa (Ghế)</th>
                     <th class="py-3 px-6">Loại Phòng</th>
+                    <th class="py-3 px-6">Định Dạng</th>
                     <th class="py-3 px-6" style="width: 150px;">Trạng Thái</th>
                     <th class="py-3 px-6 text-right" style="width: 300px;">Thao Tác</th>
                 </tr>
@@ -67,6 +68,16 @@
                             <span class="inline-flex items-center px-2 py-0.5 text-xs font-bold bg-blue-50 text-blue-700 border border-blue-200">
                                 {{ $room->room_type }}
                             </span>
+                        </td>
+                        <td class="py-4 px-6">
+                            @if($room->format)
+                                <span class="inline-flex items-center gap-1 px-2 py-0.5 text-xs font-bold bg-indigo-50 text-indigo-700 border border-indigo-200">
+                                    <span class="material-symbols-outlined text-[12px]">theaters</span>
+                                    {{ $room->format->name }}
+                                </span>
+                            @else
+                                <span class="text-slate-400 text-xs">—</span>
+                            @endif
                         </td>
                         <td class="py-4 px-6">
                             @if($room->status === 'active')
@@ -102,7 +113,7 @@
                     </tr>
                 @empty
                     <tr>
-                        <td colspan="6" class="text-center py-10 text-slate-400 italic">Không tìm thấy phòng chiếu nào.</td>
+                        <td colspan="7" class="text-center py-10 text-slate-400 italic">Không tìm thấy phòng chiếu nào.</td>
                     </tr>
                 @endforelse
             </tbody>
