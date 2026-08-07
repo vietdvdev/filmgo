@@ -79,6 +79,13 @@
             <span>Combo Bắp Nước</span>
         </a>
 
+        <!-- Định Dạng Phòng Chiếu -->
+        <a href="{{ route('admin.formats.index') }}"
+           class="flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-semibold transition-all duration-200 {{ request()->routeIs('admin.formats.*') ? 'bg-primary/10 text-primary' : 'text-on-surface-variant hover:bg-surface-container-low hover:text-on-surface' }}">
+            <span class="material-symbols-outlined text-[20px]" style="font-variation-settings: 'FILL' {{ request()->routeIs('admin.formats.*') ? 1 : 0 }};">theaters</span>
+            <span>Định Dạng Phòng Chiếu</span>
+        </a>
+
         <!-- Khuyến Mãi -->
         <a href="{{ route('admin.promotions.index') }}"
            class="flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-semibold transition-all duration-200 {{ request()->routeIs('admin.promotions.*') ? 'bg-primary/10 text-primary' : 'text-on-surface-variant hover:bg-surface-container-low hover:text-on-surface' }}">
