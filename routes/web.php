@@ -15,6 +15,7 @@ use App\Http\Controllers\Admin\ManagementAuthController;
 use App\Http\Controllers\Admin\PromotionController;
 use App\Http\Controllers\Admin\BookingController;
 use App\Http\Controllers\Admin\AdminReportController;
+use App\Http\Controllers\Admin\FormatController;
 use App\Http\Controllers\Customer\CustomerAuthController;
 use App\Http\Controllers\Customer\CustomerForgotPasswordController;
 use App\Http\Controllers\Customer\CustomerProfileController;
@@ -170,7 +171,10 @@ Route::prefix('admin')->group(function () {
         Route::get('bookings', [BookingController::class, 'index'])->name('admin.bookings.index');
         Route::get('bookings/{id}', [BookingController::class, 'show'])->name('admin.bookings.show');
 
-        // 12. Báo cáo doanh thu
+        // 12. Định dạng phòng chiếu
+        Route::resource('formats', FormatController::class)->names('admin.formats')->except(['create', 'edit', 'show']);
+
+        // 13. Báo cáo doanh thu
         Route::get('reports', [AdminReportController::class, 'index'])->name('admin.reports.index');
 
 
