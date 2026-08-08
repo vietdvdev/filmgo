@@ -288,6 +288,7 @@ class ManagerShowtimeApiController extends Controller
         $request->validate([
             'show_date'  => 'required|date',
             'start_time' => 'required|date_format:H:i',
+            'format_id'  => 'nullable|exists:formats,id',
         ]);
 
         $showDate = Carbon::parse($request->input('show_date'));
@@ -296,14 +297,23 @@ class ManagerShowtimeApiController extends Controller
         $basePrice = 80000; // Giá mặc định
         $reason = [];
 
-        // 1. Kiểm tra ngày lễ
+        // 1. Phụ thu định dạng phim (3D, IMAX...)
+        if ($request->filled('format_id')) {
+            $format = Format::find($request->integer('format_id'));
+            if ($format && $format->surcharge_price > 0) {
+                $basePrice += $format->surcharge_price;
+                $reason[] = "Định dạng " . $format->name . " (+" . number_format($format->surcharge_price) . "đ)";
+            }
+        }
+
+        // 2. Kiểm tra ngày lễ
         $isHoliday = Holiday::whereDate('holiday_date', $showDate->toDateString())->first();
         if ($isHoliday) {
             $basePrice += 20000;
             $reason[] = "Ngày lễ: " . $isHoliday->name . " (+20,000đ)";
         }
 
-        // 2. Kiểm tra Price Rules
+        // 3. Kiểm tra Price Rules
         $dayOfWeek = $showDate->dayOfWeek; // 0 (CN) -> 6 (T7)
         $rule = PriceRule::where('is_active', 1)
             ->where('day_of_week', $dayOfWeek)

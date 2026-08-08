@@ -112,6 +112,10 @@ class AutoGenerateController extends Controller
                 }
             }
 
+            // Lấy thông tin phụ thu của Định dạng chiếu (VD: 3D +30,000đ, IMAX +50,000đ)
+            $format = Format::find($formatId);
+            $formatSurcharge = $format ? (int) $format->surcharge_price : 0;
+
             // Truy vấn toàn bộ các suất chiếu hiện có của phòng trong ngày chỉ định, xếp tăng dần theo giờ bắt đầu
             $existingShowtimes = Showtime::where('room_id', $roomId)
                 ->where('show_date', $showDate)
@@ -157,8 +161,8 @@ class AutoGenerateController extends Controller
                     continue;
                 }
 
-                // Nếu không trùng, áp dụng quy tắc tính giá thực tế và đưa vào danh sách hợp lệ
-                $actualPrice = $this->applyPriceRules($standardPrice, $proposedStart);
+                // Nếu không trùng, áp dụng quy tắc tính giá thực tế (bao gồm Phụ thu định dạng + Ngày lễ + Price Rules)
+                $actualPrice = $this->applyPriceRules($standardPrice, $proposedStart, $formatSurcharge);
 
                 $validShowtimes[] = [
                     'movie_id'          => $movieId,
@@ -284,15 +288,16 @@ class AutoGenerateController extends Controller
     }
 
     /**
-     * Phương thức placeholder tính toán phụ thu ngày lễ hoặc quy tắc giá theo ngày/giờ.
+     * Phương thức tính toán phụ thu (Định dạng + Ngày lễ + Price Rules theo ngày/giờ).
      *
      * @param  int  $standardPrice
      * @param  \Carbon\Carbon  $proposedStart
+     * @param  int  $formatSurcharge
      * @return int
      */
-    private function applyPriceRules($standardPrice, Carbon $proposedStart)
+    private function applyPriceRules($standardPrice, Carbon $proposedStart, int $formatSurcharge = 0)
     {
-        $actualPrice = $standardPrice;
+        $actualPrice = $standardPrice + $formatSurcharge;
         $startTimeStr = $proposedStart->format('H:i:s');
 
         // 1. Kiểm tra ngày lễ
@@ -313,7 +318,7 @@ class AutoGenerateController extends Controller
             $actualPrice += $rule->adjustment_amount;
         }
 
-        // Đảm bảo giá không âm (trường hợp rule có adjustment_amount âm quá lớn)
+        // Đảm bảo giá không âm
         return max(0, $actualPrice);
     }
 }
