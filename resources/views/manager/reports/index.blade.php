@@ -1,89 +1,86 @@
 @extends('layouts.manager')
 
-@section('title', 'Báo Cáo & Thống Kê Doanh Thu - FilmGo')
+@section('title', 'Báo Cáo & Thống Kê - FilmGo')
 
 @section('content')
 <div class="space-y-6">
     <!-- Header -->
-    <div class="border-b border-slate-200 pb-4">
-        <h2 class="text-2xl font-bold tracking-tight text-slate-900 uppercase">Báo Cáo & Thống Kê</h2>
-        <p class="text-sm text-slate-500 mt-1">Phân tích tình hình kinh doanh, doanh thu và hiệu suất lấp đầy phòng chiếu của rạp.</p>
+    <div class="border-b border-slate-200 pb-4 flex items-center justify-between">
+        <div>
+            <h2 class="text-2xl font-bold tracking-tight text-slate-900 uppercase">Báo Cáo & Thống Kê</h2>
+            <p class="text-sm text-slate-500 mt-1">Danh sách các rạp bạn được phép xem báo cáo.</p>
+        </div>
+        <span class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-blue-100 text-blue-800 text-xs font-bold">
+            <span class="material-symbols-outlined text-sm">theaters</span>
+            {{ $cinemas->count() }} rạp
+        </span>
     </div>
 
-    <!-- Stats Grid -->
-    <div class="grid grid-cols-1 gap-5 sm:grid-cols-3">
-        <!-- Revenue Today -->
-        <div class="bg-white border border-slate-200 shadow-sm p-6 flex items-center justify-between rounded-none">
-            <div class="space-y-2">
-                <p class="text-xs font-bold text-slate-400 uppercase tracking-wider">Doanh Thu Hôm Nay</p>
-                <p class="text-3xl font-extrabold text-slate-900">{{ number_format($revenueToday, 0, ',', '.') }}đ</p>
-            </div>
-            <div class="p-3 bg-blue-50 text-blue-600 rounded-none">
-                <span class="material-symbols-outlined text-2xl">payments</span>
-            </div>
-        </div>
+    <!-- Cinema List -->
+    @forelse($cinemas as $cinema)
+        <div class="bg-white border border-slate-200 shadow-sm overflow-hidden">
 
-        <!-- Revenue This Week -->
-        <div class="bg-white border border-slate-200 shadow-sm p-6 flex items-center justify-between rounded-none">
-            <div class="space-y-2">
-                <p class="text-xs font-bold text-slate-400 uppercase tracking-wider">Doanh Thu Tuần Này</p>
-                <p class="text-3xl font-extrabold text-slate-900">{{ number_format($revenueWeek, 0, ',', '.') }}đ</p>
+            <!-- Card Header -->
+            <div class="flex items-center justify-between px-6 py-4 bg-slate-800 text-white">
+                <div class="flex items-center gap-3">
+                    <span class="material-symbols-outlined text-blue-400 text-2xl">theaters</span>
+                    <div>
+                        <h3 class="text-base font-bold tracking-tight">{{ $cinema->name }}</h3>
+                        <span class="text-xs text-slate-400 font-medium">ID #{{ $cinema->id }}</span>
+                    </div>
+                </div>
+                @if($cinema->status === 'active')
+                    <span class="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+                        <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 inline-block"></span>
+                        Đang hoạt động
+                    </span>
+                @else
+                    <span class="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-bold bg-red-500/20 text-red-300 border border-red-500/30">
+                        <span class="w-1.5 h-1.5 rounded-full bg-red-400 inline-block"></span>
+                        Ngừng hoạt động
+                    </span>
+                @endif
             </div>
-            <div class="p-3 bg-emerald-50 text-emerald-600 rounded-none">
-                <span class="material-symbols-outlined text-2xl">monetization_on</span>
-            </div>
-        </div>
 
-        <!-- Occupancy Rate -->
-        <div class="bg-white border border-slate-200 shadow-sm p-6 flex items-center justify-between rounded-none">
-            <div class="space-y-2">
-                <p class="text-xs font-bold text-slate-400 uppercase tracking-wider">Tỷ Lệ Lấp Đầy Ghế</p>
-                <p class="text-3xl font-extrabold text-slate-900">{{ $occupancyRate }}%</p>
-                <p class="text-[10px] text-slate-500">Đã đặt {{ $bookedSeats }} / {{ $totalSeats }} ghế tổng cộng</p>
+            <!-- Card Body: Thông tin cơ bản -->
+            <div class="px-6 py-5 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+                <div class="flex items-start gap-3">
+                    <span class="material-symbols-outlined text-slate-400 mt-0.5">location_on</span>
+                    <div>
+                        <p class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-0.5">Địa Chỉ</p>
+                        <p class="text-sm text-slate-800 font-medium leading-relaxed">{{ $cinema->address }}</p>
+                    </div>
+                </div>
+                <div class="flex items-start gap-3">
+                    <span class="material-symbols-outlined text-slate-400 mt-0.5">apartment</span>
+                    <div>
+                        <p class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-0.5">Thành Phố</p>
+                        <p class="text-sm text-slate-800 font-medium">{{ $cinema->city }}</p>
+                    </div>
+                </div>
+                <div class="flex items-start gap-3">
+                    <span class="material-symbols-outlined text-slate-400 mt-0.5">phone</span>
+                    <div>
+                        <p class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-0.5">Điện Thoại</p>
+                        <p class="text-sm text-slate-800 font-medium">{{ $cinema->phone }}</p>
+                    </div>
+                </div>
+                <div class="flex items-start gap-3">
+                    <span class="material-symbols-outlined text-slate-400 mt-0.5">meeting_room</span>
+                    <div>
+                        <p class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-0.5">Phòng Chiếu</p>
+                        <p class="text-sm text-slate-800 font-medium">{{ $cinema->rooms_count }} phòng</p>
+                    </div>
+                </div>
             </div>
-            <div class="p-3 bg-purple-50 text-purple-600 rounded-none">
-                <span class="material-symbols-outlined text-2xl">percent</span>
-            </div>
-        </div>
-    </div>
 
-    <!-- Revenue by Movie Table -->
-    <div class="bg-white border border-slate-200 shadow-sm rounded-none">
-        <div class="border-b border-slate-200 px-6 py-4 flex items-center justify-between bg-slate-50">
-            <h3 class="text-sm font-bold text-slate-900 uppercase tracking-wider flex items-center gap-2">
-                <span class="material-symbols-outlined text-lg text-slate-500">movie</span> Doanh Thu Theo Phim
-            </h3>
         </div>
-        
-        <div class="overflow-x-auto">
-            <table class="min-w-full divide-y divide-slate-200">
-                <thead class="bg-slate-100">
-                    <tr>
-                        <th scope="col" class="px-6 py-3 text-left text-xs font-bold text-slate-500 uppercase tracking-wider">#</th>
-                        <th scope="col" class="px-6 py-3 text-left text-xs font-bold text-slate-500 uppercase tracking-wider">Tên Phim</th>
-                        <th scope="col" class="px-6 py-3 text-left text-xs font-bold text-slate-500 uppercase tracking-wider">Số Lượng Vé Đặt</th>
-                        <th scope="col" class="px-6 py-3 text-right text-xs font-bold text-slate-500 uppercase tracking-wider">Tổng Doanh Thu</th>
-                    </tr>
-                </thead>
-                <tbody class="bg-white divide-y divide-slate-200">
-                    @forelse($movieRevenues as $index => $item)
-                        <tr>
-                            <td class="px-6 py-4 whitespace-nowrap text-sm text-slate-500">{{ $index + 1 }}</td>
-                            <td class="px-6 py-4 whitespace-nowrap text-sm font-semibold text-slate-900">{{ $item->title }}</td>
-                            <td class="px-6 py-4 whitespace-nowrap text-sm text-slate-500">{{ number_format($item->total_bookings, 0, ',', '.') }} vé</td>
-                            <td class="px-6 py-4 whitespace-nowrap text-sm font-bold text-slate-900 text-right">{{ number_format($item->total_revenue, 0, ',', '.') }}đ</td>
-                        </tr>
-                    @empty
-                        <tr>
-                            <td colspan="4" class="px-6 py-10 text-center text-sm text-slate-500">
-                                <span class="material-symbols-outlined text-4xl text-slate-300 block mb-2">info</span>
-                                Chưa ghi nhận dữ liệu doanh thu bán vé cho phim nào.
-                            </td>
-                        </tr>
-                    @endforelse
-                </tbody>
-            </table>
+    @empty
+        <div class="bg-white border border-slate-200 shadow-sm p-12 text-center">
+            <span class="material-symbols-outlined text-5xl text-slate-300 mb-3 block">insert_chart</span>
+            <p class="text-base font-semibold text-slate-500">Bạn chưa được phân công quản lý rạp nào.</p>
+            <p class="text-sm text-slate-400 mt-1">Vui lòng liên hệ Admin để được phân công.</p>
         </div>
-    </div>
+    @endforelse
 </div>
 @endsection
