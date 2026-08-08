@@ -149,6 +149,13 @@ class BookingService
 
                 if ($promotion->discount_type === 'percent') {
                     $discountAmount = (int) ($subtotalForDiscount * ($promotion->discount_value / 100));
+
+                    // BUG-04 FIX: Áp dụng giới hạn giảm tối đa (max_discount_amount) cho % discount.
+                    // Ví dụ: Voucher 50% nhưng max_discount_amount = 50,000đ → giảm tối đa 50,000đ
+                    // dù tổng đơn lên đến 10,000,000đ. Tránh thất thu không kiểm soát.
+                    if ($promotion->max_discount_amount !== null) {
+                        $discountAmount = min($discountAmount, $promotion->max_discount_amount);
+                    }
                 } else {
                     $discountAmount = min($promotion->discount_value, $subtotalForDiscount);
                 }

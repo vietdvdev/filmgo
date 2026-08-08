@@ -91,8 +91,12 @@ class StaffShowtimeController extends Controller
 
             if ($now->gt($end)) {
                 $showtime->status = 'finished';
+                // BUG-05 FIX: Lưu trạng thái vào DB để các query khác (report, POS filter)
+                // đọc được trạng thái đúng. Trước đây chỉ gán thuộc tính model mà không lưu.
+                $showtime->saveQuietly();
             } elseif ($now->gte($start)) {
                 $showtime->status = 'showing';
+                $showtime->saveQuietly();
             }
         });
 

@@ -101,12 +101,21 @@ class ManagerSeatService
             throw new InvalidArgumentException('Loại ghế được chọn không tồn tại.');
         }
 
-        // Kiểm tra loại ghế: Nếu là ghế Đôi / Sweetbox (seat_type_id == 3 hoặc có couple_seats_count)
-        // Bắt buộc tổng số lượng ghế sinh ra phải là SỐ CHẴN (% 2 === 0) để xếp đủ cặp.
-        $isCoupleSeatType = ($seatTypeId == 3) || isset($data['couple_seats_count']);
+        // BUG-06 FIX: Thay vì hardcode ID = 3 để phát hiện ghế Sweetbox/Couple,
+        // tra cứu động theo tên để tránh lỗi khi seed DB với thứ tự ID khác nhau.
+        // Kiểm tra loại ghế: Nếu là ghế Đôi / Sweetbox thì bắt buộc tổng số lượng
+        // ghế sinh ra phải là SỐ CHẴN (% 2 === 0) để xếp đủ cặp.
+        $sweetboxType      = SeatType::where('name', 'LIKE', '%Sweetbox%')
+            ->orWhere('name', 'LIKE', '%Couple%')
+            ->first();
+        $isCoupleSeatType  = ($sweetboxType && $seatTypeId === $sweetboxType->id)
+            || isset($data['couple_seats_count']);
+
         if ($isCoupleSeatType) {
-            $coupleSeatsCount = isset($data['couple_seats_count']) ? (int)$data['couple_seats_count'] : $totalSeatsCount;
-            
+            $coupleSeatsCount = isset($data['couple_seats_count'])
+                ? (int)$data['couple_seats_count']
+                : $totalSeatsCount;
+
             // Logic Modulo: $coupleSeatsCount % 2 !== 0 nghĩa là số lẻ, không thể ghép cặp hoàn chỉnh
             if ($coupleSeatsCount % 2 !== 0) {
                 throw new InvalidArgumentException('Số lượng ghế đôi bắt buộc phải là số chẵn.');

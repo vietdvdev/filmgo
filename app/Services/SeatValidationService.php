@@ -23,6 +23,10 @@ class SeatValidationService
             return $this->fail('Vui lòng đăng nhập để đặt vé.');
         }
 
+        // WARN-02 FIX: Loại bỏ ID trùng lặp trước khi validate.
+        // Client có thể gửi [1, 1, 1] → 3 BookingDetail + 3 Ticket cho cùng 1 ghế.
+        $showtimeSeatIds = array_values(array_unique(array_map('intval', $showtimeSeatIds)));
+
         // Rule 11 & 12: seat_ids phải là mảng số nguyên hợp lệ
         foreach ($showtimeSeatIds as $id) {
             if (!is_numeric($id) || intval($id) <= 0) {
@@ -69,10 +73,11 @@ class SeatValidationService
 
         /**
          * Lấy toàn bộ ghế của suất chiếu này để kiểm tra Single Seat Rule.
-         * Dùng eager load 'seat' vì cần seat_row, seat_number, room_id để lọc.
+         * BUG-03 FIX: Eager load 'seat.seatType' để validateSweetboxRule() không
+         * kích hoạt lazy-load N+1 khi truy cập $ss->seat->seatType->name.
          * Key by showtime_seat_id để tra cứu O(1) thay vì O(N) khi kiểm tra.
          */
-        $allSeats = ShowtimeSeat::with('seat')
+        $allSeats = ShowtimeSeat::with('seat.seatType')
             ->where('showtime_id', $showtimeId)
             ->get()
             ->keyBy('id');
