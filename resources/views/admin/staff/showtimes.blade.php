@@ -31,9 +31,9 @@
     {{-- ── Filter Bar ── --}}
     <form method="GET" action="{{ route('staff.showtimes.index') }}"
           class="bg-white border border-outline-variant rounded-xl p-5 shadow-ambient-sm">
-        <div class="flex flex-col sm:flex-row gap-3">
+        <div class="flex flex-col sm:flex-row gap-3 items-center">
             {{-- Tìm kiếm tên phim --}}
-            <div class="relative flex-1">
+            <div class="relative flex-1 w-full">
                 <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant text-xl pointer-events-none">search</span>
                 <input
                     type="text"
@@ -45,7 +45,7 @@
             </div>
 
             {{-- Lọc phòng chiếu --}}
-            <div class="relative sm:w-56">
+            <div class="relative sm:w-56 w-full">
                 <select
                     name="room_id"
                     class="w-full pl-4 pr-10 py-2.5 border border-outline-variant rounded-lg text-body-md focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/10 bg-surface appearance-none transition-all"
@@ -60,6 +60,18 @@
                 <span class="material-symbols-outlined absolute right-3 top-1/2 -translate-y-1/2 text-on-surface-variant pointer-events-none text-xl">keyboard_arrow_down</span>
             </div>
 
+            {{-- Toggle Checkbox: Ẩn suất chiếu đã xong --}}
+            <div class="flex items-center gap-2 px-3.5 py-2.5 border border-outline-variant rounded-lg bg-surface flex-shrink-0 cursor-pointer select-none">
+                <input type="checkbox"
+                       id="hide-ended-toggle"
+                       name="hide_ended"
+                       {{ !$includeEnded ? 'checked' : '' }}
+                       class="w-4 h-4 text-primary rounded border-outline-variant focus:ring-primary focus:ring-2 cursor-pointer">
+                <label for="hide-ended-toggle" class="text-body-md font-medium text-on-surface cursor-pointer select-none whitespace-nowrap">
+                    Ẩn suất chiếu đã xong
+                </label>
+            </div>
+
             {{-- Nút tìm --}}
             <button type="submit"
                     class="px-6 py-2.5 bg-primary text-white font-bold text-label-md rounded-lg hover:bg-primary/90 transition-colors flex items-center gap-2 whitespace-nowrap">
@@ -67,7 +79,7 @@
                 Lọc
             </button>
 
-            @if(request('search') || request('room_id'))
+            @if(request('search') || request('room_id') || request('include_ended'))
             <a href="{{ route('staff.showtimes.index') }}"
                class="px-5 py-2.5 border border-outline-variant text-on-surface-variant font-bold text-label-md rounded-lg hover:bg-surface-container-low transition-colors flex items-center gap-2 whitespace-nowrap">
                 <span class="material-symbols-outlined text-lg">close</span>
@@ -102,6 +114,7 @@
                             <th class="px-5 py-3.5 text-label-md text-on-surface-variant uppercase tracking-wider font-bold">Loại Phòng</th>
                             <th class="px-5 py-3.5 text-label-md text-on-surface-variant uppercase tracking-wider font-bold text-right">Giá Vé</th>
                             <th class="px-5 py-3.5 text-label-md text-on-surface-variant uppercase tracking-wider font-bold text-center">Trạng Thái</th>
+                            <th class="px-5 py-3.5 text-label-md text-on-surface-variant uppercase tracking-wider font-bold text-center">Hành Động</th>
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-outline-variant/50">
@@ -115,8 +128,15 @@
                                 'cancelled' => ['label' => 'Đã hủy',       'bg' => 'bg-red-50',      'text' => 'text-red-600',     'dot' => 'bg-red-500'],
                             ];
                             $s = $statusMap[$showtime->status] ?? $statusMap['upcoming'];
+                            
+                            // Phân biệt suất chiếu đã xong (Đã kết thúc) để làm mờ UI theo đúng yêu cầu
+                            $isEnded = ($showtime->status === 'finished') || 
+                                       ($showtime->show_date->isToday() && \Carbon\Carbon::parse($showtime->end_time)->lt(now()));
                         @endphp
-                        <tr class="hover:bg-surface-container-lowest transition-colors">
+
+                        {{-- PART 2: DISABLED STATE RENDERING WITH TAILWIND CSS --}}
+                        {{-- Khi include_ended=true hiển thị lại suất chiếu đã kết thúc, áp dụng class mờ và khóa tương tác --}}
+                        <tr class="hover:bg-surface-container-lowest transition-colors {{ $isEnded ? 'opacity-50 grayscale bg-gray-100 pointer-events-none cursor-not-allowed' : '' }}">
                             {{-- Giờ chiếu --}}
                             <td class="px-5 py-4 whitespace-nowrap">
                                 <div class="flex items-center gap-2">
@@ -188,6 +208,20 @@
                                     {{ $s['label'] }}
                                 </span>
                             </td>
+
+                            {{-- Hành động Bán vé / Nút khóa Đã kết thúc --}}
+                            <td class="px-5 py-4 text-center whitespace-nowrap">
+                                @if($isEnded)
+                                    <span class="inline-flex items-center gap-1 px-3 py-1.5 bg-gray-200 text-gray-500 font-bold text-xs rounded-lg cursor-not-allowed">
+                                        <span class="material-symbols-outlined text-sm">block</span> Đã kết thúc
+                                    </span>
+                                @else
+                                    <a href="{{ route('staff.pos.index') }}"
+                                       class="inline-flex items-center gap-1 px-3.5 py-1.5 bg-primary text-white font-bold text-xs rounded-lg hover:bg-primary/90 transition-colors shadow-sm">
+                                        <span class="material-symbols-outlined text-sm">point_of_sale</span> Bán vé
+                                    </a>
+                                @endif
+                            </td>
                         </tr>
                         @endforeach
                     </tbody>
@@ -203,4 +237,23 @@
     </div>
 
 </div>
+
+@push('scripts')
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const toggle = document.getElementById('hide-ended-toggle');
+        if (toggle) {
+            toggle.addEventListener('change', function() {
+                const url = new URL(window.location.href);
+                if (this.checked) {
+                    url.searchParams.delete('include_ended');
+                } else {
+                    url.searchParams.set('include_ended', 'true');
+                }
+                window.location.href = url.toString();
+            });
+        }
+    });
+</script>
+@endpush
 @endsection
