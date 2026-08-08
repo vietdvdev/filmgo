@@ -23,6 +23,7 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        \App\Models\ShowtimeSeat::observe(\App\Observers\ShowtimeSeatObserver::class);
         \Illuminate\Pagination\Paginator::useBootstrapFive();
         Paginator::useTailwind();
 
