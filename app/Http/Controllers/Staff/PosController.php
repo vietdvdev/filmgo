@@ -38,8 +38,10 @@ class PosController extends Controller
 
         $cinemaId = $this->getCinemaId();
         $combos   = Combo::with('items')->where('status', 'active')->latest()->get();
+        // Lấy danh sách nhân viên khả dụng cho ghế đôi
+        $availableEmployees = \App\Models\User::availableForCoupleSeat()->get(['id', 'full_name']);
 
-        return view('staff.pos.index', compact('cinemaId', 'combos'));
+        return view('staff.pos.index', compact('cinemaId', 'combos', 'availableEmployees'));
     }
 
     // ─────────────────────────────────────────────────────────────────────────

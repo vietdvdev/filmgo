@@ -172,6 +172,9 @@ Route::prefix('admin')->group(function () {
         Route::get('bookings', [BookingController::class, 'index'])->name('admin.bookings.index');
         Route::get('bookings/{id}', [BookingController::class, 'show'])->name('admin.bookings.show');
 
+        // 11.5. Phân công nhân viên phục vụ ghế đôi (Sweetbox)
+        Route::post('showtime-seats/assign-employee', [\App\Http\Controllers\Admin\AssignEmployeeController::class, 'assign'])->name('admin.showtime-seats.assign-employee');
+
         // 12. Định dạng phòng chiếu
         Route::resource('formats', FormatController::class)->names('admin.formats')->except(['create', 'edit', 'show']);
 

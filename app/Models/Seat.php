@@ -63,4 +63,18 @@ class Seat extends Model
     {
         return $this->hasMany(ShowtimeSeat::class, 'seat_id');
     }
+
+    /**
+     * Kiểm tra xem ghế hiện tại có phải là ghế đôi (Sweetbox) và có số ghế chẵn hay không.
+     *
+     * @return bool
+     */
+    public function isEvenCoupleSeat(): bool
+    {
+        // Kiểm tra số ghế chẵn và loại ghế là 'Sweetbox'
+        // Chú ý: Cần load quan hệ seatType nếu chưa load để tránh N+1 query trong vòng lặp.
+        return $this->seat_number % 2 === 0 && 
+               $this->seatType && 
+               $this->seatType->name === 'Sweetbox';
+    }
 }

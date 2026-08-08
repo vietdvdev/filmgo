@@ -611,6 +611,7 @@
 {{-- Thư viện tạo mã QR điện tử --}}
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <script>
+window.availableEmployees = @json($availableEmployees ?? []);
 const POS = (() => {
     'use strict';
 
@@ -870,6 +871,32 @@ const POS = (() => {
         return html;
     }
 
+    function assignEmployee(showtimeSeatId, selectEl) {
+        const employeeId = selectEl.value;
+        if (!employeeId) return;
+        
+        apiFetch('/admin/showtime-seats/assign-employee', {
+            method: 'POST',
+            body: JSON.stringify({
+                showtime_seat_id: showtimeSeatId,
+                employee_id: employeeId
+            }),
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+            }
+        }).then(res => {
+            if (res.success) {
+                toast('Gán nhân viên thành công!', 'success');
+                loadSeatMap(state.currentShowtimeId); // Reload lại sơ đồ
+            } else {
+                toast('Lỗi: ' + (res.message || 'Không thể gán'), 'error');
+            }
+        }).catch(err => {
+            toast('Lỗi kết nối', 'error');
+        });
+    }
+
     // ── Render một ghế đơn lẻ với hệ thống màu Tailwind CSS chuẩn ───────────
     function renderSeatBtn(s) {
         const isSelected = state.selectedSeats.some(sel => sel.showtime_seat_id === s.showtime_seat_id);
@@ -882,18 +909,6 @@ const POS = (() => {
         const isVip = typeName.includes('vip');
         const isCouple = typeName.includes('đôi') || typeName.includes('sweetbox') || typeName.includes('couple');
 
-        /**
-         * TAILWIND COLOR SYSTEM STRICT COMPLIANCE:
-         * 1. Status Overrides Type:
-         *    - Selected    : bg-blue-600 text-white ring-4 ring-blue-300 scale-105 cursor-pointer
-         *    - Maintenance : bg-gray-400 text-gray-600 border-2 border-gray-500 cursor-not-allowed
-         *    - Booked      : bg-red-500 text-white border-2 border-red-600 opacity-60 cursor-not-allowed
-         *    - Holding     : bg-amber-400 text-white border-2 border-amber-500 cursor-not-allowed
-         * 2. Default/Available by Type:
-         *    - Couple      : bg-pink-50 text-pink-700 border-2 border-pink-500 cursor-pointer hover:bg-pink-100
-         *    - VIP         : bg-purple-50 text-purple-700 border-2 border-purple-600 cursor-pointer hover:bg-purple-100
-         *    - Standard    : bg-gray-100 text-gray-700 border-2 border-emerald-500 cursor-pointer hover:bg-emerald-100
-         */
         let classes = "w-9 h-9 text-xs font-bold rounded-lg border-2 flex items-center justify-center transition-all duration-150 relative shadow-sm ";
 
         if (isSelected) {
@@ -927,21 +942,42 @@ const POS = (() => {
         }
 
         const statusText = isSelected ? 'Đang chọn' : (isMaintenance ? 'Bảo trì' : (isBooked ? 'Đã bán' : (isHolding ? 'Đang giữ (10 ph)' : 'Trống (Có thể chọn)')));
+        
+        // Khối chọn nhân viên cho ghế đôi chẵn
+        let employeeSelectHtml = '';
+        if (s.is_even_couple_seat) {
+            const availableEmployees = window.availableEmployees || [];
+            let options = '<option value="">-- NV --</option>';
+            availableEmployees.forEach(emp => {
+                const selected = (s.employee && s.employee.id == emp.id) ? 'selected' : '';
+                options += `<option value="${emp.id}" ${selected}>${emp.full_name}</option>`;
+            });
+            employeeSelectHtml = `
+                <div class="absolute -bottom-6 left-1/2 -translate-x-1/2 w-[70px] z-[50]">
+                    <select onchange="POS.assignEmployee(${s.showtime_seat_id}, this)" class="text-[9px] w-full border border-gray-300 rounded p-0 text-center" onclick="event.stopPropagation()">
+                        ${options}
+                    </select>
+                </div>
+            `;
+        }
 
         return `
-            <button id="seat-${s.showtime_seat_id}"
-                    class="${classes}"
-                    data-seat-id="${s.showtime_seat_id}"
-                    data-seat-label="${s.label}"
-                    data-seat-type="${s.type || 'Ghế Thường'}"
-                    data-seat-price="${formatMoney(s.price)}"
-                    data-seat-status="${statusText}"
-                    onmouseenter="POS.showTooltip(event, this)"
-                    onmousemove="POS.moveTooltip(event)"
-                    onmouseleave="POS.hideTooltip()"
-                    ${clickFn}>
-                ${innerContent}
-            </button>
+            <div class="relative flex flex-col items-center">
+                <button id="seat-${s.showtime_seat_id}"
+                        class="${classes}"
+                        data-seat-id="${s.showtime_seat_id}"
+                        data-seat-label="${s.label}"
+                        data-seat-type="${s.type || 'Ghế Thường'}"
+                        data-seat-price="${formatMoney(s.price)}"
+                        data-seat-status="${statusText}"
+                        onmouseenter="POS.showTooltip(event, this)"
+                        onmousemove="POS.moveTooltip(event)"
+                        onmouseleave="POS.hideTooltip()"
+                        ${clickFn}>
+                    ${innerContent}
+                </button>
+                ${employeeSelectHtml}
+            </div>
         `;
     }
 
@@ -1446,7 +1482,7 @@ const POS = (() => {
         openCheckout, closeCheckout, selectPayment, calcChange,
         confirmCheckout,
         openSuccessModal,
-        handlePrintTicket, handleShowQR, resetPOS,
+        handlePrintTicket, handleShowQR, resetPOS, assignEmployee,
     };
 })();
 
