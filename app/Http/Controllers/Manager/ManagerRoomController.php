@@ -250,10 +250,11 @@ class ManagerRoomController extends Controller
             // được phân công cho họ. Tham chiếu bảng user_cinemas.
             $room = $syncService->authorizeAndFetchRoom($roomId, Auth::id());
 
-            // ── Bước 3: Kiểm tra ghế đang có đặt vé/holding ─────────────────
-            // Không cho phép đồng bộ khi còn giao dịch chưa hoàn tất để đảm
-            // bảo tính toàn vẹn dữ liệu đặt vé.
-            $syncService->guardAgainstActiveBookings($roomId);
+            // ── Bước 3: Kiểm tra an toàn trước khi chỉnh sửa sơ đồ ghế ──────────────
+            // - Chặn nếu có suất chiếu đang diễn ra trong giờ hiện tại.
+            // - Chặn nếu suất chiếu sắp tới đã có vé đặt (booked/holding) của khách.
+            // - Cho phép sửa nếu suất chiếu chưa mở bán hoặc chưa có ai đặt vé.
+            $syncService->guardAgainstActiveBookingsOrCurrentlyShowing($roomId);
 
             // ── Bước 4: Kiểm tra trùng lặp trong chính payload ───────────────
             // Tránh vi phạm UNIQUE(room_id, seat_row, seat_number) khi insert.

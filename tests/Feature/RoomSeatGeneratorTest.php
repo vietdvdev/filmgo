@@ -185,4 +185,73 @@ class RoomSeatGeneratorTest extends TestCase
             ]
         ]);
     }
+
+    /**
+     * TC7: Syncing seat map IS ALLOWED when showtime is upcoming or in future.
+     */
+    public function test_tc7_syncing_seat_map_allowed_when_showtime_is_upcoming(): void
+    {
+        $movie = \App\Models\Movie::factory()->create(['duration' => 120]);
+        $format = \App\Models\Format::firstOrCreate(['name' => '2D']);
+
+        // Create upcoming showtime tomorrow
+        $showtime = \App\Models\Showtime::create([
+            'movie_id'   => $movie->id,
+            'format_id'  => $format->id,
+            'room_id'    => $this->room->id,
+            'show_date'  => now()->addDays(2)->toDateString(),
+            'start_time' => '18:00:00',
+            'end_time'   => '20:00:00',
+            'base_price' => 80000,
+            'status'     => 'upcoming',
+        ]);
+
+        $syncService = app(\App\Services\RoomSeatSyncService::class);
+
+        // Guard against currently showing should pass without throwing exception
+        $syncService->guardAgainstActiveBookingsOrCurrentlyShowing($this->room->id);
+
+        $result = $syncService->sync($this->room, [
+            [
+                'seat_row'     => 'A',
+                'seat_number'  => 1,
+                'seat_type_id' => $this->standardSeatType->id,
+                'status'       => 'active',
+            ]
+        ]);
+
+        $this->assertEquals(1, $result['seat_count']);
+    }
+
+    /**
+     * TC8: Syncing seat map IS BLOCKED when showtime is currently showing in progress.
+     */
+    public function test_tc8_syncing_seat_map_blocked_when_showtime_is_currently_showing(): void
+    {
+        $movie = \App\Models\Movie::factory()->create(['duration' => 120]);
+        $format = \App\Models\Format::firstOrCreate(['name' => '2D']);
+
+        // Create showtime currently showing right now
+        $now = now();
+        $startTime = $now->copy()->subMinutes(30)->format('H:i:s');
+        $endTime   = $now->copy()->addMinutes(90)->format('H:i:s');
+
+        \App\Models\Showtime::create([
+            'movie_id'   => $movie->id,
+            'format_id'  => $format->id,
+            'room_id'    => $this->room->id,
+            'show_date'  => $now->toDateString(),
+            'start_time' => $startTime,
+            'end_time'   => $endTime,
+            'base_price' => 80000,
+            'status'     => 'showing',
+        ]);
+
+        $syncService = app(\App\Services\RoomSeatSyncService::class);
+
+        $this->expectException(\Illuminate\Validation\ValidationException::class);
+
+        // Should throw ValidationException blocking seat map modification
+        $syncService->guardAgainstActiveBookingsOrCurrentlyShowing($this->room->id);
+    }
 }
