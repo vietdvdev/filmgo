@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Builder;
+use App\Models\Cinema;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
@@ -22,6 +23,7 @@ class Booking extends Model
         'user_id',
         'staff_id',
         'showtime_id',
+        'cinema_id',
         'booking_code',
         'subtotal',
         'promotion_id',
@@ -40,6 +42,7 @@ class Booking extends Model
         'user_id'         => 'integer',
         'staff_id'        => 'integer',
         'showtime_id'     => 'integer',
+        'cinema_id'       => 'integer',
         'subtotal'        => 'integer',
         'promotion_id'    => 'integer',
         'total_amount'    => 'integer',
@@ -190,5 +193,10 @@ class Booking extends Model
     public function comboItems(): HasMany
     {
         return $this->hasMany(BookingComboItem::class, 'booking_id');
+    }
+
+    public function cinema(): BelongsTo
+    {
+        return $this->belongsTo(Cinema::class, 'cinema_id');
     }
 }

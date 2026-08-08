@@ -85,8 +85,14 @@
                         · {{ $booking->showtime->show_date ? $booking->showtime->show_date->format('d/m/Y') : '' }}
                     </p>
                     @else
+                    @if($isComboOnly && $booking->cinema)
+                    <p class="text-xs font-bold text-gray-800 flex items-center gap-1 pt-1">
+                        <span class="material-symbols-outlined text-sm text-red-500">location_on</span>
+                        {{ $booking->cinema->name }}
+                    </p>
+                    @endif
                     <p class="text-xs text-gray-500">
-                        Xuất trình mã đơn tại quầy F&B của rạp FilmGo để nhận sản phẩm.
+                        Xuất trình mã đơn tại quầy F&B của rạp để nhận sản phẩm.
                     </p>
                     @endif
 
@@ -227,20 +233,6 @@
             </div>
             @endif
         </div>
-
-        {{-- Vé điện tử & QR Code (nếu là vé phim) --}}
-        @if(!$isComboOnly && $booking->showtime && $booking->payment_status === 'paid')
-        <div class="mb-4">
-            <div class="flex items-center justify-between mb-3">
-                <h3 class="text-xs font-black text-gray-500 uppercase tracking-widest flex items-center gap-2">
-                    <span class="material-symbols-outlined text-sm text-brand-primary">qr_code_2</span>
-                    Vé Điện Tử
-                </h3>
-                <span class="px-3 py-1 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-600 border border-emerald-200 uppercase tracking-wider">Đã thanh toán</span>
-            </div>
-            @include('customer.bookings.partials.ticket-card', ['booking' => $booking])
-        </div>
-        @endif
 
         {{-- Actions --}}
         <div class="flex justify-center">

@@ -285,14 +285,37 @@
                         </div>
                     </div>
 
+                    {{-- Chọn rạp --}}
+                    <div class="pt-4 border-t border-slate-100">
+                        <label class="block text-xs font-bold text-slate-600 uppercase tracking-wider mb-2">
+                            <span class="material-symbols-outlined text-sm align-middle text-red-500">location_on</span>
+                            Chọn rạp nhận hàng <span class="text-red-500">*</span>
+                        </label>
+                        <select id="cinema-select"
+                                class="w-full bg-slate-50 border border-slate-200 text-slate-800 text-sm font-semibold rounded-2xl px-4 py-3 focus:outline-none focus:border-red-500"
+                                onchange="SHOP.selectCinema(this.value)">
+                            <option value="">-- Chọn rạp trước --</option>
+                            @foreach($cinemas as $c)
+                            <option value="{{ $c->id }}" {{ $selectedCinemaId == $c->id ? 'selected' : '' }}>{{ $c->name }}</option>
+                            @endforeach
+                        </select>
+                        <p id="cinema-required-msg" class="text-xs text-red-500 font-medium mt-1 hidden">Vui lòng chọn rạp trước khi thanh toán.</p>
+                    </div>
+
                     {{-- Action Button --}}
-                    <div class="mt-6">
-                        <button id="btn-checkout" class="checkout-btn" disabled onclick="SHOP.goToCheckout()">
-                            <span class="flex items-center justify-center gap-2">
-                                <span class="material-symbols-outlined">shopping_cart_checkout</span>
-                                THANH TOÁN VNPay
-                            </span>
-                        </button>
+                    <div class="mt-4">
+                        <form id="checkout-form" action="{{ route('combo-shop.cart') }}" method="POST">
+                            @csrf
+                            <input type="hidden" name="cinema_id" id="form-cinema-id" value="{{ $selectedCinemaId ?? '' }}">
+                            <input type="hidden" name="redirect_checkout" value="1">
+                            <div id="form-cart-inputs"></div>
+                            <button id="btn-checkout" type="submit" class="checkout-btn" {{ (!$selectedCinemaId) ? 'disabled' : '' }}>
+                                <span class="flex items-center justify-center gap-2">
+                                    <span class="material-symbols-outlined">shopping_cart_checkout</span>
+                                    THANH TOÁN VNPay
+                                </span>
+                            </button>
+                        </form>
                         <div class="flex items-center justify-center gap-2 mt-3 text-slate-400 text-[11px] font-semibold">
                             <span class="material-symbols-outlined text-sm text-emerald-500">verified_user</span>
                             Thanh toán an toàn bảo mật
@@ -306,10 +329,6 @@
     </div>
 </div>
 
-<form id="cart-form" action="{{ route('combo-shop.cart') }}" method="POST" class="hidden">
-    @csrf
-    <div id="cart-form-inputs"></div>
-</form>
 @endsection
 
 @section('scripts')
@@ -331,6 +350,14 @@ const SHOP = {
     cart: {
         combos: {{ json_encode((object)($cart['combos'] ?? [])) }},
         items:  {{ json_encode((object)($cart['items'] ?? [])) }},
+    },
+    cinemaId: {{ $selectedCinemaId ? $selectedCinemaId : 'null' }},
+
+    selectCinema(id) {
+        this.cinemaId = id ? parseInt(id) : null;
+        document.getElementById('cinema-required-msg').classList.toggle('hidden', !!id);
+        document.getElementById('form-cinema-id').value = id || '';
+        this.render();
     },
 
     changeCombo(id, delta) {
@@ -364,7 +391,7 @@ const SHOP = {
         let totalQty   = 0;
 
         Object.entries(this.cart.combos).forEach(([id, qty]) => {
-            const p = COMBO_PRICES[id];
+            const p = COMBO_PRICES[parseInt(id)];
             if (!p || qty <= 0) return;
             const sub = p.price * qty;
             totalPrice += sub; totalQty += qty;
@@ -379,7 +406,7 @@ const SHOP = {
         });
 
         Object.entries(this.cart.items).forEach(([id, qty]) => {
-            const p = ITEM_PRICES[id];
+            const p = ITEM_PRICES[parseInt(id)];
             if (!p || qty <= 0) return;
             const sub = p.price * qty;
             totalPrice += sub; totalQty += qty;
@@ -407,36 +434,25 @@ const SHOP = {
         badge.textContent    = `${totalQty} món`;
         subtotal.textContent = `${totalPrice.toLocaleString('vi')}đ`;
         total.textContent    = `${totalPrice.toLocaleString('vi')}đ`;
-        btnCO.disabled       = totalQty === 0;
-    },
 
-    goToCheckout() {
-        const form   = document.getElementById('cart-form');
-        const inputs = document.getElementById('cart-form-inputs');
-        inputs.innerHTML = '';
+        const canCheckout = totalQty > 0 && !!this.cinemaId;
+        btnCO.disabled = !canCheckout;
 
+        // Cập nhật form inputs
+        const formInputs = document.getElementById('form-cart-inputs');
+        formInputs.innerHTML = '';
         Object.entries(this.cart.combos).forEach(([id, qty]) => {
             const el = document.createElement('input');
             el.type = 'hidden'; el.name = `combos[${id}]`; el.value = qty;
-            inputs.appendChild(el);
+            formInputs.appendChild(el);
         });
-
         Object.entries(this.cart.items).forEach(([id, qty]) => {
             const el = document.createElement('input');
             el.type = 'hidden'; el.name = `combo_items[${id}]`; el.value = qty;
-            inputs.appendChild(el);
-        });
-
-        fetch(form.action, {
-            method: 'POST',
-            body: new FormData(form),
-            headers: { 'X-Requested-With': 'XMLHttpRequest' },
-        }).then(() => {
-            window.location.href = '{{ route("combo-shop.checkout") }}';
-        }).catch(() => {
-            window.location.href = '{{ route("combo-shop.checkout") }}';
+            formInputs.appendChild(el);
         });
     },
+
 };
 
 function switchTab(tabName, btn) {
@@ -447,5 +463,7 @@ function switchTab(tabName, btn) {
 }
 
 document.addEventListener('DOMContentLoaded', () => SHOP.render());
+
+window.addEventListener('pageshow', () => SHOP.render());
 </script>
 @endsection

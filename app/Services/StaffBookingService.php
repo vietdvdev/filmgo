@@ -103,9 +103,17 @@ class StaffBookingService
             ->where('booking_type', 'combo_only')
             ->where('booking_status', '!=', 'cancelled')
             ->where(function ($query) use ($cinemaId) {
-                $query->whereHas('staff.cinemas', function ($cinemaQuery) use ($cinemaId) {
+                $query->where(function ($q) use ($cinemaId) {
+                    $q->whereNotNull('cinema_id')
+                      ->where('cinema_id', $cinemaId);
+                })
+                ->orWhereHas('staff.cinemas', function ($cinemaQuery) use ($cinemaId) {
                     $cinemaQuery->where('cinemas.id', $cinemaId);
-                })->orWhereNull('staff_id');
+                })
+                ->orWhere(function ($q) {
+                    $q->whereNull('cinema_id')
+                      ->whereNull('staff_id');
+                });
             })
             ->when(!empty($filters['booking_code']), function ($query) use ($filters) {
                 $query->where('booking_code', trim($filters['booking_code']));
@@ -133,7 +141,10 @@ class StaffBookingService
             'payments',
         ])->findOrFail($bookingId);
 
-        $belongsToCinema = $booking->staff_id === null || ($booking->staff && $booking->staff->cinemas()->where('cinemas.id', $cinemaId)->exists());
+        $belongsToCinema = 
+            ($booking->cinema_id !== null && $booking->cinema_id === $cinemaId)
+            || ($booking->staff && $booking->staff->cinemas()->where('cinemas.id', $cinemaId)->exists())
+            || ($booking->cinema_id === null && $booking->staff_id === null);
 
         if (!$belongsToCinema) {
             abort(Response::HTTP_FORBIDDEN, 'Bạn không có quyền truy cập đơn combo ở rạp khác.');

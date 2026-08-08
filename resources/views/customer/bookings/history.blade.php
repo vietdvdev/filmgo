@@ -94,10 +94,10 @@
                                     </p>
                                 </div>
                                 <div>
-                                    <p class="text-gray-400 font-semibold mb-0.5">Suất chiếu / Thời gian</p>
+                                    <p class="text-gray-400 font-semibold mb-0.5">Rạp / Suất chiếu</p>
                                     <p class="text-brand-primary font-bold">
                                         @if($isComboOnly)
-                                            Nhận tại quầy
+                                            {{ optional($booking->cinema)->name ?? 'Chưa xác định' }}
                                         @else
                                             {{ $booking->showtime ? \Carbon\Carbon::parse($booking->showtime->start_time)->format('H:i') : '—' }}
                                             · {{ $booking->showtime ? $booking->showtime->show_date->format('d/m/Y') : '' }}
@@ -108,7 +108,7 @@
                                     <p class="text-gray-400 font-semibold mb-0.5">Ghế / Sản phẩm</p>
                                     <p class="text-gray-800 font-bold truncate">
                                         @if($isComboOnly)
-                                            Nhận tại rạp
+                                            Nhận tại quầy F&B
                                         @else
                                             {{ $seats ?: '—' }}
                                         @endif

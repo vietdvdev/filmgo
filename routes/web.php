@@ -98,6 +98,7 @@ Route::middleware('customer')->group(function () {
     // ── Mua Combo / F&B riêng lẻ (không cần đặt vé) ──────────────────────────────
     Route::get('/shop/combos', [ComboShopController::class, 'index'])->name('combo-shop.index');
     Route::post('/shop/combos/cart', [ComboShopController::class, 'updateCart'])->name('combo-shop.cart');
+    Route::post('/shop/combos/select-cinema', [ComboShopController::class, 'selectCinema'])->name('combo-shop.select-cinema');
     Route::get('/shop/combos/checkout', [ComboShopController::class, 'checkout'])->name('combo-shop.checkout');
     Route::post('/shop/combos/confirm', [ComboShopController::class, 'confirm'])->name('combo-shop.confirm');
     Route::get('/shop/combos/success/{id}', [ComboShopController::class, 'success'])->name('combo-shop.success');
