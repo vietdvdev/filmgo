@@ -45,6 +45,7 @@ class StaffComboBookingManagementTest extends TestCase
 
         $service = app(ComboOrderService::class);
         $booking = $service->createCustomerComboOrder($customer->id, [$combo->id => 1], []);
+        $booking->update(['payment_status' => 'paid', 'booking_status' => 'confirmed']);
 
         $bookingDetail = $booking->refresh()->bookingDetails()->first();
         $this->assertNotNull($bookingDetail);

@@ -46,20 +46,24 @@ class StaffBookingService
             ->whereHas('showtime', function ($query) use ($targetDate) {
                 $query->whereDate('show_date', $targetDate);
             })
-            ->where('booking_status', '!=', 'cancelled')
+            // Chỉ hiển thị những đơn đã thanh toán (payment_status = 'paid' hoặc booking_status = 'confirmed')
+            ->where(function ($query) {
+                $query->where('bookings.payment_status', 'paid')
+                      ->orWhere('bookings.booking_status', 'confirmed');
+            })
             ->when(!empty($filters['booking_code']), function ($query) use ($filters) {
                 $query->where('bookings.booking_code', trim($filters['booking_code']));
             })
             ->when(isset($filters['print_status']) && $filters['print_status'] !== '', function ($query) use ($filters) {
                 if ($filters['print_status'] === 'printed') {
-                    $query->whereNotNull('printed_at');
+                    $query->whereNotNull('bookings.printed_at');
                 } elseif ($filters['print_status'] === 'not_printed') {
-                    $query->whereNull('printed_at');
+                    $query->whereNull('bookings.printed_at');
                 }
             })
-            // 5. Sắp xếp danh sách theo giờ chiếu (start_time) tăng dần
-            ->join('showtimes', 'bookings.showtime_id', '=', 'showtimes.id')
-            ->orderBy('showtimes.start_time', 'asc')
+            // 5. Sắp xếp đơn hàng mới nhất lên đầu
+            ->orderBy('bookings.created_at', 'desc')
+            ->orderBy('bookings.id', 'desc')
             ->select('bookings.*')
             // 6. Phân trang dữ liệu kết hợp duy trì tham số query string trên thanh địa chỉ
             ->paginate($perPage)
@@ -101,7 +105,11 @@ class StaffBookingService
         return Booking::query()
             ->with(['user', 'combos', 'comboItems.comboItem', 'bookingDetails.ticket', 'payments'])
             ->where('booking_type', 'combo_only')
-            ->where('booking_status', '!=', 'cancelled')
+            // Chỉ hiển thị những đơn đã thanh toán (payment_status = 'paid' hoặc booking_status = 'confirmed')
+            ->where(function ($query) {
+                $query->where('payment_status', 'paid')
+                      ->orWhere('booking_status', 'confirmed');
+            })
             ->where(function ($query) use ($cinemaId) {
                 $query->where(function ($q) use ($cinemaId) {
                     $q->whereNotNull('cinema_id')
@@ -126,7 +134,9 @@ class StaffBookingService
                 }
             })
             ->whereDate('created_at', $targetDate)
-            ->orderBy('created_at', 'asc')
+            // Sắp xếp đơn hàng mới nhất lên đầu
+            ->orderBy('created_at', 'desc')
+            ->orderBy('id', 'desc')
             ->paginate($perPage)
             ->withQueryString();
     }
