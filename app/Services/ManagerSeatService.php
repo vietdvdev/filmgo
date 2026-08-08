@@ -91,13 +91,26 @@ class ManagerSeatService
             throw new InvalidArgumentException('Khoảng số ghế bắt đầu và kết thúc không hợp lệ.');
         }
 
-        if (($endNumber - $startNumber + 1) > 50) {
+        $totalSeatsCount = $endNumber - $startNumber + 1;
+        if ($totalSeatsCount > 50) {
             throw new InvalidArgumentException('Mỗi lần chỉ tạo được tối đa 50 ghế trên một hàng.');
         }
 
         $seatTypeExists = SeatType::where('id', $seatTypeId)->exists();
         if (!$seatTypeExists) {
             throw new InvalidArgumentException('Loại ghế được chọn không tồn tại.');
+        }
+
+        // Kiểm tra loại ghế: Nếu là ghế Đôi / Sweetbox (seat_type_id == 3 hoặc có couple_seats_count)
+        // Bắt buộc tổng số lượng ghế sinh ra phải là SỐ CHẴN (% 2 === 0) để xếp đủ cặp.
+        $isCoupleSeatType = ($seatTypeId == 3) || isset($data['couple_seats_count']);
+        if ($isCoupleSeatType) {
+            $coupleSeatsCount = isset($data['couple_seats_count']) ? (int)$data['couple_seats_count'] : $totalSeatsCount;
+            
+            // Logic Modulo: $coupleSeatsCount % 2 !== 0 nghĩa là số lẻ, không thể ghép cặp hoàn chỉnh
+            if ($coupleSeatsCount % 2 !== 0) {
+                throw new InvalidArgumentException('Số lượng ghế đôi bắt buộc phải là số chẵn.');
+            }
         }
 
         // Lấy danh sách các số ghế đã tồn tại cho hàng ghế này
@@ -110,12 +123,15 @@ class ManagerSeatService
         $seatsToInsert = [];
         for ($num = $startNumber; $num <= $endNumber; $num++) {
             if (!in_array($num, $existingNumbers)) {
+                // Mỗi ghế cá nhân (Individual Seat) vẫn lưu thành 1 dòng trong database bảng `seats`
+                // Việc ghép cặp được tính theo số thứ tự: 
+                // Ghế lẻ ($num % 2 !== 0) và ghế chẵn ($num % 2 === 0) tiếp theo tạo thành 1 cặp sofa Sweetbox
                 $seatsToInsert[] = [
-                    'room_id' => $roomId,
+                    'room_id'      => $roomId,
                     'seat_type_id' => $seatTypeId,
-                    'seat_row' => $seatRow,
-                    'seat_number' => $num,
-                    'status' => 'active',
+                    'seat_row'     => $seatRow,
+                    'seat_number'  => $num,
+                    'status'       => 'active',
                 ];
             }
         }

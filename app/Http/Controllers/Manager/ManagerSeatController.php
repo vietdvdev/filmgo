@@ -59,25 +59,13 @@ class ManagerSeatController extends Controller
     /**
      * Tạo hàng loạt ghế cho một hàng.
      */
-    public function bulkStore(Request $request, $roomId)
+    public function bulkStore(\App\Http\Requests\StoreRoomSeatRequest $request, $roomId)
     {
-        $request->validate([
-            'seat_row'     => 'required|string|max:5',
-            'start_number' => 'required|integer|min:1',
-            'end_number'   => 'required|integer|min:1|gte:start_number',
-            'seat_type_id' => 'required|integer|exists:seat_types,id',
-        ], [
-            'seat_row.required'       => 'Hàng ghế không được để trống.',
-            'start_number.required'   => 'Số bắt đầu không được để trống.',
-            'end_number.required'     => 'Số kết thúc không được để trống.',
-            'end_number.gte'          => 'Số kết thúc phải lớn hơn hoặc bằng số bắt đầu.',
-            'seat_type_id.required'   => 'Vui lòng chọn loại ghế.',
-            'seat_type_id.exists'     => 'Loại ghế không hợp lệ.',
-        ]);
+        $validated = $request->validated();
 
         try {
             $cinemaId     = $this->getCinemaId();
-            $createdCount = $this->seatService->bulkStoreSeats((int)$roomId, $cinemaId, $request->all());
+            $createdCount = $this->seatService->bulkStoreSeats((int)$roomId, $cinemaId, $validated);
 
             return redirect()->back()->with('success', "Đã tạo thành công {$createdCount} ghế mới.");
         } catch (InvalidArgumentException $e) {
