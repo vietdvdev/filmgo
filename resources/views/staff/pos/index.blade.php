@@ -148,16 +148,10 @@
         <div id="seat-header" class="px-5 py-3 bg-white border-b border-gray-200 flex-shrink-0">
             <div class="flex items-center justify-between">
                 <div>
-                    <p class="text-xs text-gray-500 uppercase tracking-wider font-semibold">Sơ đồ ghế</p>
+                    <p class="text-xs text-gray-500 uppercase tracking-wider font-semibold">Sơ đồ ghế POS (Real-time)</p>
                     <h2 id="seat-showtime-title" class="text-sm font-bold text-gray-800 mt-0.5">
                         Chọn phim và suất chiếu để bắt đầu
                     </h2>
-                </div>
-                <div class="flex items-center gap-4 text-[10px]">
-                    <span class="flex items-center gap-1"><span class="w-3 h-3 rounded bg-green-100 border border-green-500 inline-block"></span>Trống</span>
-                    <span class="flex items-center gap-1"><span class="w-3 h-3 rounded bg-blue-500 inline-block"></span>Đang chọn</span>
-                    <span class="flex items-center gap-1"><span class="w-3 h-3 rounded bg-yellow-100 border border-yellow-400 inline-block"></span>Tạm giữ</span>
-                    <span class="flex items-center gap-1"><span class="w-3 h-3 rounded bg-red-100 border border-red-400 inline-block"></span>Đã bán</span>
                 </div>
             </div>
         </div>
@@ -596,6 +590,21 @@
 <div id="pos-toast" class="fixed bottom-6 left-1/2 -translate-x-1/2 z-[999] hidden no-print">
     <div class="px-5 py-3 rounded-xl text-sm font-semibold text-white shadow-xl flex items-center gap-2" id="pos-toast-inner"></div>
 </div>
+
+{{-- Floating Tooltip cho Nhân viên POS khi hover ghế --}}
+<div id="seat-tooltip" class="fixed pointer-events-none z-[9999] hidden transform -translate-x-1/2 -translate-y-full mb-3 transition-all duration-75">
+    <div class="bg-slate-900 text-white text-xs rounded-xl px-3.5 py-2.5 shadow-2xl border border-slate-700 min-w-[150px]">
+        <div class="font-black text-sm text-yellow-400 border-b border-slate-700 pb-1 mb-1.5 flex items-center justify-between">
+            <span id="tooltip-seat-num">Ghế: --</span>
+            <span id="tooltip-seat-type-tag" class="text-[9px] px-1.5 py-0.5 rounded bg-slate-800 text-slate-300 font-semibold uppercase">--</span>
+        </div>
+        <div class="space-y-1 text-[11px] text-slate-300">
+            <p class="flex justify-between"><span>Loại:</span> <strong id="tooltip-seat-type" class="text-white">--</strong></p>
+            <p class="flex justify-between"><span>Giá:</span> <strong id="tooltip-seat-price" class="text-emerald-400 font-bold">--</strong></p>
+            <p class="flex justify-between"><span>Trạng thái:</span> <strong id="tooltip-seat-status" class="text-white font-bold">--</strong></p>
+        </div>
+    </div>
+</div>
 @endsection
 
 @push('scripts')
@@ -732,30 +741,85 @@ const POS = (() => {
         const maxCols = Math.max(...Object.values(seatsByRow).map(r => r.length));
 
         container.innerHTML = `
-            <div class="w-full max-w-2xl">
+            <div class="w-full max-w-3xl flex flex-col items-center">
                 <!-- Màn chiếu -->
-                <div class="mb-6 px-8">
+                <div class="mb-8 px-8 w-full max-w-xl">
                     <div class="screen-bar mb-1"></div>
-                    <p class="text-center text-[10px] text-gray-400 font-semibold tracking-widest uppercase">MÀN CHIẾU</p>
+                    <p class="text-center text-[10px] text-gray-400 font-semibold tracking-widest uppercase">MÀN CHIẾU PHIM</p>
                 </div>
 
                 <!-- Sơ đồ ghế -->
-                <div class="space-y-2">
-                    ${rows.map(row => `
-                        <div class="flex items-center gap-2">
-                            <span class="w-6 text-center text-[11px] font-black text-gray-500 flex-shrink-0">${row}</span>
-                            <div class="flex flex-wrap gap-1.5">
-                                ${seatsByRow[row].map(s => renderSeat(s)).join('')}
+                <div class="space-y-3 pb-2 flex flex-col items-center">
+                    ${rows.map(row => {
+                        const rowSeatsList = seatsByRow[row] || [];
+                        return `
+                            <div class="flex items-center gap-2">
+                                <span class="w-6 text-center text-xs font-black text-gray-500 flex-shrink-0 uppercase">${row}</span>
+                                <div class="flex flex-wrap items-center gap-1.5 justify-center">
+                                    ${renderRowSeats(rowSeatsList)}
+                                </div>
+                                <span class="w-6 text-center text-xs font-black text-gray-500 flex-shrink-0 uppercase">${row}</span>
                             </div>
-                        </div>
-                    `).join('')}
+                        `;
+                    }).join('')}
                 </div>
 
-                <!-- Thống kê -->
-                <div class="mt-6 pt-4 border-t border-gray-100 flex gap-4 justify-center text-xs text-gray-500">
-                    <span>Tổng ghế: <b>${seats.length}</b></span>
-                    <span>Còn trống: <b class="text-green-600">${seats.filter(s => s.status === 'available').length}</b></span>
-                    <span>Đã bán: <b class="text-red-500">${seats.filter(s => s.status === 'booked').length}</b></span>
+                <!-- KHUNG CHÚ THÍCH (THE LEGEND BAR) -->
+                <div id="pos-seat-legend" class="mt-6 pt-4 border-t border-gray-200 w-full">
+                    <div class="flex flex-wrap items-center justify-center gap-5 text-xs text-gray-700 font-semibold bg-gray-50/90 p-3 rounded-xl border border-gray-200 shadow-sm">
+                        <!-- Group 1: Seat Types (Loại ghế) -->
+                        <div class="flex items-center gap-3">
+                            <span class="text-[10px] text-gray-400 font-bold uppercase tracking-wider">Loại ghế:</span>
+                            <div class="flex items-center gap-1.5" title="Ghế Thường">
+                                <span class="w-4 h-4 rounded border-2 border-emerald-500 bg-gray-100 inline-block shadow-sm"></span>
+                                <span>Ghế Thường</span>
+                            </div>
+                            <div class="flex items-center gap-1.5" title="Ghế VIP">
+                                <span class="w-4 h-4 rounded border-2 border-purple-600 bg-purple-50 inline-block shadow-sm"></span>
+                                <span>Ghế VIP</span>
+                            </div>
+                            <div class="flex items-center gap-1.5" title="Ghế Đôi / Sweetbox">
+                                <span class="w-6 h-4 rounded border-2 border-pink-500 bg-pink-50 inline-block shadow-sm"></span>
+                                <span>Ghế Đôi</span>
+                            </div>
+                        </div>
+
+                        <!-- Vertical Divider -->
+                        <div class="h-5 w-px bg-gray-300"></div>
+
+                        <!-- Group 2: Statuses (Trạng thái ghế) -->
+                        <div class="flex items-center gap-3">
+                            <span class="text-[10px] text-gray-400 font-bold uppercase tracking-wider">Trạng thái:</span>
+                            <div class="flex items-center gap-1.5" title="Trống (Có thể chọn)">
+                                <span class="w-4 h-4 rounded border-2 border-emerald-500 bg-emerald-100 inline-block shadow-sm"></span>
+                                <span>Trống</span>
+                            </div>
+                            <div class="flex items-center gap-1.5" title="Đang chọn">
+                                <span class="w-4 h-4 rounded bg-blue-600 ring-2 ring-blue-300 inline-block shadow-sm"></span>
+                                <span>Đang chọn</span>
+                            </div>
+                            <div class="flex items-center gap-1.5" title="Đang giữ 10 phút">
+                                <span class="w-4 h-4 rounded border-2 border-amber-500 bg-amber-400 inline-block shadow-sm"></span>
+                                <span>Đang giữ</span>
+                            </div>
+                            <div class="flex items-center gap-1.5" title="Đã bán">
+                                <span class="w-4 h-4 rounded border-2 border-red-600 bg-red-500 opacity-60 inline-block shadow-sm"></span>
+                                <span>Đã bán</span>
+                            </div>
+                            <div class="flex items-center gap-1.5" title="Đang bảo trì">
+                                <span class="w-4 h-4 rounded border-2 border-gray-500 bg-gray-400 inline-block shadow-sm"></span>
+                                <span>Bảo trì</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Thống kê tổng số lượng ghế -->
+                <div class="mt-3 text-center text-xs text-gray-500">
+                    Tổng: <b>${seats.length}</b> |
+                    Trống: <b class="text-emerald-600">${seats.filter(s => s.status === 'available' && s.seat_status !== 'maintenance').length}</b> |
+                    Đang chọn: <b class="text-blue-600">${state.selectedSeats.length}</b> |
+                    Đã bán: <b class="text-red-500">${seats.filter(s => s.status === 'booked').length}</b>
                 </div>
             </div>
         `;
@@ -772,24 +836,141 @@ const POS = (() => {
         if (activeBtn) activeBtn.className = activeBtn.className.replace('border-gray-100 bg-white', 'border-primary bg-primary/10');
     }
 
-    // ── Render một ghế ────────────────────────────────────────────────────
-    function renderSeat(s) {
-        const isUnavailable = ['booked','holding','maintenance'].includes(s.status) || s.seat_status === 'maintenance';
-        const isVip = s.type && s.type.toLowerCase().includes('vip');
+    // ── Render danh sách ghế của 1 hàng (ghép cặp Sweetbox nếu có) ───────────
+    function renderRowSeats(seatList) {
+        let html = '';
+        let i = 0;
+        while (i < seatList.length) {
+            const s1 = seatList[i];
+            const typeName1 = (s1.type || '').toLowerCase();
+            const isCouple1 = typeName1.includes('đôi') || typeName1.includes('sweetbox') || typeName1.includes('couple');
+
+            // Nếu là ghế Đôi/Sweetbox và có ghế tiếp theo thuộc cùng loại đôi
+            if (isCouple1 && (i + 1) < seatList.length) {
+                const s2 = seatList[i + 1];
+                const typeName2 = (s2.type || '').toLowerCase();
+                const isCouple2 = typeName2.includes('đôi') || typeName2.includes('sweetbox') || typeName2.includes('couple');
+
+                if (isCouple2) {
+                    // Render thành 1 Sofa Đôi liền khối (Sofa Container)
+                    html += `
+                        <div class="border-2 border-pink-400 bg-pink-50/70 p-1 flex gap-1 rounded-xl items-center shadow-sm" title="Sofa Sweetbox Đôi">
+                            ${renderSeatBtn(s1)}
+                            ${renderSeatBtn(s2)}
+                        </div>
+                    `;
+                    i += 2;
+                    continue;
+                }
+            }
+
+            html += renderSeatBtn(s1);
+            i++;
+        }
+        return html;
+    }
+
+    // ── Render một ghế đơn lẻ với hệ thống màu Tailwind CSS chuẩn ───────────
+    function renderSeatBtn(s) {
         const isSelected = state.selectedSeats.some(sel => sel.showtime_seat_id === s.showtime_seat_id);
+        const isMaintenance = s.seat_status === 'maintenance' || s.status === 'maintenance';
+        const isBooked = s.status === 'booked';
+        const isHolding = s.status === 'holding';
+        const isUnavailable = isBooked || isHolding || isMaintenance;
 
-        let cls = 'seat-btn';
-        if (isSelected) cls += ' seat-selected';
-        else if (s.seat_status === 'maintenance') cls += ' seat-maintenance';
-        else if (s.status === 'booked') cls += ' seat-booked';
-        else if (s.status === 'holding') cls += ' seat-holding';
-        else cls += ' seat-available';
+        const typeName = (s.type || '').toLowerCase();
+        const isVip = typeName.includes('vip');
+        const isCouple = typeName.includes('đôi') || typeName.includes('sweetbox') || typeName.includes('couple');
 
-        if (isVip) cls += ' seat-vip';
+        /**
+         * TAILWIND COLOR SYSTEM STRICT COMPLIANCE:
+         * 1. Status Overrides Type:
+         *    - Selected    : bg-blue-600 text-white ring-4 ring-blue-300 scale-105 cursor-pointer
+         *    - Maintenance : bg-gray-400 text-gray-600 border-2 border-gray-500 cursor-not-allowed
+         *    - Booked      : bg-red-500 text-white border-2 border-red-600 opacity-60 cursor-not-allowed
+         *    - Holding     : bg-amber-400 text-white border-2 border-amber-500 cursor-not-allowed
+         * 2. Default/Available by Type:
+         *    - Couple      : bg-pink-50 text-pink-700 border-2 border-pink-500 cursor-pointer hover:bg-pink-100
+         *    - VIP         : bg-purple-50 text-purple-700 border-2 border-purple-600 cursor-pointer hover:bg-purple-100
+         *    - Standard    : bg-gray-100 text-gray-700 border-2 border-emerald-500 cursor-pointer hover:bg-emerald-100
+         */
+        let classes = "w-9 h-9 text-xs font-bold rounded-lg border-2 flex items-center justify-center transition-all duration-150 relative shadow-sm ";
+
+        if (isSelected) {
+            classes += "bg-blue-600 text-white ring-4 ring-blue-300 scale-105 cursor-pointer z-10";
+        } else if (isMaintenance) {
+            classes += "bg-gray-400 text-gray-600 border-gray-500 cursor-not-allowed";
+        } else if (isBooked) {
+            classes += "bg-red-500 text-white border-red-600 opacity-60 cursor-not-allowed";
+        } else if (isHolding) {
+            classes += "bg-amber-400 text-white border-amber-500 cursor-not-allowed";
+        } else {
+            if (isCouple) {
+                classes += "bg-pink-50 text-pink-700 border-pink-500 cursor-pointer hover:bg-pink-100";
+            } else if (isVip) {
+                classes += "bg-purple-50 text-purple-700 border-purple-600 cursor-pointer hover:bg-purple-100";
+            } else {
+                classes += "bg-gray-100 text-gray-700 border-emerald-500 cursor-pointer hover:bg-emerald-100";
+            }
+        }
 
         const clickFn = isUnavailable && !isSelected ? '' : `onclick="POS.toggleSeat(${s.showtime_seat_id})"`;
 
-        return `<button id="seat-${s.showtime_seat_id}" class="${cls}" title="${s.label} — ${s.type} — ${formatMoney(s.price)}" ${clickFn}>${s.label}</button>`;
+        // Inner icon / text content
+        let innerContent = s.label;
+        if (isMaintenance) {
+            innerContent = '<span class="material-symbols-outlined text-xs">build</span>';
+        } else if (isBooked) {
+            innerContent = '<span class="material-symbols-outlined text-xs">close</span>';
+        } else if (isHolding) {
+            innerContent = '<span class="material-symbols-outlined text-xs">lock</span>';
+        }
+
+        const statusText = isSelected ? 'Đang chọn' : (isMaintenance ? 'Bảo trì' : (isBooked ? 'Đã bán' : (isHolding ? 'Đang giữ (10 ph)' : 'Trống (Có thể chọn)')));
+
+        return `
+            <button id="seat-${s.showtime_seat_id}"
+                    class="${classes}"
+                    data-seat-id="${s.showtime_seat_id}"
+                    data-seat-label="${s.label}"
+                    data-seat-type="${s.type || 'Ghế Thường'}"
+                    data-seat-price="${formatMoney(s.price)}"
+                    data-seat-status="${statusText}"
+                    onmouseenter="POS.showTooltip(event, this)"
+                    onmousemove="POS.moveTooltip(event)"
+                    onmouseleave="POS.hideTooltip()"
+                    ${clickFn}>
+                ${innerContent}
+            </button>
+        `;
+    }
+
+    // ── Tooltip Event Handlers (Floating dynamic tooltip for staff) ────────
+    function showTooltip(e, el) {
+        const tooltip = document.getElementById('seat-tooltip');
+        if (!tooltip) return;
+
+        document.getElementById('tooltip-seat-num').textContent = `Ghế: ${el.dataset.seatLabel}`;
+        document.getElementById('tooltip-seat-type-tag').textContent = el.dataset.seatType;
+        document.getElementById('tooltip-seat-type').textContent = el.dataset.seatType;
+        document.getElementById('tooltip-seat-price').textContent = el.dataset.seatPrice;
+        document.getElementById('tooltip-seat-status').textContent = el.dataset.seatStatus;
+
+        tooltip.classList.remove('hidden');
+        moveTooltip(e);
+    }
+
+    function moveTooltip(e) {
+        const tooltip = document.getElementById('seat-tooltip');
+        if (!tooltip || tooltip.classList.contains('hidden')) return;
+
+        tooltip.style.left = `${e.clientX}px`;
+        tooltip.style.top = `${e.clientY - 12}px`;
+    }
+
+    function hideTooltip() {
+        const tooltip = document.getElementById('seat-tooltip');
+        if (tooltip) tooltip.classList.add('hidden');
     }
 
     // ── Toggle chọn ghế ──────────────────────────────────────────────────
@@ -802,7 +983,7 @@ const POS = (() => {
             state.selectedSeats.splice(idx, 1);
         } else {
             if (state.selectedSeats.length >= 10) {
-                toast('Chỉ được chọn tối đa 10 ghế!', 'error');
+                toast('Chỉ được chọn tối đa 10 ghế trong 1 đơn hàng POS!', 'error');
                 return;
             }
             state.selectedSeats.push({
@@ -815,14 +996,30 @@ const POS = (() => {
             });
         }
 
-        // Cập nhật UI ghế
+        // Re-render ghế để cập nhật class Tailwind
         const btn = document.getElementById(`seat-${showtimeSeatId}`);
-        if (btn) {
+        if (btn && state.currentShowtime) {
             const isNowSelected = state.selectedSeats.some(sel => sel.showtime_seat_id === showtimeSeatId);
-            btn.className = btn.className
-                .replace(/seat-(available|selected)/g, '')
-                .trim();
-            btn.className += isNowSelected ? ' seat-selected' : ' seat-available';
+            const statusText = isNowSelected ? 'Đang chọn' : 'Trống (Có thể chọn)';
+            btn.dataset.seatStatus = statusText;
+
+            const typeName = (s.type || '').toLowerCase();
+            const isVip = typeName.includes('vip');
+            const isCouple = typeName.includes('đôi') || typeName.includes('sweetbox') || typeName.includes('couple');
+
+            let baseClasses = "w-9 h-9 text-xs font-bold rounded-lg border-2 flex items-center justify-center transition-all duration-150 relative shadow-sm ";
+            if (isNowSelected) {
+                baseClasses += "bg-blue-600 text-white ring-4 ring-blue-300 scale-105 cursor-pointer z-10";
+            } else {
+                if (isCouple) {
+                    baseClasses += "bg-pink-50 text-pink-700 border-pink-500 cursor-pointer hover:bg-pink-100";
+                } else if (isVip) {
+                    baseClasses += "bg-purple-50 text-purple-700 border-purple-600 cursor-pointer hover:bg-purple-100";
+                } else {
+                    baseClasses += "bg-gray-100 text-gray-700 border-emerald-500 cursor-pointer hover:bg-emerald-100";
+                }
+            }
+            btn.className = baseClasses;
         }
 
         updateCart();
@@ -1244,6 +1441,7 @@ const POS = (() => {
     // Public API
     return {
         init, loadMovies, loadSeatMap, toggleSeat,
+        showTooltip, moveTooltip, hideTooltip,
         changeCombo, applyVoucher, removeVoucher,
         openCheckout, closeCheckout, selectPayment, calcChange,
         confirmCheckout,
