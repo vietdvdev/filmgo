@@ -49,6 +49,19 @@ class AssignEmployeeToSeatRequest extends FormRequest
                 if (!$isValidEmployee) {
                     $validator->errors()->add('employee_id', 'Nhân viên không hợp lệ hoặc không có quyền phục vụ ghế đôi.');
                 }
+
+                // Edge case: Kiểm tra trùng lịch
+                // Nhân viên đã được gán cho 1 ghế khác trong CÙNG SUẤT CHIẾU này
+                if ($showtimeSeat) {
+                    $isAlreadyAssignedInSameShowtime = ShowtimeSeat::where('showtime_id', $showtimeSeat->showtime_id)
+                        ->where('employee_id', $employeeId)
+                        ->where('id', '!=', $showtimeSeat->id)
+                        ->exists();
+
+                    if ($isAlreadyAssignedInSameShowtime) {
+                        $validator->errors()->add('employee_id', 'Nhân viên này đã được phân công phục vụ một ghế đôi khác trong cùng suất chiếu.');
+                    }
+                }
             }
         });
     }
