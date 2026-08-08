@@ -25,39 +25,38 @@
                 </p>
             </div>
 
-            {{-- Form lọc theo ngày chiếu --}}
-            <form method="GET" action="{{ route('staff.bookings.index') }}" class="flex flex-wrap items-center gap-3">
+            {{-- Form lọc theo ngày chiếu, tìm kiếm mã đơn, trạng thái in vé --}}
+            <form method="GET" action="{{ route('staff.bookings.index') }}" class="flex flex-col lg:flex-row lg:items-end gap-3 w-full">
                 <div class="flex items-center gap-2 bg-gray-50 dark:bg-gray-700/50 border border-gray-300 dark:border-gray-600 rounded-xl px-3.5 py-2">
-                    <label for="date" class="text-xs font-semibold text-gray-600 dark:text-gray-300 whitespace-nowrap">
-                        Ngày chiếu:
-                    </label>
-                    <input 
-                        type="date" 
-                        id="date" 
-                        name="date" 
-                        value="{{ $selectedDate }}"
-                        class="bg-transparent text-sm font-medium text-gray-900 dark:text-white focus:outline-none"
+                    <label for="date" class="text-xs font-semibold text-gray-600 dark:text-gray-300 whitespace-nowrap">Ngày chiếu:</label>
+                    <input type="date" id="date" name="date" value="{{ $selectedDate }}" class="bg-transparent text-sm font-medium text-gray-900 dark:text-white focus:outline-none" />
+                </div>
+
+                <div class="flex-1 min-w-[190px]">
+                    <label for="booking_code" class="sr-only">Mã đơn</label>
+                    <input
+                        type="text"
+                        id="booking_code"
+                        name="booking_code"
+                        value="{{ $filters['booking_code'] ?? '' }}"
+                        placeholder="Tìm mã đơn"
+                        class="w-full px-4 py-2 bg-gray-50 dark:bg-gray-700/50 border border-gray-300 dark:border-gray-600 rounded-xl text-sm text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:outline-none"
                     />
                 </div>
 
-                <button 
-                    type="submit" 
-                    class="inline-flex items-center gap-2 px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 text-white text-sm font-semibold rounded-xl transition-all shadow-sm shadow-indigo-200 dark:shadow-none"
-                >
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
-                    </svg>
-                    <span>Lọc dữ liệu</span>
-                </button>
 
-                @if($selectedDate !== now()->toDateString())
-                    <a 
-                        href="{{ route('staff.bookings.index') }}" 
-                        class="px-4 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600 text-sm font-medium rounded-xl transition-colors"
-                    >
-                        Hôm nay
-                    </a>
-                @endif
+
+                <div class="flex items-center gap-2">
+                    <button type="submit" class="inline-flex items-center gap-2 px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 text-white text-sm font-semibold rounded-xl transition-all shadow-sm shadow-indigo-200 dark:shadow-none">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
+                        </svg>
+                        <span>Lọc dữ liệu</span>
+                    </button>
+                    @if($selectedDate !== now()->toDateString() || !empty($filters['booking_code']) || !empty($filters['print_status']))
+                        <a href="{{ route('staff.bookings.index') }}" class="px-4 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600 text-sm font-medium rounded-xl transition-colors">Xóa lọc</a>
+                    @endif
+                </div>
             </form>
 
         </div>
@@ -74,6 +73,7 @@
                         <th class="py-4 px-5">Phim & Suất chiếu</th>
                         <th class="py-4 px-5">Danh sách ghế</th>
                         <th class="py-4 px-5 text-center">Trạng thái thanh toán</th>
+                        <th class="py-4 px-5 text-center">Trạng thái in vé</th>
                         <th class="py-4 px-5 text-center">Trạng thái đơn</th>
                         <th class="py-4 px-5 text-right">Thao tác</th>
                     </tr>
@@ -183,6 +183,21 @@
                                 @endif
                             </td>
 
+                            {{-- Trạng thái In Vé --}}
+                            <td class="py-4 px-5 text-center">
+                                @if(is_null($booking->printed_at))
+                                    <span class="inline-flex items-center gap-1.5 px-3 py-1 bg-amber-50 text-amber-700 dark:bg-amber-950/60 dark:text-amber-300 font-semibold rounded-full text-xs border border-amber-200 dark:border-amber-800">
+                                        <span class="w-1.5 h-1.5 rounded-full bg-amber-500"></span>
+                                        Chưa in vé
+                                    </span>
+                                @else
+                                    <span class="inline-flex items-center gap-1.5 px-3 py-1 bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300 font-semibold rounded-full text-xs border border-emerald-200 dark:border-emerald-800">
+                                        <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                                        Đã in vé
+                                    </span>
+                                @endif
+                            </td>
+
                             {{-- Trạng thái Đơn --}}
                             <td class="py-4 px-5 text-center">
                                 @php
@@ -204,31 +219,23 @@
                                 @endif
                             </td>
 
-                            {{-- Thao tác (CỘT NÚT XEM QR VÀ IN VÉ & BẮP NƯỚC) --}}
+                            {{-- Thao tác nút in vé/bắp nước --}}
                             <td class="py-4 px-5 text-right whitespace-nowrap">
                                 <div class="flex items-center justify-end gap-2">
-                                    
-                                    {{-- Nút Xem QR --}}
-                                    <button 
-                                        type="button" 
-                                        data-id="{{ $booking->id }}"
-                                        data-code="{{ $booking->booking_code }}"
-                                        class="btn-view-qr inline-flex items-center gap-1.5 px-3 py-1.5 bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-950/60 dark:hover:bg-indigo-900/80 text-indigo-600 dark:text-indigo-400 text-xs font-bold rounded-lg border border-indigo-200 dark:border-indigo-800 transition-colors shadow-sm"
-                                        title="Xem mã QR vé"
-                                    >
-                                        <span>📱 Xem QR</span>
-                                    </button>
-
-                                    {{-- Nút In Vé & Bắp Nước (Máy in nhiệt tại quầy) --}}
-                                    <a 
-                                        href="{{ route('staff.bookings.print-tickets', $booking->id) }}" 
-                                        target="_blank"
-                                        class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-amber-50 hover:bg-amber-100 dark:bg-amber-950/60 dark:hover:bg-amber-900/80 text-amber-700 dark:text-amber-300 text-xs font-bold rounded-lg border border-amber-200 dark:border-amber-800 transition-colors shadow-sm"
-                                        title="In cuống vé và phiếu bắp nước qua máy in nhiệt tại quầy"
-                                    >
-                                        <span>🍿 In Vé & Bắp Nước</span>
-                                    </a>
-
+                                    @if(is_null($booking->printed_at))
+                                        <a 
+                                            href="{{ route('staff.bookings.print-tickets', $booking->id) }}" 
+                                            target="_blank"
+                                            class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-amber-50 hover:bg-amber-100 dark:bg-amber-950/60 dark:hover:bg-amber-900/80 text-amber-700 dark:text-amber-300 text-xs font-bold rounded-lg border border-amber-200 dark:border-amber-800 transition-colors shadow-sm"
+                                            title="In cuống vé và phiếu bắp nước qua máy in nhiệt tại quầy"
+                                        >
+                                            <span>🍿 In Vé & Bắp Nước</span>
+                                        </a>
+                                    @else
+                                        <span class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 text-xs font-bold rounded-lg border border-emerald-200 dark:border-emerald-800">
+                                            <span>✅ Đã in vé</span>
+                                        </span>
+                                    @endif
                                 </div>
                             </td>
 
@@ -236,7 +243,7 @@
                     @empty
                         {{-- ── EMPTY STATE ── --}}
                         <tr>
-                            <td colspan="7" class="py-16 text-center">
+                            <td colspan="8" class="py-16 text-center">
                                 <div class="max-w-sm mx-auto flex flex-col items-center">
                                     <div class="w-16 h-16 bg-gray-100 dark:bg-gray-700/60 rounded-full flex items-center justify-center text-gray-400 dark:text-gray-500 mb-4">
                                         <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -267,149 +274,5 @@
 
 </div>
 
-{{-- ── 3. MODAL HIỂN THỊ MÃ QR CODE ── --}}
-<div id="qrModal" class="fixed inset-0 z-50 hidden flex items-center justify-center p-4 bg-gray-900/60 backdrop-blur-sm transition-opacity duration-200">
-    <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-xl border border-gray-200 dark:border-gray-700 w-full max-w-2xl overflow-hidden transform transition-all">
-        
-        {{-- Modal Header --}}
-        <div class="flex items-center justify-between px-6 py-4 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-700/50">
-            <div class="flex items-center gap-2">
-                <span class="text-xl">📱</span>
-                <h3 class="text-lg font-bold text-gray-900 dark:text-white">
-                    Mã QR Vé - Đơn <span id="modalBookingCode" class="text-indigo-600 dark:text-indigo-400 font-mono"></span>
-                </h3>
-            </div>
-            <button id="closeQrModal" type="button" class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 text-2xl font-bold p-1 rounded-lg hover:bg-gray-200/50 transition-colors">&times;</button>
-        </div>
-
-        {{-- Modal Body --}}
-        <div id="qrModalBody" class="p-6 max-h-[75vh] overflow-y-auto">
-            {{-- Skeleton Loading --}}
-            <div id="qrLoading" class="flex flex-col items-center justify-center py-12 space-y-3">
-                <svg class="animate-spin h-8 w-8 text-indigo-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                </svg>
-                <p class="text-sm font-medium text-gray-600 dark:text-gray-300">Đang tải mã QR của vé...</p>
-            </div>
-
-            {{-- Grid Render Danh Sách Vé QR --}}
-            <div id="qrTicketsGrid" class="grid grid-cols-1 sm:grid-cols-2 gap-4 hidden"></div>
-        </div>
-
-        {{-- Modal Footer --}}
-        <div class="px-6 py-3 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-700/30 flex justify-end">
-            <button id="closeQrModalBtn" type="button" class="px-5 py-2 bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-800 dark:text-gray-200 font-semibold text-sm rounded-xl transition-colors">
-                Đóng
-            </button>
-        </div>
-
-    </div>
-</div>
-
-{{-- ── 4. JAVASCRIPT XỬ LÝ MODAL & FETCH AJAX QR CODE ── --}}
-@push('scripts')
-<script>
-document.addEventListener('DOMContentLoaded', function () {
-    const modal          = document.getElementById('qrModal');
-    const modalCode      = document.getElementById('modalBookingCode');
-    const loading        = document.getElementById('qrLoading');
-    const grid           = document.getElementById('qrTicketsGrid');
-    const closeBtn       = document.getElementById('closeQrModal');
-    const closeBtnFooter = document.getElementById('closeQrModalBtn');
-
-    function openModal() {
-        modal.classList.remove('hidden');
-        document.body.style.overflow = 'hidden';
-    }
-
-    function closeModal() {
-        modal.classList.add('hidden');
-        document.body.style.overflow = '';
-        grid.innerHTML = '';
-        grid.classList.add('hidden');
-        loading.classList.remove('hidden');
-    }
-
-    closeBtn.addEventListener('click', closeModal);
-    closeBtnFooter.addEventListener('click', closeModal);
-    modal.addEventListener('click', function (e) {
-        if (e.target === modal) closeModal();
-    });
-    document.addEventListener('keydown', function (e) {
-        if (e.key === 'Escape' && !modal.classList.contains('hidden')) closeModal();
-    });
-
-    // Lắng nghe sự kiện Click nút [ 📱 Xem QR ]
-    document.querySelectorAll('.btn-view-qr').forEach(function (button) {
-        button.addEventListener('click', function () {
-            const bookingId   = this.getAttribute('data-id');
-            const bookingCode = this.getAttribute('data-code');
-
-            modalCode.textContent = bookingCode || ('#' + bookingId);
-            openModal();
-
-            // Fetch AJAX lấy mảng mã QR vé
-            fetch(`/staff/bookings/${bookingId}/qr`, {
-                headers: {
-                    'X-Requested-With': 'XMLHttpRequest',
-                    'Accept': 'application/json'
-                }
-            })
-            .then(response => {
-                if (!response.ok) throw new Error('Không thể tải mã QR');
-                return response.json();
-            })
-            .then(data => {
-                loading.classList.add('hidden');
-                grid.innerHTML = '';
-                grid.classList.remove('hidden');
-
-                if (data.tickets && data.tickets.length > 0) {
-                    data.tickets.forEach(ticket => {
-                        const card = document.createElement('div');
-                        card.className = 'flex flex-col items-center bg-gray-50 dark:bg-gray-700/60 p-4 rounded-xl border border-gray-200 dark:border-gray-600 shadow-sm';
-
-                        // QR Image Container (render trực tiếp SVG hoặc Image)
-                        const qrBox = document.createElement('div');
-                        qrBox.className = 'w-48 h-48 bg-white p-2 rounded-lg border border-gray-300 flex items-center justify-center overflow-hidden mb-3';
-
-                        if (ticket.qr_image) {
-                            if (ticket.qr_image.startsWith('<svg') || ticket.qr_image.startsWith('<?xml')) {
-                                qrBox.innerHTML = ticket.qr_image;
-                            } else {
-                                const img = document.createElement('img');
-                                img.src = ticket.qr_image;
-                                img.alt = 'Mã QR Vé ' + ticket.seat_name;
-                                img.className = 'w-full h-full object-contain';
-                                qrBox.appendChild(img);
-                            }
-                        } else {
-                            qrBox.innerHTML = '<span class="text-xs text-gray-400 italic">Chưa có mã QR</span>';
-                        }
-
-                        // Label Tên Ghế
-                        const label = document.createElement('p');
-                        label.className = 'text-sm font-bold text-gray-900 dark:text-white flex items-center gap-1';
-                        label.innerHTML = `<span>🎟️</span> <span>Ghế: ${ticket.seat_name}</span>`;
-
-                        card.appendChild(qrBox);
-                        card.appendChild(label);
-                        grid.appendChild(card);
-                    });
-                } else {
-                    grid.innerHTML = '<p class="col-span-2 text-center text-sm text-gray-500 py-6">Đơn hàng này chưa tạo vé hoặc không có mã QR.</p>';
-                }
-            })
-            .catch(error => {
-                loading.classList.add('hidden');
-                grid.classList.remove('hidden');
-                grid.innerHTML = `<p class="col-span-2 text-center text-sm text-rose-500 py-6 font-semibold">${error.message || 'Lỗi khi tải mã QR'}</p>`;
-            });
-        });
-    });
-});
-</script>
-@endpush
 
 @endsection

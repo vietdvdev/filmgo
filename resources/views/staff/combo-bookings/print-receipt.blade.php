@@ -22,7 +22,7 @@
 </head>
 <body>
     <div class="no-print" style="text-align:center; margin-bottom:10px;">
-        <button onclick="window.print()" style="padding:8px 12px; background:#f59e0b; color:#fff; border:none; border-radius:6px; font-weight:bold; cursor:pointer;">🖨️ In biên lai</button>
+        <button id="printButton" style="padding:8px 12px; background:#f59e0b; color:#fff; border:none; border-radius:6px; font-weight:bold; cursor:pointer;">🖨️ In biên lai</button>
     </div>
     <div class="wrap">
         <div class="header-title">FILMGO CINEMA</div>
@@ -54,6 +54,66 @@
         <div class="row total"><span>Tổng</span><span>{{ number_format($booking->final_total ?? 0) }}đ</span></div>
         <div style="margin-top:12px; text-align:center; font-size:12px; color:#6b7280;">Cảm ơn quý khách đã mua hàng tại FilmGo</div>
     </div>
-    <script>window.onload = function(){ window.print(); }</script>
+
+    <script>
+        const printButton = document.getElementById('printButton');
+        const markPrintedUrl = '{{ route('staff.combo-bookings.mark-printed', ['bookingId' => $booking->id]) }}';
+        const redirectUrl = '{{ route('staff.combo-bookings.index') }}';
+        let printStartTime = null;
+
+        function markPrinted() {
+            return fetch(markPrintedUrl, {
+                method: 'POST',
+                headers: {
+                    'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                    'Accept': 'application/json',
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({})
+            });
+        }
+
+        function redirectToIndex() {
+            window.location.href = redirectUrl;
+        }
+
+        function triggerPrint() {
+            printStartTime = Date.now();
+            window.print();
+        }
+
+        window.onafterprint = function () {
+            if (!printStartTime) {
+                return;
+            }
+
+            const printDuration = Date.now() - printStartTime;
+            const cancelThreshold = 200; // Nếu dialog đóng cực nhanh, coi như đã hủy
+
+            if (printDuration < cancelThreshold) {
+                redirectToIndex();
+                return;
+            }
+
+            markPrinted()
+                .then(response => response.ok ? response.json() : Promise.reject(new Error('Không thể cập nhật trạng thái in.')))
+                .catch(error => {
+                    console.error(error);
+                })
+                .finally(() => {
+                    redirectToIndex();
+                });
+        };
+
+        if (printButton) {
+            printButton.addEventListener('click', function () {
+                triggerPrint();
+            });
+        }
+
+        window.onload = function () {
+            setTimeout(triggerPrint, 250);
+        };
+    </script>
 </body>
 </html>

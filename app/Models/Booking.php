@@ -33,6 +33,7 @@ class Booking extends Model
         'channel',
         'booking_type',
         'expired_at',
+        'printed_at',
     ];
 
     protected $casts = [
@@ -49,6 +50,7 @@ class Booking extends Model
         'channel'         => 'string',
         'booking_type'    => 'string',
         'expired_at'      => 'datetime',
+        'printed_at'      => 'datetime',
     ];
 
 
