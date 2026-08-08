@@ -57,27 +57,21 @@
                 </div>
 
                 <div>
-                    <label for="room_type" class="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1">Loại phòng chiếu</label>
-                    <select id="room_type" name="room_type" required
-                            class="block w-full px-3 py-2 border border-slate-300 text-sm rounded-none focus:outline-none focus:border-blue-600 focus:ring-1 focus:ring-blue-600">
-                        @foreach(['2D', '3D', 'IMAX', '4DX'] as $type)
-                            <option value="{{ $type }}" {{ old('room_type') == $type ? 'selected' : '' }}>Phòng chiếu {{ $type }}</option>
-                        @endforeach
-                    </select>
-                </div>
-
-                <div>
-                    <label for="format_id" class="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1">Định dạng chiếu</label>
-                    <select id="format_id" name="format_id"
-                            class="block w-full px-3 py-2 border border-slate-300 text-sm rounded-none focus:outline-none focus:border-blue-600 focus:ring-1 focus:ring-blue-600">
-                        <option value="">— Không chọn —</option>
+                    <label for="format_id" class="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1">
+                        Định Dạng Chiếu <span class="text-rose-500">*</span>
+                    </label>
+                    <select id="format_id" name="format_id" required
+                            class="block w-full px-3 py-2 border border-slate-300 text-sm rounded-none focus:outline-none focus:border-blue-600 focus:ring-1 focus:ring-blue-600 bg-white">
+                        <option value="">-- Chọn định dạng chiếu --</option>
                         @foreach($formats as $format)
                             <option value="{{ $format->id }}" {{ old('format_id') == $format->id ? 'selected' : '' }}>
-                                {{ $format->name }}{{ $format->surcharge_price > 0 ? ' (+'.number_format($format->surcharge_price,0,',','.').'đ)' : '' }}
+                                {{ $format->name }} {{ $format->surcharge_price > 0 ? '(+ '.number_format($format->surcharge_price,0,',','.').'đ phụ thu)' : '(Không phụ thu)' }}
                             </option>
                         @endforeach
                     </select>
-                    <p class="text-xs text-slate-400 mt-1">Tuỳ chọn. Định dạng sẽ ảnh hưởng đến giá phụ thu suất chiếu.</p>
+                    <p class="text-xs text-slate-500 mt-1">
+                        Định dạng chiếu thực tế do Admin cấu hình (bao gồm số tiền phụ thu tương ứng cho mỗi suất chiếu trong phòng này).
+                    </p>
                 </div>
 
                 <div class="flex justify-end gap-3 pt-4 border-t border-slate-200">

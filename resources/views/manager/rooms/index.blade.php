@@ -52,8 +52,7 @@
                     <th class="py-3 px-6" style="width: 60px;">#</th>
                     <th class="py-3 px-6">Tên Phòng</th>
                     <th class="py-3 px-6">Sức Chứa (Ghế)</th>
-                    <th class="py-3 px-6">Loại Phòng</th>
-                    <th class="py-3 px-6">Định Dạng</th>
+                    <th class="py-3 px-6">Định Dạng Chiếu</th>
                     <th class="py-3 px-6" style="width: 150px;">Trạng Thái</th>
                     <th class="py-3 px-6 text-right" style="width: 300px;">Thao Tác</th>
                 </tr>
@@ -65,18 +64,18 @@
                         <td class="py-4 px-6 font-bold text-slate-900">{{ $room->room_name }}</td>
                         <td class="py-4 px-6 font-medium text-slate-700">{{ $room->capacity }} ghế</td>
                         <td class="py-4 px-6">
-                            <span class="inline-flex items-center px-2 py-0.5 text-xs font-bold bg-blue-50 text-blue-700 border border-blue-200">
-                                {{ $room->room_type }}
-                            </span>
-                        </td>
-                        <td class="py-4 px-6">
                             @if($room->format)
-                                <span class="inline-flex items-center gap-1 px-2 py-0.5 text-xs font-bold bg-indigo-50 text-indigo-700 border border-indigo-200">
-                                    <span class="material-symbols-outlined text-[12px]">theaters</span>
+                                <span class="inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-bold bg-indigo-50 text-indigo-700 border border-indigo-200">
+                                    <span class="material-symbols-outlined text-[14px]">theaters</span>
                                     {{ $room->format->name }}
+                                    <span class="text-indigo-500 font-semibold">
+                                        ({{ $room->format->surcharge_price > 0 ? '+'.number_format($room->format->surcharge_price, 0, ',', '.').'đ' : 'Không phụ thu' }})
+                                    </span>
                                 </span>
                             @else
-                                <span class="text-slate-400 text-xs">—</span>
+                                <span class="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-bold bg-slate-100 text-slate-700 border border-slate-200">
+                                    {{ $room->room_type }}
+                                </span>
                             @endif
                         </td>
                         <td class="py-4 px-6">

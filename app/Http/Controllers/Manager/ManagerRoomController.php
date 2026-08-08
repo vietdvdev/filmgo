@@ -58,22 +58,25 @@ class ManagerRoomController extends Controller
                     ->whereNull('deleted_at'),
             ],
             'capacity'  => 'required|integer|min:1|max:500',
-            'room_type' => 'required|in:2D,3D,IMAX,4DX',
+            'format_id' => 'required|exists:formats,id',
         ], [
             'cinema_id.required' => 'Vui lòng chọn rạp chiếu.',
             'cinema_id.in'       => 'Rạp chiếu không hợp lệ.',
             'room_name.required' => 'Tên phòng chiếu không được để trống.',
             'room_name.unique'   => 'Tên phòng chiếu này đã tồn tại trong rạp được chọn.',
             'capacity.required'  => 'Sức chứa không được để trống.',
-            'room_type.required' => 'Loại phòng chiếu không được để trống.',
+            'format_id.required' => 'Vui lòng chọn định dạng chiếu.',
+            'format_id.exists'   => 'Định dạng chiếu không hợp lệ.',
         ]);
+
+        $format = Format::findOrFail($request->format_id);
 
         Room::create([
             'cinema_id' => $request->cinema_id,
             'room_name' => $request->room_name,
             'capacity'  => $request->capacity,
-            'room_type' => $request->room_type,
-            'format_id' => $request->format_id ?: null,
+            'room_type' => $format->name,
+            'format_id' => $format->id,
             'status'    => 'active',
         ]);
 
@@ -104,16 +107,25 @@ class ManagerRoomController extends Controller
                     ->ignore($room->id),
             ],
             'capacity'  => 'required|integer|min:1|max:500',
-            'room_type' => 'required|in:2D,3D,IMAX,4DX',
+            'format_id' => 'required|exists:formats,id',
             'status'    => 'required|in:active,maintenance,inactive',
         ], [
             'room_name.required' => 'Tên phòng chiếu không được để trống.',
             'room_name.unique'   => 'Tên phòng chiếu này đã tồn tại trong rạp này.',
             'capacity.required'  => 'Sức chứa không được để trống.',
-            'room_type.required' => 'Loại phòng chiếu không được để trống.',
+            'format_id.required' => 'Vui lòng chọn định dạng chiếu.',
+            'format_id.exists'   => 'Định dạng chiếu không hợp lệ.',
         ]);
 
-        $room->update($request->only(['room_name', 'capacity', 'room_type', 'format_id', 'status']));
+        $format = Format::findOrFail($request->format_id);
+
+        $room->update([
+            'room_name' => $request->room_name,
+            'capacity'  => $request->capacity,
+            'format_id' => $format->id,
+            'room_type' => $format->name,
+            'status'    => $request->status,
+        ]);
 
         return redirect()->route('manager.rooms.index')->with('success', 'Cập nhật phòng chiếu thành công!');
     }
