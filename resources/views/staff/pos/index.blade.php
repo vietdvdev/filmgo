@@ -973,53 +973,123 @@ const POS = (() => {
         if (tooltip) tooltip.classList.add('hidden');
     }
 
-    // ── Toggle chọn ghế ──────────────────────────────────────────────────
+    // ── Helper Cập nhật UI Nút Ghế ──────────────────────────────────────────
+    function updateSeatButtonUI(showtimeSeatId) {
+        const s = state.seatData[showtimeSeatId];
+        if (!s) return;
+        const btn = document.getElementById(`seat-${showtimeSeatId}`);
+        if (!btn || !state.currentShowtime) return;
+
+        const isNowSelected = state.selectedSeats.some(sel => sel.showtime_seat_id === showtimeSeatId);
+        const statusText = isNowSelected ? 'Đang chọn' : 'Trống (Có thể chọn)';
+        btn.dataset.seatStatus = statusText;
+
+        const typeName = (s.type || '').toLowerCase();
+        const isVip = typeName.includes('vip');
+        const isCouple = typeName.includes('đôi') || typeName.includes('sweetbox') || typeName.includes('couple');
+
+        let baseClasses = "w-9 h-9 text-xs font-bold rounded-lg border-2 flex items-center justify-center transition-all duration-150 relative shadow-sm ";
+        if (isNowSelected) {
+            baseClasses += "bg-blue-600 text-white ring-4 ring-blue-300 scale-105 cursor-pointer z-10";
+        } else {
+            if (isCouple) {
+                baseClasses += "bg-pink-50 text-pink-700 border-pink-500 cursor-pointer hover:bg-pink-100";
+            } else if (isVip) {
+                baseClasses += "bg-purple-50 text-purple-700 border-purple-600 cursor-pointer hover:bg-purple-100";
+            } else {
+                baseClasses += "bg-gray-100 text-gray-700 border-emerald-500 cursor-pointer hover:bg-emerald-100";
+            }
+        }
+        btn.className = baseClasses;
+    }
+
+    // ── Toggle chọn ghế (Ấn 1 chọn 2 đối với ghế đôi Sweetbox) ─────────────
     function toggleSeat(showtimeSeatId) {
         const s = state.seatData[showtimeSeatId];
         if (!s) return;
 
-        const idx = state.selectedSeats.findIndex(sel => sel.showtime_seat_id === showtimeSeatId);
-        if (idx > -1) {
-            state.selectedSeats.splice(idx, 1);
-        } else {
-            if (state.selectedSeats.length >= 10) {
-                toast('Chỉ được chọn tối đa 10 ghế trong 1 đơn hàng POS!', 'error');
-                return;
-            }
-            state.selectedSeats.push({
-                showtime_seat_id: s.showtime_seat_id,
-                label: s.label,
-                row: s.row,
-                number: s.number,
-                type: s.type,
-                price: s.price,
-            });
-        }
+        const typeName = (s.type || '').toLowerCase();
+        const isCouple = typeName.includes('đôi') || typeName.includes('sweetbox') || typeName.includes('couple');
 
-        // Re-render ghế để cập nhật class Tailwind
-        const btn = document.getElementById(`seat-${showtimeSeatId}`);
-        if (btn && state.currentShowtime) {
-            const isNowSelected = state.selectedSeats.some(sel => sel.showtime_seat_id === showtimeSeatId);
-            const statusText = isNowSelected ? 'Đang chọn' : 'Trống (Có thể chọn)';
-            btn.dataset.seatStatus = statusText;
+        if (isCouple) {
+            // Ghế Sweetbox / Đôi: Tự động ghép cặp (ấn 1 chọn 2)
+            const siblingNum = (s.number % 2 === 1) ? s.number + 1 : s.number - 1;
+            const partnerSeat = Object.values(state.seatData).find(st =>
+                st.row === s.row &&
+                st.number === siblingNum &&
+                ((st.type || '').toLowerCase().match(/sweetbox|couple|đôi|doi/))
+            );
 
-            const typeName = (s.type || '').toLowerCase();
-            const isVip = typeName.includes('vip');
-            const isCouple = typeName.includes('đôi') || typeName.includes('sweetbox') || typeName.includes('couple');
+            const isCurrentlySelected = state.selectedSeats.some(sel => sel.showtime_seat_id === showtimeSeatId);
 
-            let baseClasses = "w-9 h-9 text-xs font-bold rounded-lg border-2 flex items-center justify-center transition-all duration-150 relative shadow-sm ";
-            if (isNowSelected) {
-                baseClasses += "bg-blue-600 text-white ring-4 ring-blue-300 scale-105 cursor-pointer z-10";
-            } else {
-                if (isCouple) {
-                    baseClasses += "bg-pink-50 text-pink-700 border-pink-500 cursor-pointer hover:bg-pink-100";
-                } else if (isVip) {
-                    baseClasses += "bg-purple-50 text-purple-700 border-purple-600 cursor-pointer hover:bg-purple-100";
-                } else {
-                    baseClasses += "bg-gray-100 text-gray-700 border-emerald-500 cursor-pointer hover:bg-emerald-100";
+            if (partnerSeat) {
+                const partnerUnavailable = partnerSeat.status === 'booked' ||
+                                           partnerSeat.status === 'holding' ||
+                                           partnerSeat.seat_status === 'maintenance' ||
+                                           partnerSeat.status === 'maintenance';
+
+                if (partnerUnavailable && !isCurrentlySelected) {
+                    toast(`Ghế đôi Sweetbox ${s.row}${s.number}-${s.row}${siblingNum} có 1 ghế không khả dụng!`, 'error');
+                    return;
                 }
             }
-            btn.className = baseClasses;
+
+            if (isCurrentlySelected) {
+                // Bỏ chọn cả 2 ghế trong cặp Sweetbox
+                const seatsToDeselect = [showtimeSeatId];
+                if (partnerSeat) seatsToDeselect.push(partnerSeat.showtime_seat_id);
+
+                state.selectedSeats = state.selectedSeats.filter(sel => !seatsToDeselect.includes(sel.showtime_seat_id));
+
+                updateSeatButtonUI(showtimeSeatId);
+                if (partnerSeat) updateSeatButtonUI(partnerSeat.showtime_seat_id);
+            } else {
+                // Chọn cả 2 ghế trong cặp Sweetbox
+                const seatsToAdd = [s];
+                if (partnerSeat) seatsToAdd.push(partnerSeat);
+
+                if (state.selectedSeats.length + seatsToAdd.length > 10) {
+                    toast('Chỉ được chọn tối đa 10 ghế trong 1 đơn hàng POS!', 'error');
+                    return;
+                }
+
+                seatsToAdd.forEach(st => {
+                    if (!state.selectedSeats.some(sel => sel.showtime_seat_id === st.showtime_seat_id)) {
+                        state.selectedSeats.push({
+                            showtime_seat_id: st.showtime_seat_id,
+                            label: st.label,
+                            row: st.row,
+                            number: st.number,
+                            type: st.type,
+                            price: st.price,
+                        });
+                    }
+                });
+
+                updateSeatButtonUI(showtimeSeatId);
+                if (partnerSeat) updateSeatButtonUI(partnerSeat.showtime_seat_id);
+            }
+        } else {
+            // Ghế đơn (Standard, VIP...)
+            const idx = state.selectedSeats.findIndex(sel => sel.showtime_seat_id === showtimeSeatId);
+            if (idx > -1) {
+                state.selectedSeats.splice(idx, 1);
+            } else {
+                if (state.selectedSeats.length >= 10) {
+                    toast('Chỉ được chọn tối đa 10 ghế trong 1 đơn hàng POS!', 'error');
+                    return;
+                }
+                state.selectedSeats.push({
+                    showtime_seat_id: s.showtime_seat_id,
+                    label: s.label,
+                    row: s.row,
+                    number: s.number,
+                    type: s.type,
+                    price: s.price,
+                });
+            }
+
+            updateSeatButtonUI(showtimeSeatId);
         }
 
         updateCart();
