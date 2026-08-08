@@ -24,7 +24,7 @@ class StaffBookingService
      * @param int $perPage Số lượng phần tử hiển thị trên một trang.
      * @return LengthAwarePaginator
      */
-    public function getDailyBookingsByCinema(int $cinemaId, ?string $date = null, int $perPage = 15): LengthAwarePaginator
+    public function getDailyBookingsByCinema(int $cinemaId, ?string $date = null, array $filters = [], int $perPage = 15): LengthAwarePaginator
     {
         // 1. Xác định ngày chiếu cần lọc (Nếu không truyền date -> Mặc định ngày hôm nay)
         $targetDate = $date ?? now()->toDateString();
@@ -45,6 +45,17 @@ class StaffBookingService
             // 4. Lọc danh sách theo ngày chiếu của suất chiếu (show_date)
             ->whereHas('showtime', function ($query) use ($targetDate) {
                 $query->whereDate('show_date', $targetDate);
+            })
+            ->where('booking_status', '!=', 'cancelled')
+            ->when(!empty($filters['booking_code']), function ($query) use ($filters) {
+                $query->where('bookings.booking_code', trim($filters['booking_code']));
+            })
+            ->when(isset($filters['print_status']) && $filters['print_status'] !== '', function ($query) use ($filters) {
+                if ($filters['print_status'] === 'printed') {
+                    $query->whereNotNull('printed_at');
+                } elseif ($filters['print_status'] === 'not_printed') {
+                    $query->whereNull('printed_at');
+                }
             })
             // 5. Sắp xếp danh sách theo giờ chiếu (start_time) tăng dần
             ->join('showtimes', 'bookings.showtime_id', '=', 'showtimes.id')
@@ -83,17 +94,28 @@ class StaffBookingService
         return $booking;
     }
 
-    public function getDailyComboBookingsByCinema(int $cinemaId, ?string $date = null, int $perPage = 15): LengthAwarePaginator
+    public function getDailyComboBookingsByCinema(int $cinemaId, ?string $date = null, array $filters = [], int $perPage = 15): LengthAwarePaginator
     {
         $targetDate = $date ?? now()->toDateString();
 
         return Booking::query()
             ->with(['user', 'combos', 'comboItems.comboItem', 'bookingDetails.ticket', 'payments'])
             ->where('booking_type', 'combo_only')
+            ->where('booking_status', '!=', 'cancelled')
             ->where(function ($query) use ($cinemaId) {
                 $query->whereHas('staff.cinemas', function ($cinemaQuery) use ($cinemaId) {
                     $cinemaQuery->where('cinemas.id', $cinemaId);
                 })->orWhereNull('staff_id');
+            })
+            ->when(!empty($filters['booking_code']), function ($query) use ($filters) {
+                $query->where('booking_code', trim($filters['booking_code']));
+            })
+            ->when(isset($filters['print_status']) && $filters['print_status'] !== '', function ($query) use ($filters) {
+                if ($filters['print_status'] === 'printed') {
+                    $query->whereNotNull('printed_at');
+                } elseif ($filters['print_status'] === 'not_printed') {
+                    $query->whereNull('printed_at');
+                }
             })
             ->whereDate('created_at', $targetDate)
             ->orderBy('created_at', 'asc')

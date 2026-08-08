@@ -15,15 +15,27 @@
                 <p class="text-sm text-gray-500 mt-0.5">Theo dõi các đơn combo/F&B do staff rạp tạo và in biên lai cho khách.</p>
             </div>
 
-            <form method="GET" action="{{ route('staff.combo-bookings.index') }}" class="flex flex-wrap items-center gap-3">
+            <form method="GET" action="{{ route('staff.combo-bookings.index') }}" class="flex flex-col lg:flex-row lg:items-end gap-3 w-full">
                 <div class="flex items-center gap-2 bg-gray-50 border border-gray-300 rounded-xl px-3.5 py-2">
                     <label for="date" class="text-xs font-semibold text-gray-600 whitespace-nowrap">Ngày tạo:</label>
                     <input type="date" id="date" name="date" value="{{ $selectedDate }}" class="bg-transparent text-sm font-medium text-gray-900 focus:outline-none" />
                 </div>
-                <button type="submit" class="inline-flex items-center gap-2 px-5 py-2.5 bg-orange-600 hover:bg-orange-700 text-white text-sm font-semibold rounded-xl transition-all">Lọc dữ liệu</button>
-                @if($selectedDate !== now()->toDateString())
-                    <a href="{{ route('staff.combo-bookings.index') }}" class="px-4 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 text-sm font-medium rounded-xl transition-colors">Hôm nay</a>
-                @endif
+
+                <div class="flex-1 min-w-[190px]">
+                    <label for="booking_code" class="sr-only">Mã đơn</label>
+                    <input type="text" id="booking_code" name="booking_code" value="{{ $filters['booking_code'] ?? '' }}" placeholder="Tìm mã đơn" class="w-full px-4 py-2 bg-gray-50 border border-gray-300 rounded-xl text-sm text-gray-900 placeholder:text-gray-500 focus:outline-none" />
+                </div>
+
+                
+
+                <div class="flex items-center gap-2">
+                    <button type="submit" class="inline-flex items-center gap-2 px-5 py-2.5 bg-orange-600 hover:bg-orange-700 text-white text-sm font-semibold rounded-xl transition-all">
+                        <span>Lọc dữ liệu</span>
+                    </button>
+                    @if($selectedDate !== now()->toDateString() || !empty($filters['booking_code']) || !empty($filters['print_status']))
+                        <a href="{{ route('staff.combo-bookings.index') }}" class="px-4 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 text-sm font-medium rounded-xl transition-colors">Xóa lọc</a>
+                    @endif
+                </div>
             </form>
         </div>
     </div>
@@ -38,6 +50,7 @@
                         <th class="py-4 px-5">Sản phẩm</th>
                         <th class="py-4 px-5 text-center">Thanh toán</th>
                         <th class="py-4 px-5 text-center">Trạng thái</th>
+                        <th class="py-4 px-5 text-center">In/Biên lai</th>
                         <th class="py-4 px-5 text-right">Thao tác</th>
                     </tr>
                 </thead>
@@ -89,8 +102,19 @@
                                     <span class="inline-flex items-center px-2.5 py-1 bg-emerald-100 text-emerald-800 text-xs font-semibold rounded-lg">Đã xác nhận</span>
                                 @endif
                             </td>
+                            <td class="py-4 px-5 text-center">
+                                @if(is_null($booking->printed_at))
+                                    <span class="inline-flex items-center px-2.5 py-1 bg-amber-50 text-amber-700 text-xs font-semibold rounded-lg">Chưa in</span>
+                                @else
+                                    <span class="inline-flex items-center px-2.5 py-1 bg-emerald-50 text-emerald-700 text-xs font-semibold rounded-lg">Đã in</span>
+                                @endif
+                            </td>
                             <td class="py-4 px-5 text-right">
-                                <a href="{{ route('staff.combo-bookings.print-receipt', $booking->id) }}" target="_blank" class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-amber-50 hover:bg-amber-100 text-amber-700 text-xs font-bold rounded-lg border border-amber-200 transition-colors">🧾 In biên lai</a>
+                                @if(is_null($booking->printed_at))
+                                    <a href="{{ route('staff.combo-bookings.print-receipt', $booking->id) }}" target="_blank" class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-amber-50 hover:bg-amber-100 text-amber-700 text-xs font-bold rounded-lg border border-amber-200 transition-colors">🧾 In biên lai</a>
+                                @else
+                                    <span class="inline-flex items-center px-3 py-1.5 bg-emerald-50 text-emerald-700 text-xs font-bold rounded-lg border border-emerald-200">✅ Đã in</span>
+                                @endif
                             </td>
                         </tr>
                     @empty
