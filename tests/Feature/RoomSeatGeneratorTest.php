@@ -7,29 +7,31 @@ use App\Models\Room;
 use App\Models\Seat;
 use App\Models\SeatType;
 use App\Models\User;
-use Illuminate\Foundation\Testing\RefreshDatabase;
+use App\Models\Role;
+use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Tests\TestCase;
 
 class RoomSeatGeneratorTest extends TestCase
 {
-    use RefreshDatabase;
+    use DatabaseTransactions;
 
     protected User $manager;
     protected Cinema $cinema;
     protected Room $room;
     protected SeatType $coupleSeatType;
+    protected SeatType $standardSeatType;
 
     protected function setUp(): void
     {
         parent::setUp();
 
         // 1. Tao nguoi dung Manager & Rap duoc phan cong
-        $this->manager = User::factory()->create([
-            'role_id' => 2, // Manager
-        ]);
+        $this->manager = User::factory()->create();
+        $managerRole = Role::firstOrCreate(['name' => 'manager']);
+        $this->manager->roles()->attach($managerRole->id);
 
         $this->cinema = Cinema::create([
-            'cinema_name' => 'FilmGo Test Cinema',
+            'name'        => 'FilmGo Test Cinema',
             'city'        => 'Hanoi',
             'address'     => '123 Test Street',
         ]);
@@ -40,15 +42,20 @@ class RoomSeatGeneratorTest extends TestCase
             'cinema_id' => $this->cinema->id,
             'room_name' => 'Room 01',
             'room_type' => '2D',
+            'capacity'  => 100,
             'status'    => 'active',
         ]);
 
-        // 2. Tao loai ghe Sweetbox/Couple (id = 3)
-        $this->coupleSeatType = SeatType::create([
-            'id'              => 3,
-            'name'            => 'Ghế Sweetbox / Đôi',
-            'surcharge_price' => 30000,
-        ]);
+        // 2. Tao loai ghe Sweetbox/Couple va loai ghe thuong
+        $this->coupleSeatType = SeatType::firstOrCreate(
+            ['name' => 'Ghế Sweetbox / Đôi'],
+            ['surcharge_price' => 30000]
+        );
+
+        $this->standardSeatType = SeatType::firstOrCreate(
+            ['name' => 'Ghế Thường'],
+            ['surcharge_price' => 0]
+        );
     }
 
     /**
@@ -105,11 +112,28 @@ class RoomSeatGeneratorTest extends TestCase
                 'seat_row'           => 'A',
                 'start_number'       => 1,
                 'end_number'         => 6,
-                'seat_type_id'       => 1, // Standard seat type
+                'seat_type_id'       => $this->standardSeatType->id, // Standard seat type
                 'couple_seats_count' => 0, // Zero -> MUST SUCCEED
             ]);
 
         $response->assertSessionHas('success');
         $this->assertDatabaseCount('seats', 6);
+    }
+
+    /**
+     * TC4: Couple seat type with odd range (e.g. start=1, end=3) and no couple_seats_count specified MUST fail.
+     */
+    public function test_tc4_couple_seat_type_odd_range_fails_validation(): void
+    {
+        $response = $this->actingAs($this->manager)
+            ->post(route('manager.rooms.seats.bulk', $this->room->id), [
+                'seat_row'     => 'D',
+                'start_number' => 1,
+                'end_number'   => 3, // 3 seats (odd) -> MUST FAIL
+                'seat_type_id' => $this->coupleSeatType->id,
+            ]);
+
+        $response->assertSessionHasErrors(['couple_seats_count']);
+        $this->assertDatabaseCount('seats', 0);
     }
 }

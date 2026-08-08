@@ -53,7 +53,7 @@
                     Tạo Hàng Ghế Nhanh
                 </h3>
                 
-                <form action="{{ route('manager.rooms.seats.bulk', $room->id) }}" method="POST" class="space-y-4 mt-4">
+                <form id="bulk-store-form" action="{{ route('manager.rooms.seats.bulk', $room->id) }}" method="POST" class="space-y-4 mt-4">
                     @csrf
                     <div>
                         <label for="seat_row" class="block text-xs font-bold uppercase tracking-wider text-slate-700">Ký hiệu hàng ghế</label>
@@ -80,7 +80,11 @@
                         <select id="seat_type_id" name="seat_type_id" required
                                 class="mt-1 block w-full px-3 py-2 bg-slate-50 border border-slate-300 text-sm text-slate-900 rounded-none focus:outline-none focus:border-blue-600 focus:ring-1 focus:ring-blue-600">
                             @foreach($seatTypes as $type)
-                                <option value="{{ $type->id }}" {{ old('seat_type_id') == $type->id ? 'selected' : '' }}>
+                                @php
+                                    $typeNameLower = mb_strtolower($type->name);
+                                    $isCouple = str_contains($typeNameLower, 'sweetbox') || str_contains($typeNameLower, 'couple') || str_contains($typeNameLower, 'đôi') || str_contains($typeNameLower, 'doi');
+                                @endphp
+                                <option value="{{ $type->id }}" data-is-couple="{{ $isCouple ? '1' : '0' }}" {{ old('seat_type_id') == $type->id ? 'selected' : '' }}>
                                     {{ $type->name }} (+{{ number_format($type->surcharge_price) }} đ)
                                 </option>
                             @endforeach
@@ -92,7 +96,7 @@
                         <input id="couple_seats_count" name="couple_seats_count" type="number" min="0" step="2" value="{{ old('couple_seats_count', 0) }}"
                                class="mt-1 block w-full px-3 py-2 bg-slate-50 border border-slate-300 text-sm text-slate-900 rounded-none focus:outline-none focus:border-blue-600 focus:ring-1 focus:ring-blue-600"
                                placeholder="Nhập số lượng chẵn (VD: 2, 4, 6)">
-                        <p id="couple_warning" class="hidden text-xs text-red-600 font-semibold mt-1">Số lượng ghế đôi phải là số chẵn để tạo thành từng cặp!</p>
+                        <p id="couple_warning" class="hidden text-xs text-red-600 font-semibold mt-1">CẢNH BÁO: Số lượng ghế đôi bắt buộc phải là số chẵn để tạo thành từng cặp!</p>
                     </div>
 
                     <div class="pt-2">
@@ -269,26 +273,55 @@
     // JS Client-side Validation cho ô nhập Số lượng ghế đôi (Sweetbox)
     const coupleInput = document.getElementById('couple_seats_count');
     const coupleWarning = document.getElementById('couple_warning');
+    const bulkForm = document.getElementById('bulk-store-form');
+    const seatTypeSelect = document.getElementById('seat_type_id');
+    const startNumInput = document.getElementById('start_number');
+    const endNumInput = document.getElementById('end_number');
 
     if (coupleInput) {
         coupleInput.addEventListener('change', validateCoupleSeatsCount);
         coupleInput.addEventListener('input', validateCoupleSeatsCount);
     }
+    if (seatTypeSelect) {
+        seatTypeSelect.addEventListener('change', validateCoupleSeatsCount);
+    }
+    if (startNumInput && endNumInput) {
+        startNumInput.addEventListener('input', validateCoupleSeatsCount);
+        endNumInput.addEventListener('input', validateCoupleSeatsCount);
+    }
+
+    function checkIsCoupleOdd() {
+        const startNum = parseInt(startNumInput ? startNumInput.value : 0, 10) || 0;
+        const endNum = parseInt(endNumInput ? endNumInput.value : 0, 10) || 0;
+        const totalCount = (endNum >= startNum && startNum > 0) ? (endNum - startNum + 1) : 0;
+
+        const selectedOpt = seatTypeSelect ? seatTypeSelect.options[seatTypeSelect.selectedIndex] : null;
+        const isCoupleType = selectedOpt && selectedOpt.getAttribute('data-is-couple') === '1';
+
+        const cVal = coupleInput ? parseInt(coupleInput.value, 10) : 0;
+        const effectiveCount = (cVal > 0) ? cVal : (isCoupleType ? totalCount : 0);
+
+        return (effectiveCount > 0 && effectiveCount % 2 !== 0);
+    }
 
     function validateCoupleSeatsCount() {
-        if (!coupleInput) return;
-        let val = parseInt(coupleInput.value, 10);
-        
-        // Kiểm tra Modulo (% 2 !== 0): Nếu người dùng nhập số lẻ (3, 5...)
-        if (!isNaN(val) && val > 0 && val % 2 !== 0) {
+        if (checkIsCoupleOdd()) {
             if (coupleWarning) coupleWarning.classList.remove('hidden');
-            alert("Số lượng ghế đôi phải là số chẵn để tạo thành từng cặp!");
-            
-            // Tự động làm tròn xuống số chẵn gần nhất (VD: 3 -> 2, 5 -> 4)
-            coupleInput.value = Math.floor(val / 2) * 2;
         } else {
             if (coupleWarning) coupleWarning.classList.add('hidden');
         }
+    }
+
+    if (bulkForm) {
+        bulkForm.addEventListener('submit', function(e) {
+            if (checkIsCoupleOdd()) {
+                e.preventDefault();
+                if (coupleWarning) coupleWarning.classList.remove('hidden');
+                alert("CẢNH BÁO: Số lượng ghế đôi (Sweetbox) bắt buộc phải là số chẵn (2, 4, 6...). Không thể lưu số ghế đôi lẻ!");
+                if (coupleInput) coupleInput.focus();
+                return false;
+            }
+        });
     }
     
     // Mở Modal chỉnh sửa ghế
