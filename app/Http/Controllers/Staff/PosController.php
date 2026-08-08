@@ -64,20 +64,32 @@ class PosController extends Controller
             return response()->json(['data' => []]);
         }
 
-        // Hiển thị tất cả suất chiếu trong ngày trừ cancelled (POS cần thấy cả finished để hỗ trợ)
-        $movies = Movie::whereHas('showtimes', function ($q) use ($rooms, $date) {
+        $includeEnded = $request->boolean('include_ended');
+        $currentTime  = now()->toTimeString();
+
+        // Mặc định ẩn các suất chiếu đã kết thúc trong ngày hôm nay ngoại trừ khi include_ended=true
+        $movies = Movie::whereHas('showtimes', function ($q) use ($rooms, $date, $includeEnded, $currentTime) {
             $q->whereIn('room_id', $rooms)
               ->whereDate('show_date', $date)
               ->whereNotIn('status', ['cancelled']);
+
+            if (!$includeEnded && $date === today()->toDateString()) {
+                $q->where('end_time', '>', $currentTime);
+            }
         })
-        ->when($search !== '', function ($query) use ($search, $rooms, $date) {
-            $query->where(function ($q) use ($search, $rooms, $date) {
+        ->when($search !== '', function ($query) use ($search, $rooms, $date, $includeEnded, $currentTime) {
+            $query->where(function ($q) use ($search, $rooms, $date, $includeEnded, $currentTime) {
                 $q->where('title', 'like', "%{$search}%")
-                  ->orWhereHas('showtimes', function ($q2) use ($rooms, $date, $search) {
+                  ->orWhereHas('showtimes', function ($q2) use ($rooms, $date, $search, $includeEnded, $currentTime) {
                       $q2->whereIn('room_id', $rooms)
                          ->whereDate('show_date', $date)
-                         ->whereNotIn('status', ['cancelled'])
-                         ->where(function ($q3) use ($search) {
+                         ->whereNotIn('status', ['cancelled']);
+
+                      if (!$includeEnded && $date === today()->toDateString()) {
+                          $q2->where('end_time', '>', $currentTime);
+                      }
+
+                      $q2->where(function ($q3) use ($search) {
                              $q3->where('start_time', 'like', "%{$search}%")
                                 ->orWhere('end_time', 'like', "%{$search}%")
                                 ->orWhereHas('room', function ($q4) use ($search) {
@@ -87,11 +99,16 @@ class PosController extends Controller
                   });
             });
         })
-        ->with(['showtimes' => function ($q) use ($rooms, $date) {
+        ->with(['showtimes' => function ($q) use ($rooms, $date, $includeEnded, $currentTime) {
             $q->whereIn('room_id', $rooms)
               ->whereDate('show_date', $date)
-              ->whereNotIn('status', ['cancelled'])
-              ->with('room:id,room_name,room_type')
+              ->whereNotIn('status', ['cancelled']);
+
+            if (!$includeEnded && $date === today()->toDateString()) {
+                $q->where('end_time', '>', $currentTime);
+            }
+
+            $q->with('room:id,room_name,room_type')
               ->orderBy('start_time');
         }])
         ->get(['id', 'title', 'poster', 'duration', 'age_limit']);

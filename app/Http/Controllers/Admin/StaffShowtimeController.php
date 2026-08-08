@@ -30,6 +30,10 @@ class StaffShowtimeController extends Controller
         return $cinema->id;
     }
 
+    /**
+     * Hiển thị danh sách suất chiếu hôm nay tại rạp của nhân viên.
+     * Mặc định ẩn các suất chiếu đã kết thúc để tránh bán nhầm vé.
+     */
     public function index(Request $request)
     {
         $this->authorizeStaff();
@@ -41,11 +45,28 @@ class StaffShowtimeController extends Controller
             ->orderBy('room_name')
             ->get(['id', 'room_name', 'room_type']);
 
-        // Query suất chiếu hôm nay tại rạp
+        $includeEnded = $request->boolean('include_ended');
+        $currentTime  = now()->toTimeString();
+        $todayDate    = today()->toDateString();
+
+        // PART 1: QUERY OPTIMIZATION
+        // Eager load 'movie' và 'room' để phòng tránh lỗi N+1 queries.
+        // Filter theo cinema_id trực thuộc rạp của nhân viên đang đăng nhập.
         $query = Showtime::with(['movie', 'room'])
             ->whereHas('room', fn($q) => $q->where('cinema_id', $cinemaId))
-            ->whereDate('show_date', today())
-            ->orderBy('start_time');
+            ->whereDate('show_date', '>=', $todayDate);
+
+        // Logic lọc thời gian: Mặc định ẩn các suất chiếu đã xong hôm nay.
+        // Suất chiếu hợp lệ nếu: (show_date > today) HOẶC (show_date == today VÀ end_time > current_time)
+        if (!$includeEnded) {
+            $query->where(function ($q) use ($todayDate, $currentTime) {
+                $q->whereDate('show_date', '>', $todayDate)
+                  ->orWhere(function ($q2) use ($todayDate, $currentTime) {
+                      $q2->whereDate('show_date', '=', $todayDate)
+                         ->where('end_time', '>', $currentTime);
+                  });
+            });
+        }
 
         // Lọc theo phòng chiếu
         if ($request->filled('room_id')) {
@@ -58,25 +79,23 @@ class StaffShowtimeController extends Controller
             $query->whereHas('movie', fn($q) => $q->where('title', 'like', "%{$search}%"));
         }
 
-        $showtimes = $query->get();
+        $showtimes = $query->orderBy('show_date')->orderBy('start_time')->get();
 
-        // Cập nhật status thực tế dựa theo thời gian hiện tại
+        // Cập nhật trạng thái thực tế dựa theo thời gian hiện tại
         $now = now();
         $showtimes->each(function ($showtime) use ($now) {
+            if ($showtime->status === 'cancelled') return;
+
             $start = \Carbon\Carbon::parse($showtime->show_date->toDateString() . ' ' . $showtime->start_time);
             $end   = \Carbon\Carbon::parse($showtime->show_date->toDateString() . ' ' . $showtime->end_time);
 
-            if ($showtime->status === 'cancelled') return;
-
             if ($now->gt($end)) {
                 $showtime->status = 'finished';
-                $showtime->saveQuietly();
             } elseif ($now->gte($start)) {
                 $showtime->status = 'showing';
-                $showtime->saveQuietly();
             }
         });
 
-        return view('admin.staff.showtimes', compact('showtimes', 'rooms'));
+        return view('admin.staff.showtimes', compact('showtimes', 'rooms', 'includeEnded'));
     }
 }
