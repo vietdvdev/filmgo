@@ -1,0 +1,118 @@
+@startuml
+left to right direction
+skinparam namespaceStyle rectangle
+
+actor "Khách (Guest)" as Guest
+actor "Khách hàng (Customer)" as Customer
+actor "Admin" as Admin
+actor "Manager" as Manager
+actor "Staff / POS" as Staff
+actor "Payment Provider (VNPay/MoMo)" as Payment
+actor "Email System" as Email
+actor "Printer" as Printer
+
+usecase "Duyệt phim" as UC1
+usecase "Tìm kiếm phim" as UC2
+usecase "Xem chi tiết phim" as UC3
+usecase "Đăng ký / Đăng nhập / Đăng xuất" as UC4
+usecase "Khôi phục mật khẩu" as UC5
+usecase "Quản lý hồ sơ" as UC6
+usecase "Chọn ghế" as UC7
+usecase "Chọn combo / F&B" as UC8
+usecase "Nhả ghế" as UC9
+usecase "Áp dụng / Loại bỏ voucher" as UC10
+usecase "Checkout / Xác nhận đặt vé" as UC11
+usecase "Thanh toán (QR / Demo)" as UC12
+usecase "Xử lý callback thanh toán" as UC13
+usecase "Xem lịch sử đặt vé / Chi tiết booking" as UC14
+usecase "Mua combo độc lập (Shop)" as UC15
+usecase "POS — Bán vé tại quầy" as UC16
+usecase "In vé / In hoá đơn" as UC17
+usecase "Quản lý phim/genres/cinemas/users" as UC18
+usecase "Quản lý combos / promotions" as UC19
+usecase "Quản lý loại ghế / price rules" as UC20
+usecase "Quản lý showtimes (Manager)" as UC21
+usecase "Quản lý phòng / sơ đồ ghế (Manager)" as UC22
+usecase "Quản lý nhân sự rạp (Manager)" as UC23
+usecase "Dashboard & Báo cáo" as UC24
+usecase "API nội bộ cho Vue/SPA" as UC25
+
+' Associations
+Guest -- UC1
+Guest -- UC2
+Guest -- UC3
+Guest -- UC4
+
+Customer -- UC6
+Customer -- UC7
+Customer -- UC8
+Customer -- UC9
+Customer -- UC10
+Customer -- UC11
+Customer -- UC12
+Customer -- UC13
+Customer -- UC14
+Customer -- UC15
+
+Admin -- UC18
+Admin -- UC19
+Admin -- UC20
+Admin -- UC24
+
+Manager -- UC21
+Manager -- UC22
+Manager -- UC23
+Manager -- UC24
+Manager -- UC25
+
+Staff -- UC16
+Staff -- UC17
+Staff -- UC25
+
+Payment .. UC12 : <<external>>
+Email .. UC5 : <<external>>
+Printer .. UC17 : <<external>>
+
+' Includes / Extends
+UC11 .> UC7 : <<include>>
+UC11 .> UC8 : <<include>>
+UC11 .> UC10 : <<include>>
+UC12 .> UC13 : <<include>>
+UC15 .> UC11 : <<extend>>
+
+' Packages for clarity
+package "Customer-Facing" {
+  UC1
+  UC2
+  UC3
+  UC4
+  UC5
+  UC6
+  UC7
+  UC8
+  UC9
+  UC10
+  UC11
+  UC12
+  UC13
+  UC14
+  UC15
+}
+
+package "Staff/Onsite" {
+  UC16
+  UC17
+}
+
+package "Management" {
+  UC18
+  UC19
+  UC20
+  UC21
+  UC22
+  UC23
+  UC24
+  UC25
+}
+
+@enduml

@@ -42,14 +42,18 @@ class StaffBookingController extends Controller
 
         // Validate ngày từ Request (mặc định lấy hôm nay)
         $request->validate([
-            'date' => ['nullable', 'date_format:Y-m-d'],
+            'date'         => ['nullable', 'date_format:Y-m-d'],
+            'booking_code' => ['nullable', 'string', 'max:100'],
+            'print_status' => ['nullable', 'in:printed,not_printed'],
         ]);
 
         $date         = $request->input('date', now()->toDateString());
         $selectedDate = $date;
 
+        $filters = $request->only(['booking_code', 'print_status']);
+
         // 2. Lấy danh sách booking từ Service
-        $bookings = $this->staffBookingService->getDailyBookingsByCinema($cinema->id, $date);
+        $bookings = $this->staffBookingService->getDailyBookingsByCinema($cinema->id, $date, $filters);
 
         if ($request->wantsJson()) {
             return response()->json([
@@ -63,7 +67,7 @@ class StaffBookingController extends Controller
             ]);
         }
 
-        return view('staff.bookings.index', compact('bookings', 'cinema', 'date', 'selectedDate'));
+        return view('staff.bookings.index', compact('bookings', 'cinema', 'date', 'selectedDate', 'filters'));
     }
 
     /**
@@ -117,10 +121,15 @@ class StaffBookingController extends Controller
         // 1. Truy vấn Eager Loading đầy đủ quan hệ & Bảo mật đúng rạp
         $booking = $this->staffBookingService->getBookingForStaff($bookingId, $cinema->id);
 
-        // 2. Sinh dữ liệu QR Code từng chiếc vé
+        // 2. Đánh dấu đơn đã in vé lần đầu nếu chưa có
+        if (is_null($booking->printed_at)) {
+            $booking->update(['printed_at' => now()]);
+        }
+
+        // 3. Sinh dữ liệu QR Code từng chiếc vé
         $ticketsData = $this->staffBookingService->generateTicketsQrData($booking);
 
-        // 3. Trả về Blade View chuyên dùng cho máy in nhiệt (có sẵn window.print())
+        // 4. Trả về Blade View chuyên dùng cho máy in nhiệt (có sẵn window.print())
         return view('staff.bookings.print', compact('booking', 'cinema', 'ticketsData'));
     }
 }
