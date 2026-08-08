@@ -21,60 +21,97 @@ class ManagerReportController extends Controller
 
     public function index(Request $request)
     {
-        $cinemas = $this->getAllowedCinemas();
-        $cinemaIds = $cinemas->pluck('id')->toArray();
+        $allCinemas  = $this->getAllowedCinemas();
+        $allCinemaIds = $allCinemas->pluck('id')->toArray();
 
-        // ── Doanh thu vé + số vé bán theo rạp ──────────────────────────────
-        // bookings (ticket, paid) → showtimes → rooms → cinemas
-        $ticketStats = DB::table('bookings')
+        // ── Bộ lọc ──────────────────────────────────────────────────────────
+        $filterCinemaId = $request->input('cinema_id');          // null = tất cả
+        $filterType     = $request->input('filter_type', 'all'); // all | day | month | year
+        $filterDate     = $request->input('filter_date');        // Y-m-d
+        $filterMonth    = $request->input('filter_month');       // Y-m
+        $filterYear     = $request->input('filter_year');        // Y
+
+        // Tập cinema_id thực sự dùng để query
+        $cinemaIds = ($filterCinemaId && in_array($filterCinemaId, $allCinemaIds))
+            ? [(int) $filterCinemaId]
+            : $allCinemaIds;
+
+        // Cinemas hiển thị (đã lọc theo rạp nếu có)
+        $cinemas = $allCinemas->when($filterCinemaId, fn($c) => $c->where('id', (int) $filterCinemaId));
+
+        // ── Helper: áp bộ lọc thời gian vào query ───────────────────────────
+        $applyDateFilter = function ($query, string $dateColumn) use ($filterType, $filterDate, $filterMonth, $filterYear) {
+            match ($filterType) {
+                'day'   => $query->whereDate($dateColumn, $filterDate),
+                'month' => $query->whereYear($dateColumn, substr($filterMonth, 0, 4))
+                                 ->whereMonth($dateColumn, substr($filterMonth, 5, 2)),
+                'year'  => $query->whereYear($dateColumn, $filterYear),
+                default => null,
+            };
+        };
+
+        // ── Doanh thu vé ────────────────────────────────────────────────────
+        $ticketQuery = DB::table('bookings')
             ->join('showtimes', 'bookings.showtime_id', '=', 'showtimes.id')
             ->join('rooms', 'showtimes.room_id', '=', 'rooms.id')
             ->whereIn('rooms.cinema_id', $cinemaIds)
             ->where('bookings.payment_status', 'paid')
-            ->where('bookings.booking_type', 'ticket')
+            ->where('bookings.booking_type', 'ticket');
+        $applyDateFilter($ticketQuery, 'bookings.created_at');
+        $ticketStats = $ticketQuery
             ->groupBy('rooms.cinema_id')
             ->select(
                 'rooms.cinema_id',
                 DB::raw('COUNT(bookings.id) as ticket_count'),
                 DB::raw('SUM(bookings.final_total) as ticket_revenue')
             )
-            ->get()
-            ->keyBy('cinema_id');
+            ->get()->keyBy('cinema_id');
 
-        // ── Doanh thu F&B (combo gói) theo rạp ─────────────────────────────
-        // booking_combos → bookings (paid) → showtimes → rooms → cinemas
-        $fnbComboStats = DB::table('booking_combos')
+        // ── Doanh thu F&B (combo gói kèm vé) ────────────────────────────────
+        $fnbComboQuery = DB::table('booking_combos')
             ->join('bookings', 'booking_combos.booking_id', '=', 'bookings.id')
             ->join('showtimes', 'bookings.showtime_id', '=', 'showtimes.id')
             ->join('rooms', 'showtimes.room_id', '=', 'rooms.id')
             ->whereIn('rooms.cinema_id', $cinemaIds)
-            ->where('bookings.payment_status', 'paid')
+            ->where('bookings.payment_status', 'paid');
+        $applyDateFilter($fnbComboQuery, 'bookings.created_at');
+        $fnbComboStats = $fnbComboQuery
             ->groupBy('rooms.cinema_id')
             ->select('rooms.cinema_id', DB::raw('SUM(booking_combos.subtotal) as fnb_revenue'))
-            ->get()
-            ->keyBy('cinema_id');
+            ->get()->keyBy('cinema_id');
 
-        // ── Doanh thu F&B (combo_only — mua lẻ tại quầy) theo rạp ──────────
-        // bookings (combo_only, paid) → staff → user_cinemas → cinemas
-        $fnbOnlyStats = DB::table('bookings')
+        // ── Doanh thu F&B (combo_only — mua lẻ tại quầy) ───────────────────
+        $fnbOnlyQuery = DB::table('bookings')
             ->join('user_cinemas', 'bookings.staff_id', '=', 'user_cinemas.user_id')
             ->whereIn('user_cinemas.cinema_id', $cinemaIds)
             ->where('bookings.payment_status', 'paid')
-            ->where('bookings.booking_type', 'combo_only')
+            ->where('bookings.booking_type', 'combo_only');
+        $applyDateFilter($fnbOnlyQuery, 'bookings.created_at');
+        $fnbOnlyStats = $fnbOnlyQuery
             ->groupBy('user_cinemas.cinema_id')
             ->select('user_cinemas.cinema_id', DB::raw('SUM(bookings.final_total) as fnb_only_revenue'))
-            ->get()
-            ->keyBy('cinema_id');
+            ->get()->keyBy('cinema_id');
 
         // ── Gắn số liệu vào từng rạp ────────────────────────────────────────
         $cinemas->each(function ($cinema) use ($ticketStats, $fnbComboStats, $fnbOnlyStats) {
             $cinema->ticket_count   = $ticketStats[$cinema->id]->ticket_count   ?? 0;
             $cinema->ticket_revenue = $ticketStats[$cinema->id]->ticket_revenue ?? 0;
-            $cinema->fnb_revenue    = ($fnbComboStats[$cinema->id]->fnb_revenue ?? 0)
+            $cinema->fnb_revenue    = ($fnbComboStats[$cinema->id]->fnb_revenue    ?? 0)
                                     + ($fnbOnlyStats[$cinema->id]->fnb_only_revenue ?? 0);
             $cinema->total_revenue  = $cinema->ticket_revenue + $cinema->fnb_revenue;
         });
 
-        return view('manager.reports.index', compact('cinemas'));
+        // ── Tổng hợp toàn bộ (sau lọc) ──────────────────────────────────────
+        $summary = [
+            'ticket_count'   => $cinemas->sum('ticket_count'),
+            'ticket_revenue' => $cinemas->sum('ticket_revenue'),
+            'fnb_revenue'    => $cinemas->sum('fnb_revenue'),
+            'total_revenue'  => $cinemas->sum('total_revenue'),
+        ];
+
+        return view('manager.reports.index', compact(
+            'cinemas', 'allCinemas', 'summary',
+            'filterCinemaId', 'filterType', 'filterDate', 'filterMonth', 'filterYear'
+        ));
     }
 }
