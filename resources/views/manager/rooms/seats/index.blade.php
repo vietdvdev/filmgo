@@ -87,6 +87,14 @@
                         </select>
                     </div>
 
+                    <div>
+                        <label for="couple_seats_count" class="block text-xs font-bold uppercase tracking-wider text-slate-700">Số lượng ghế đôi (Sweetbox)</label>
+                        <input id="couple_seats_count" name="couple_seats_count" type="number" min="0" step="2" value="{{ old('couple_seats_count', 0) }}"
+                               class="mt-1 block w-full px-3 py-2 bg-slate-50 border border-slate-300 text-sm text-slate-900 rounded-none focus:outline-none focus:border-blue-600 focus:ring-1 focus:ring-blue-600"
+                               placeholder="Nhập số lượng chẵn (VD: 2, 4, 6)">
+                        <p id="couple_warning" class="hidden text-xs text-red-600 font-semibold mt-1">Số lượng ghế đôi phải là số chẵn để tạo thành từng cặp!</p>
+                    </div>
+
                     <div class="pt-2">
                         <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white text-sm font-bold py-2.5 rounded-none transition-colors flex items-center justify-center gap-2">
                             <span class="material-symbols-outlined text-lg">apps</span>
@@ -257,6 +265,31 @@
 <script>
     const roomId = "{{ $room->id }}";
     const csrfToken = "{{ csrf_token() }}";
+    
+    // JS Client-side Validation cho ô nhập Số lượng ghế đôi (Sweetbox)
+    const coupleInput = document.getElementById('couple_seats_count');
+    const coupleWarning = document.getElementById('couple_warning');
+
+    if (coupleInput) {
+        coupleInput.addEventListener('change', validateCoupleSeatsCount);
+        coupleInput.addEventListener('input', validateCoupleSeatsCount);
+    }
+
+    function validateCoupleSeatsCount() {
+        if (!coupleInput) return;
+        let val = parseInt(coupleInput.value, 10);
+        
+        // Kiểm tra Modulo (% 2 !== 0): Nếu người dùng nhập số lẻ (3, 5...)
+        if (!isNaN(val) && val > 0 && val % 2 !== 0) {
+            if (coupleWarning) coupleWarning.classList.remove('hidden');
+            alert("Số lượng ghế đôi phải là số chẵn để tạo thành từng cặp!");
+            
+            // Tự động làm tròn xuống số chẵn gần nhất (VD: 3 -> 2, 5 -> 4)
+            coupleInput.value = Math.floor(val / 2) * 2;
+        } else {
+            if (coupleWarning) coupleWarning.classList.add('hidden');
+        }
+    }
     
     // Mở Modal chỉnh sửa ghế
     function openSeatModal(button) {
