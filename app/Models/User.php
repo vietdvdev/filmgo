@@ -94,4 +94,16 @@ class User extends Authenticatable
     {
         return $this->hasMany(ShowtimeSeat::class, 'user_id');
     }
+
+    /**
+     * Scope: Lấy danh sách nhân viên khả dụng cho ghế đôi.
+     * Nhân viên được xác định là User có Role 'employee' (hoặc tương tự).
+     */
+    public function scopeAvailableForCoupleSeat($query)
+    {
+        return $query->whereHas('roles', function ($q) {
+            // Giả định role name cho nhân viên là 'employee'
+            $q->where('name', 'employee')->orWhere('name', 'staff');
+        })->where('status', 'active'); // Chỉ lấy nhân viên đang hoạt động
+    }
 }

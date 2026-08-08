@@ -34,6 +34,7 @@ class ShowtimeSeat extends Model
         'showtime_id',
         'seat_id',
         'user_id',
+        'employee_id',
         'status',
         'price',
         'locked_at',
@@ -49,6 +50,7 @@ class ShowtimeSeat extends Model
         'showtime_id' => 'integer',
         'seat_id'     => 'integer',
         'user_id'     => 'integer',
+        'employee_id' => 'integer',
         'status'      => 'string',
         'price'       => 'integer',
         'locked_at'   => 'datetime',
@@ -108,9 +110,27 @@ class ShowtimeSeat extends Model
         return $this->belongsTo(User::class, 'user_id');
     }
 
+    /**
+     * Nhân viên được gán cho ghế đôi.
+     */
+    public function employee(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'employee_id');
+    }
+
     // BookingDetail is defined in Booking cluster
     public function bookingDetails(): HasMany
     {
         return $this->hasMany(BookingDetail::class, 'showtime_seat_id');
+    }
+
+    /**
+     * Kiểm tra suất ghế này có phải là ghế đôi số chẵn không (thông qua Model Seat).
+     *
+     * @return bool
+     */
+    public function isEvenCoupleSeat(): bool
+    {
+        return $this->seat ? $this->seat->isEvenCoupleSeat() : false;
     }
 }
