@@ -73,7 +73,7 @@ class RoomSeatGeneratorTest extends TestCase
             ]);
 
         $response->assertSessionHasErrors(['couple_seats_count']);
-        $this->assertDatabaseCount('seats', 0);
+        $this->assertEquals(0, Seat::where('room_id', $this->room->id)->count());
     }
 
     /**
@@ -91,7 +91,7 @@ class RoomSeatGeneratorTest extends TestCase
             ]);
 
         $response->assertSessionHas('success');
-        $this->assertDatabaseCount('seats', 4);
+        $this->assertEquals(4, Seat::where('room_id', $this->room->id)->count());
 
         // Check 4 individual rows created in DB
         $seats = Seat::where('room_id', $this->room->id)->where('seat_row', 'C')->orderBy('seat_number')->get();
@@ -117,7 +117,7 @@ class RoomSeatGeneratorTest extends TestCase
             ]);
 
         $response->assertSessionHas('success');
-        $this->assertDatabaseCount('seats', 6);
+        $this->assertEquals(6, Seat::where('room_id', $this->room->id)->count());
     }
 
     /**
@@ -134,6 +134,55 @@ class RoomSeatGeneratorTest extends TestCase
             ]);
 
         $response->assertSessionHasErrors(['couple_seats_count']);
-        $this->assertDatabaseCount('seats', 0);
+        $this->assertEquals(0, Seat::where('room_id', $this->room->id)->count());
+    }
+
+    /**
+     * TC5: Deleting 1 Sweetbox seat automatically deletes both seats in the pair.
+     */
+    public function test_tc5_deleting_sweetbox_seat_deletes_both_seats_in_pair(): void
+    {
+        $seat1 = Seat::create([
+            'room_id'      => $this->room->id,
+            'seat_type_id' => $this->coupleSeatType->id,
+            'seat_row'     => 'E',
+            'seat_number'  => 1,
+            'status'       => 'active',
+        ]);
+
+        $seat2 = Seat::create([
+            'room_id'      => $this->room->id,
+            'seat_type_id' => $this->coupleSeatType->id,
+            'seat_row'     => 'E',
+            'seat_number'  => 2,
+            'status'       => 'active',
+        ]);
+
+        $this->assertEquals(2, Seat::where('room_id', $this->room->id)->count());
+
+        $seatService = app(\App\Services\ManagerSeatService::class);
+        $result = $seatService->deleteSeat($this->room->id, $seat1->id, $this->cinema->id);
+
+        $this->assertTrue($result);
+        $this->assertEquals(0, Seat::where('room_id', $this->room->id)->count());
+    }
+
+    /**
+     * TC6: Syncing unpaired Sweetbox seat fails validation.
+     */
+    public function test_tc6_syncing_unpaired_sweetbox_seat_fails(): void
+    {
+        $syncService = app(\App\Services\RoomSeatSyncService::class);
+
+        $this->expectException(\Illuminate\Validation\ValidationException::class);
+
+        $syncService->sync($this->room, [
+            [
+                'seat_row'     => 'F',
+                'seat_number'  => 1,
+                'seat_type_id' => $this->coupleSeatType->id, // Single unpaired Sweetbox
+                'status'       => 'active',
+            ]
+        ]);
     }
 }

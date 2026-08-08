@@ -30,3 +30,6 @@ Thumbs.db
 .agents/
 scratch/
 test_baseurl.php
+/docs/
+*.docx
+

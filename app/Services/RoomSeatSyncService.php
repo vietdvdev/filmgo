@@ -106,6 +106,59 @@ class RoomSeatSyncService
     }
 
     /**
+     * Kiểm tra tất cả ghế Sweetbox/Ghế đôi trong payload bắt buộc phải đi theo từng cặp 2 ghế dính liền.
+     *
+     * @param array $seats
+     * @throws ValidationException
+     */
+    public function guardAgainstUnpairedSweetbox(array $seats): void
+    {
+        $sweetboxTypes = \App\Models\SeatType::where('name', 'LIKE', '%Sweetbox%')
+            ->orWhere('name', 'LIKE', '%Couple%')
+            ->orWhere('name', 'LIKE', '%đôi%')
+            ->orWhere('name', 'LIKE', '%doi%')
+            ->pluck('id')
+            ->map('intval')
+            ->toArray();
+
+        if (empty($sweetboxTypes)) {
+            return;
+        }
+
+        // Nhóm tất cả ghế theo hàng và số ghế
+        $byRowAndNum = [];
+        foreach ($seats as $seat) {
+            $row = strtoupper(trim($seat['seat_row']));
+            $num = (int)$seat['seat_number'];
+            $typeId = (int)$seat['seat_type_id'];
+            $byRowAndNum[$row][$num] = $typeId;
+        }
+
+        $errors = [];
+        foreach ($seats as $index => $seat) {
+            $typeId = (int)$seat['seat_type_id'];
+            if (!in_array($typeId, $sweetboxTypes, true)) {
+                continue;
+            }
+
+            $row = strtoupper(trim($seat['seat_row']));
+            $num = (int)$seat['seat_number'];
+            $siblingNum = ($num % 2 === 1) ? $num + 1 : $num - 1;
+
+            $siblingTypeId = $byRowAndNum[$row][$siblingNum] ?? null;
+
+            if ($siblingTypeId === null || !in_array($siblingTypeId, $sweetboxTypes, true)) {
+                $errors["seats.{$index}.seat_number"][] = 
+                    "Ghế Sweetbox {$row}{$num} phải đi kèm theo cặp 2 ghế dính liền ({$row}{$siblingNum}).";
+            }
+        }
+
+        if (!empty($errors)) {
+            throw ValidationException::withMessages($errors);
+        }
+    }
+
+    /**
      * Thực hiện đồng bộ toàn bộ sơ đồ ghế trong một DB Transaction.
      *
      * Quy trình:
@@ -119,6 +172,8 @@ class RoomSeatSyncService
      */
     public function sync(Room $room, array $seats): array
     {
+        $this->guardAgainstUnpairedSweetbox($seats);
+
         return DB::transaction(function () use ($room, $seats) {
             // ─── Bước 1: Xóa ghế cũ ─────────────────────────────────────────
             // Dùng DELETE trực tiếp (không qua Eloquent) để tránh N+1 khi

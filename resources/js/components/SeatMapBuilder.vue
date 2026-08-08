@@ -162,7 +162,7 @@
               'text-[9px] font-bold leading-none',
               'border cursor-pointer select-none',
               'transition-all duration-100 hover:scale-110 hover:z-10 relative',
-              seatCellClass(seat),
+              seatCellClass(seat, rowIdx, colIdx),
             ]"
           >
             <!-- Lối đi: không hiển thị gì -->
@@ -349,6 +349,7 @@ function seatTypeIdToState(seatTypeId) {
 
 function stateToSeatTypeId(state) {
   // state có thể là 'standard','vip','sweetbox' hoặc 'custom_N'
+  if (!state) return props.seatTypes[0]?.id
   if (state.startsWith('custom_')) {
     return parseInt(state.replace('custom_', ''), 10)
   }
@@ -359,6 +360,22 @@ function stateToSeatTypeId(state) {
 
 function seatTypeToState(type) {
   return seatTypeIdToState(type.id)
+}
+
+function isSweetboxState(state) {
+  if (!state) return false
+  if (state === STATES.SWEETBOX) return true
+  const seatTypeId = stateToSeatTypeId(state)
+  const type = props.seatTypes.find(t => Number(t.id) === Number(seatTypeId))
+  if (!type) return false
+  const name = (type.name || '').toLowerCase()
+  return name.includes('sweetbox') || name.includes('couple') || name.includes('đôi') || name.includes('doi')
+}
+
+function isSweetboxBrush() {
+  if (!activeBrush.value) return false
+  const name = (activeBrush.value.name || '').toLowerCase()
+  return name.includes('sweetbox') || name.includes('couple') || name.includes('đôi') || name.includes('doi')
 }
 
 // ─── Tải sơ đồ ghế ban đầu từ DB ─────────────────────────────────────────────
@@ -410,7 +427,65 @@ onMounted(() => {
 // ─── Logic click ghế (Brush mode) ────────────────────────────────────────────
 function handleSeatClick(rowIdx, colIdx) {
   const seat = grid.value[rowIdx][colIdx]
+  const siblingColIdx = (colIdx % 2 === 0) ? colIdx + 1 : colIdx - 1
+  const hasSibling = siblingColIdx >= 0 && siblingColIdx < cols.value
+  const siblingSeat = hasSibling ? grid.value[rowIdx][siblingColIdx] : null
 
+  const brushIsSweetbox = isSweetboxBrush()
+  const currentIsSweetbox = isSweetboxState(seat.state)
+  const siblingIsSweetbox = siblingSeat ? isSweetboxState(siblingSeat.state) : false
+
+  // Trường hợp 1: Chọn cọ Sweetbox
+  if (brushIsSweetbox) {
+    if (!hasSibling) {
+      showStatus('⚠ Ghế Sweetbox bắt buộc phải tạo theo cặp 2 ghế dính liền.', 'error')
+      return
+    }
+
+    const brushState = seatTypeToState(activeBrush.value)
+
+    if (seat.state === brushState && siblingSeat.state === brushState) {
+      // Đã là cặp Sweetbox -> click chuyển vòng cả cặp sang bảo trì
+      seat.state = STATES.MAINTENANCE
+      siblingSeat.state = STATES.MAINTENANCE
+    } else if (seat.state === STATES.MAINTENANCE && siblingSeat.state === STATES.MAINTENANCE) {
+      // Đang là bảo trì -> chuyển cả cặp về Lối đi
+      seat.state = null
+      siblingSeat.state = null
+    } else {
+      // Chưa đủ cặp Sweetbox -> tô cả 2 thành cặp Sweetbox dính liền
+      seat.state = brushState
+      siblingSeat.state = brushState
+    }
+    return
+  }
+
+  // Trường hợp 2: Ghế hiện tại hoặc ghế đối tác là Sweetbox (Xóa/Thay đổi loại ghế)
+  if (currentIsSweetbox || siblingIsSweetbox) {
+    if (hasSibling) {
+      if (activeBrush.value === null) {
+        // Cọ Lối đi (Null) -> XÓA CẢ CẶP SWEETBOX
+        seat.state = null
+        siblingSeat.state = null
+      } else {
+        // Đổi loại ghế / bảo trì khác -> áp dụng đồng thời cho cả cặp
+        const brushState = seatTypeToState(activeBrush.value)
+        if (seat.state === brushState && siblingSeat.state === brushState) {
+          seat.state = STATES.MAINTENANCE
+          siblingSeat.state = STATES.MAINTENANCE
+        } else if (seat.state === STATES.MAINTENANCE && siblingSeat.state === STATES.MAINTENANCE) {
+          seat.state = null
+          siblingSeat.state = null
+        } else {
+          seat.state = brushState
+          siblingSeat.state = brushState
+        }
+      }
+      return
+    }
+  }
+
+  // Trường hợp 3: Ghế đơn thông thường (Standard, VIP...)
   if (activeBrush.value === null) {
     seat.state = null
     return
@@ -425,7 +500,6 @@ function handleSeatClick(rowIdx, colIdx) {
   } else if (seat.state === STATES.MAINTENANCE) {
     seat.state = null
   } else {
-    // Đang là loại ghế khác → chuyển sang loại ghế đang chọn
     seat.state = brushState
   }
 }
@@ -433,27 +507,42 @@ function handleSeatClick(rowIdx, colIdx) {
 // ─── Logic click nhãn hàng (Tô/Tạo nhanh cả hàng ghế cùng lúc) ───────────────
 function handleRowClick(rowIdx) {
   const rowSeats = grid.value[rowIdx]
-  
+
   if (activeBrush.value === null) {
-    // Nếu đang chọn cọ "Lối đi" (null) → xóa sạch tất cả ghế trong hàng (chuyển về lối đi)
+    // Chọn cọ "Lối đi" (null) -> Xóa toàn bộ hàng
     rowSeats.forEach(seat => {
       seat.state = null
     })
     return
   }
 
+  const brushIsSweetbox = isSweetboxBrush()
   const brushState = seatTypeToState(activeBrush.value)
 
-  // Kiểm tra xem TOÀN BỘ ghế trong hàng đã được tô theo cọ này chưa
+  if (brushIsSweetbox) {
+    // Tô Sweetbox theo từng cặp 2 ghế liên tiếp (0-1, 2-3, 4-5...)
+    for (let c = 0; c < cols.value; c += 2) {
+      if (c + 1 < cols.value) {
+        rowSeats[c].state = brushState
+        rowSeats[c + 1].state = brushState
+      } else {
+        // Cột lẻ cuối cùng không ghép được cặp -> giữ nguyên hoặc chuyển về lối đi
+        if (rowSeats[c].state === brushState) {
+          rowSeats[c].state = null
+        }
+      }
+    }
+    return
+  }
+
+  // Loại ghế thông thường
   const allMatched = rowSeats.every(seat => seat.state === brushState)
 
   if (allMatched) {
-    // Nếu tất cả đã đúng loại cọ này -> chuyển toàn bộ sang bảo trì
     rowSeats.forEach(seat => {
       seat.state = STATES.MAINTENANCE
     })
   } else {
-    // Nếu chưa (có ô lối đi, bảo trì hoặc loại ghế khác) -> tô toàn bộ thành loại ghế của cọ đang chọn
     rowSeats.forEach(seat => {
       seat.state = brushState
     })
@@ -461,16 +550,32 @@ function handleRowClick(rowIdx) {
 }
 
 // ─── CSS class cho từng ô ghế ────────────────────────────────────────────────
-function seatCellClass(seat) {
+function seatCellClass(seat, rowIdx, colIdx) {
   if (seat.state === null) {
     return 'bg-white border-dashed border-slate-200 hover:bg-slate-50 rounded-none'
   }
+
+  let extraClass = ''
+  if (isSweetboxState(seat.state) && typeof rowIdx === 'number' && typeof colIdx === 'number') {
+    const siblingColIdx = (colIdx % 2 === 0) ? colIdx + 1 : colIdx - 1
+    if (siblingColIdx >= 0 && siblingColIdx < cols.value) {
+      const siblingSeat = grid.value[rowIdx]?.[siblingColIdx]
+      if (siblingSeat && isSweetboxState(siblingSeat.state)) {
+        if (colIdx % 2 === 0) {
+          extraClass = ' border-r-0 rounded-r-none z-10'
+        } else {
+          extraClass = ' border-l-0 rounded-l-none z-10'
+        }
+      }
+    }
+  }
+
   if (seat.state === STATES.MAINTENANCE) {
-    return 'bg-red-100 border-red-400 text-red-700 hover:bg-red-200 rounded-none'
+    return 'bg-red-100 border-red-400 text-red-700 hover:bg-red-200 rounded-none' + extraClass
   }
   // Lấy seat_type_id từ state, rồi lấy style
   const seatTypeId = stateToSeatTypeId(seat.state)
-  return seatTypeStyle(seatTypeId).cell + ' rounded-none'
+  return seatTypeStyle(seatTypeId).cell + ' rounded-none' + extraClass
 }
 
 /**

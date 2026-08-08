@@ -199,7 +199,7 @@ class ManagerSeatService
     }
 
     /**
-     * Xóa một ghế vật lý cụ thể.
+     * Xóa một ghế vật lý cụ thể. Nếu là ghế Sweetbox (Ghế đôi), tự động xóa cả 2 ghế trong cặp.
      *
      * @param int $roomId
      * @param int $seatId
@@ -212,16 +212,40 @@ class ManagerSeatService
 
         $seat = Seat::where('id', $seatId)
             ->where('room_id', $roomId)
+            ->with('seatType')
             ->first();
 
         if (!$seat) {
             throw new NotFoundHttpException('Ghế không tồn tại hoặc không thuộc phòng chiếu này.');
         }
 
-        // Kiểm tra xem ghế đã có suất chiếu nào liên kết hoặc đã được đặt trước đó chưa để tránh lỗi dữ liệu
+        // Kiểm tra xem ghế đã có suất chiếu nào liên kết hoặc đã được đặt trước đó chưa
         $hasBookings = $seat->showtimeSeats()->exists();
         if ($hasBookings) {
             throw new InvalidArgumentException('Không thể xóa ghế này vì đã được liên kết với lịch chiếu hoặc giao dịch đặt vé.');
+        }
+
+        // Kiểm tra loại ghế Sweetbox / Ghế đôi
+        $typeName = mb_strtolower($seat->seatType->name ?? '');
+        $isSweetbox = str_contains($typeName, 'sweetbox') || str_contains($typeName, 'couple') || str_contains($typeName, 'đôi') || str_contains($typeName, 'doi');
+
+        if ($isSweetbox) {
+            $partnerNumber = ($seat->seat_number % 2 === 1) ? $seat->seat_number + 1 : $seat->seat_number - 1;
+            $partnerSeat = Seat::where('room_id', $roomId)
+                ->where('seat_row', $seat->seat_row)
+                ->where('seat_number', $partnerNumber)
+                ->first();
+
+            if ($partnerSeat) {
+                if ($partnerSeat->showtimeSeats()->exists()) {
+                    throw new InvalidArgumentException("Không thể xóa cặp ghế Sweetbox này vì ghế {$partnerSeat->seat_row}{$partnerSeat->seat_number} đã được liên kết với lịch chiếu.");
+                }
+
+                return DB::transaction(function () use ($seat, $partnerSeat) {
+                    $partnerSeat->delete();
+                    return (bool)$seat->delete();
+                });
+            }
         }
 
         return (bool)$seat->delete();
