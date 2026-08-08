@@ -141,6 +141,36 @@
                             Cổng Thanh Toán VNPay
                         </h2>
 
+                        <div class="mb-5">
+                            <label for="cinema_id" class="block text-xs font-bold text-slate-600 uppercase tracking-wider mb-2">
+                                Rạp nhận hàng
+                            </label>
+                            @if($selectedCinemaId)
+                                @php $selectedCinema = $cinemas->firstWhere('id', $selectedCinemaId); @endphp
+                                <div class="flex items-center justify-between p-3 bg-emerald-50 border border-emerald-200 rounded-2xl">
+                                    <div class="flex items-center gap-2">
+                                        <span class="material-symbols-outlined text-emerald-600 text-sm">location_on</span>
+                                        <span class="text-sm font-bold text-emerald-800">{{ $selectedCinema?->name ?? 'Rạp đã chọn' }}</span>
+                                    </div>
+                                    <a href="{{ route('combo-shop.index') }}" class="text-xs text-slate-400 hover:text-red-500 font-bold">Thạy đổi</a>
+                                </div>
+                                <input type="hidden" name="cinema_id" value="{{ $selectedCinemaId }}">
+                            @else
+                                <select name="cinema_id" id="cinema_id"
+                                        class="w-full bg-slate-50 border border-slate-200 text-slate-800 text-sm font-semibold rounded-2xl px-4 py-3 focus:outline-none focus:border-blue-600">
+                                    <option value="">-- Chọn rạp nhận hàng --</option>
+                                    @foreach($cinemas as $cinemaOption)
+                                    <option value="{{ $cinemaOption->id }}" @selected(old('cinema_id') == $cinemaOption->id)>
+                                        {{ $cinemaOption->name }}
+                                    </option>
+                                    @endforeach
+                                </select>
+                                @error('cinema_id')
+                                <p class="text-xs text-red-500 font-medium mt-2">{{ $message }}</p>
+                                @enderror
+                            @endif
+                        </div>
+
                         {{-- Card VNPay duy nhất --}}
                         <div class="p-4 rounded-2xl border-2 border-blue-600 bg-blue-50/60 mb-5 flex items-center gap-3">
                             <div class="w-12 h-12 rounded-xl bg-blue-700 flex items-center justify-center text-white font-black text-sm flex-shrink-0 shadow-md">

@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Customer;
 
 use App\Http\Controllers\Controller;
 use App\Models\Booking;
+use App\Models\Cinema;
 use App\Models\Combo;
 use App\Models\ComboItem;
 use App\Models\Payment;
@@ -43,15 +44,23 @@ class ComboShopController extends Controller
             ->get()
             ->groupBy('type');
 
-        // Lấy giỏ hàng từ session
+        $cinemas = Cinema::where('status', 'active')->orderBy('name')->get();
+        $selectedCinemaId = session('combo_shop.cinema_id');
         $cart = session()->get('combo_shop.cart', ['combos' => [], 'items' => []]);
 
-        return view('customer.combo-shop.index', compact('combos', 'comboItems', 'cart'));
+        return view('customer.combo-shop.index', compact('combos', 'comboItems', 'cart', 'cinemas', 'selectedCinemaId'));
     }
 
     // ─────────────────────────────────────────────────────────────────────────
     // Quản lý giỏ hàng qua session
     // ─────────────────────────────────────────────────────────────────────────
+
+    public function selectCinema(Request $request)
+    {
+        $request->validate(['cinema_id' => 'required|exists:cinemas,id']);
+        session()->put('combo_shop.cinema_id', $request->input('cinema_id'));
+        return response()->json(['success' => true]);
+    }
 
     /**
      * POST /shop/combos/cart
@@ -60,10 +69,11 @@ class ComboShopController extends Controller
     public function updateCart(Request $request)
     {
         $request->validate([
-            'combos'       => 'nullable|array',
-            'combos.*'     => 'integer|min:0',
-            'combo_items'  => 'nullable|array',
-            'combo_items.*'=> 'integer|min:0',
+            'combos'        => 'nullable|array',
+            'combos.*'      => 'integer|min:0',
+            'combo_items'   => 'nullable|array',
+            'combo_items.*' => 'integer|min:0',
+            'cinema_id'     => 'nullable|exists:cinemas,id',
         ]);
 
         $cart = [
@@ -72,6 +82,14 @@ class ComboShopController extends Controller
         ];
 
         session()->put('combo_shop.cart', $cart);
+
+        if ($request->filled('cinema_id')) {
+            session()->put('combo_shop.cinema_id', $request->input('cinema_id'));
+        }
+
+        if ($request->input('redirect_checkout')) {
+            return redirect()->route('combo-shop.checkout');
+        }
 
         return response()->json(['success' => true, 'cart' => $cart]);
     }
@@ -91,6 +109,11 @@ class ComboShopController extends Controller
         if (empty($cart['combos']) && empty($cart['items'])) {
             return redirect()->route('combo-shop.index')
                 ->with('error', 'Giỏ hàng trống. Vui lòng chọn ít nhất một sản phẩm.');
+        }
+
+        if (!session('combo_shop.cinema_id')) {
+            return redirect()->route('combo-shop.index')
+                ->with('error', 'Vui lòng chọn rạp trước khi thanh toán.');
         }
 
         // Lấy thông tin combo gói đã chọn
@@ -126,6 +149,11 @@ class ComboShopController extends Controller
         $totalItemPrice  = $selectedItems->sum('subtotal');
         $subtotal        = $totalComboPrice + $totalItemPrice;
 
+        $cinemas = Cinema::where('status', 'active')
+            ->orderBy('name')
+            ->get();
+        $selectedCinemaId = session('combo_shop.cinema_id');
+
         // Voucher từ session
         $appliedVoucher = session()->get('combo_shop.voucher');
         $discountAmount = 0;
@@ -143,6 +171,8 @@ class ComboShopController extends Controller
             'totalComboPrice',
             'totalItemPrice',
             'subtotal',
+            'cinemas',
+            'selectedCinemaId',
             'appliedVoucher',
             'discountAmount',
             'finalTotal'
@@ -161,6 +191,7 @@ class ComboShopController extends Controller
     {
         $request->validate([
             'payment_method' => 'required|in:vnpay,demo',
+            'cinema_id'      => 'required|exists:cinemas,id',
         ]);
 
         $cart = session()->get('combo_shop.cart', ['combos' => [], 'items' => []]);
@@ -172,16 +203,19 @@ class ComboShopController extends Controller
 
         $voucherData = session()->get('combo_shop.voucher');
 
+        session()->put('combo_shop.cinema_id', $request->input('cinema_id'));
+
         try {
             $booking = $this->comboOrderService->createCustomerComboOrder(
                 userId:         Auth::id(),
                 combosData:     $cart['combos'] ?? [],
                 comboItemsData: $cart['items'] ?? [],
-                voucherData:    $voucherData
+                voucherData:    $voucherData,
+                cinemaId:       $request->input('cinema_id')
             );
 
-            // Xóa giỏ hàng & voucher khỏi session
-            session()->forget(['combo_shop.cart', 'combo_shop.voucher']);
+            // Xóa giỏ hàng, voucher & cinema selection khỏi session
+            session()->forget(['combo_shop.cart', 'combo_shop.voucher', 'combo_shop.cinema_id']);
 
             $paymentMethod = $request->input('payment_method');
 

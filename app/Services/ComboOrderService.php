@@ -39,11 +39,12 @@ class ComboOrderService
         int $userId,
         array $combosData = [],
         array $comboItemsData = [],
-        ?array $voucherData = null
+        ?array $voucherData = null,
+        ?int $cinemaId = null
     ): Booking {
         $this->validateNotEmpty($combosData, $comboItemsData);
 
-        return DB::transaction(function () use ($userId, $combosData, $comboItemsData, $voucherData) {
+        return DB::transaction(function () use ($userId, $combosData, $comboItemsData, $voucherData, $cinemaId) {
             // ── 1. Tính giá combo gói ─────────────────────────────────────
             [$totalComboPrice, $combosToInsert] = $this->calcCombos($combosData);
 
@@ -67,6 +68,7 @@ class ComboOrderService
                 'user_id'         => $userId,
                 'staff_id'        => null,
                 'showtime_id'     => null,               // Không có suất chiếu
+                'cinema_id'       => $cinemaId,
                 'booking_code'    => $bookingCode,
                 'subtotal'        => $subtotal,
                 'promotion_id'    => $promotionId,

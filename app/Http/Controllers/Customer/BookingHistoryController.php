@@ -22,7 +22,8 @@ class BookingHistoryController extends Controller
         $bookings = Booking::with([
                 'showtime.movie:id,title,poster,duration',
                 'showtime.room.cinema:id,name',
-                'bookingDetails',           // Cần để đếm số vé trong list
+                'cinema:id,name',
+                'bookingDetails',
                 'payments:id,booking_id,payment_method,payment_status',
             ])
             ->where('user_id', Auth::id())
@@ -43,6 +44,7 @@ class BookingHistoryController extends Controller
         $booking = Booking::with([
                 'showtime.movie',
                 'showtime.room.cinema',
+                'cinema:id,name',
                 'bookingDetails.showtimeSeat.seat.seatType',
                 'combos',
                 'comboItems.comboItem',
