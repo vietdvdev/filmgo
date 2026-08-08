@@ -51,12 +51,20 @@ class RoomSeatSyncService
      */
     public function guardAgainstActiveBookings(int $roomId): void
     {
+        // BUG-01 FIX: So sánh DATETIME đầy đủ thay vì chỉ so sánh TIME với DATETIME.
+        // CONCAT(show_date, ' ', start_time) tạo ra chuỗi 'YYYY-MM-DD HH:MM:SS'
+        // để MySQL so sánh chính xác với NOW() (cũng là DATETIME).
+        // Trước đây: start_time > NOW() → sai kiểu dữ liệu, kết quả không nhất quán.
         $hasActive = DB::table('showtime_seats')
             ->join('seats', 'seats.id', '=', 'showtime_seats.seat_id')
             ->join('showtimes', 'showtimes.id', '=', 'showtime_seats.showtime_id')
             ->where('seats.room_id', $roomId)
             ->whereIn('showtime_seats.status', ['holding', 'booked'])
-            ->where('showtimes.start_time', '>', now())
+            ->where(
+                DB::raw("CONCAT(showtimes.show_date, ' ', showtimes.start_time)"),
+                '>',
+                now()->toDateTimeString()
+            )
             ->exists();
 
         if ($hasActive) {

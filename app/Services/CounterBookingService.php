@@ -141,7 +141,11 @@ class CounterBookingService
             $promotionId    = null;
 
             if ($voucherCode) {
-                $promotion = Promotion::where('code', strtoupper(trim($voucherCode)))->first();
+                // BUG-02 FIX: Dùng lockForUpdate() để tránh race condition khi nhiều
+                // nhân viên POS dùng cùng voucher đồng thời — nhất quán với BookingService.
+                $promotion = Promotion::where('code', strtoupper(trim($voucherCode)))
+                    ->lockForUpdate()
+                    ->first();
                 $now       = now();
 
                 $isValid = $promotion
@@ -165,6 +169,17 @@ class CounterBookingService
                     $discountAmount = $promotion->discount_type === 'percent'
                         ? (int) ($subtotalForDiscount * ($promotion->discount_value / 100))
                         : min($promotion->discount_value, $subtotalForDiscount);
+
+                    // BUG-04 FIX (Counter): Áp dụng giới hạn giảm tối đa nếu có max_discount_amount
+                    if ($promotion->discount_type === 'percent' && $promotion->max_discount_amount !== null) {
+                        $discountAmount = min($discountAmount, $promotion->max_discount_amount);
+                    }
+
+                    // BUG-02 FIX: Tăng used_count ngay trong transaction để chiếm slot voucher an toàn
+                    // Trước đây bị bỏ sót, khiến nhiều POS dùng vượt quá giới hạn cho phép
+                    if ($promotion->usage_limit !== null) {
+                        $promotion->increment('used_count');
+                    }
 
                     $promotionId = $promotion->id;
                 }

@@ -80,6 +80,10 @@ class ShowtimeService
 
             // Gắn các thông tin phụ trợ phục vụ hiển thị ở frontend customer
             $showtime->real_time_status = $realTimeStatus;
+
+            // WARN-03 FIX: is_bookable phải đồng nhất với validateBookable().
+            // validateBookable() từ chối cả 'showing' (đang chiếu) lẫn 'finished'.
+            // Trước đây chỉ check === 'active', khiến nút "Đặt vé" hiện cho suất đang chiếu.
             $showtime->is_bookable = ($realTimeStatus === 'active');
 
             switch ($realTimeStatus) {
