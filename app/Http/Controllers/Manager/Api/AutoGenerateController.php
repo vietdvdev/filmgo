@@ -10,6 +10,7 @@ use App\Models\Seat;
 use App\Models\SeatType;
 use App\Models\Showtime;
 use App\Models\ShowtimeSeat;
+use App\Models\Format;
 use App\Models\Holiday;
 use App\Models\PriceRule;
 use Carbon\Carbon;
