@@ -80,7 +80,7 @@
                                     <td class="py-4 px-6">
                                         @if($combo->image)
                                             <div class="w-16 h-16 rounded-lg overflow-hidden border border-outline-variant bg-surface-container-high">
-                                                <img src="{{ asset($combo->image) }}" alt="{{ $combo->combo_name }}" class="w-full h-full object-cover">
+                                                <img src="{{ $combo->image_url }}" alt="{{ $combo->combo_name }}" class="w-full h-full object-cover">
                                             </div>
                                         @else
                                             <div class="w-16 h-16 rounded-lg border border-dashed border-outline-variant/60 flex items-center justify-center bg-surface-container/40 text-on-surface-variant">

@@ -239,7 +239,7 @@
                         <!-- Preview Box -->
                         <div class="relative w-28 h-28 border border-outline-variant rounded-lg overflow-hidden bg-surface-container/40 flex items-center justify-center flex-shrink-0">
                             @if($combo->image)
-                                <img id="imagePreview" src="{{ asset($combo->image) }}" alt="Xem trước ảnh" class="w-full h-full object-cover">
+                                <img id="imagePreview" src="{{ $combo->image_url }}" alt="Xem trước ảnh" class="w-full h-full object-cover">
                                 <div id="imagePlaceholder" class="flex flex-col items-center justify-center text-on-surface-variant text-center p-2 hidden">
                                     <span class="material-symbols-outlined text-3xl">image</span>
                                     <span class="text-[10px] mt-1 font-medium">Chưa có ảnh</span>

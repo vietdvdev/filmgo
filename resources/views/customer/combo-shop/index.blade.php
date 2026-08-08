@@ -156,7 +156,7 @@
                         <div class="combo-card p-5 flex flex-col justify-between" id="combo-card-{{ $combo->id }}">
                             <div>
                                 @if($combo->image)
-                                <img src="{{ asset('storage/' . $combo->image) }}"
+                                <img src="{{ $combo->image_url }}"
                                      alt="{{ $combo->combo_name }}"
                                      class="w-full h-44 object-cover rounded-xl mb-4 bg-slate-100">
                                 @else

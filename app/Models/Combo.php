@@ -35,6 +35,13 @@ class Combo extends Model
     ];
 
     /**
+     * Thuộc tính tự động bổ sung vào mảng/JSON serialization
+     *
+     * @var array
+     */
+    protected $appends = ['image_url'];
+
+    /**
      * Relationships
      */
 
@@ -52,6 +59,25 @@ class Combo extends Model
         return $this->belongsToMany(ComboItem::class, 'combo_combo_item', 'combo_id', 'combo_item_id')
                     ->withPivot('quantity')
                     ->withTimestamps();
+    }
+
+    /**
+     * Accessor: Lấy URL hình ảnh đầy đủ của combo
+     */
+    public function getImageUrlAttribute(): string
+    {
+        if (empty($this->image)) {
+            return asset('images/no-image.jpg');
+        }
+
+        if (str_starts_with($this->image, 'http://') || str_starts_with($this->image, 'https://')) {
+            return $this->image;
+        }
+
+        // Bỏ tiền tố 'storage/' ở đầu nếu đã có sẵn trong DB để tránh lặp 'storage/storage/'
+        $cleanPath = ltrim(preg_replace('/^storage\//i', '', $this->image), '/');
+
+        return asset('storage/' . $cleanPath);
     }
 
     /**

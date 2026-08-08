@@ -73,7 +73,7 @@
                                             
                                             <!-- Combo Image -->
                                             <div class="w-full sm:w-28 aspect-video sm:aspect-square rounded-none bg-slate-200 overflow-hidden flex-shrink-0 border border-slate-300">
-                                                <img src="{{ $combo->image ? asset('storage/' . $combo->image) : asset('images/no-image.jpg') }}" 
+                                                <img src="{{ $combo->image_url }}" 
                                                      alt="{{ $combo->combo_name }}" 
                                                      class="w-full h-full object-cover">
                                             </div>

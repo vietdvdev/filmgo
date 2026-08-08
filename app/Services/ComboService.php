@@ -78,7 +78,7 @@ class ComboService
     {
         if ($image) {
             $path = $image->store('combos', 'public');
-            $data['image'] = 'storage/' . $path;
+            $data['image'] = $path;
         }
 
         $combo = Combo::create($data);
@@ -96,7 +96,7 @@ class ComboService
         if ($image) {
             $this->deleteImageFile($combo->image);
             $path = $image->store('combos', 'public');
-            $data['image'] = 'storage/' . $path;
+            $data['image'] = $path;
         } elseif ($removeImage) {
             $this->deleteImageFile($combo->image);
             $data['image'] = null;
@@ -140,8 +140,8 @@ class ComboService
      */
     private function deleteImageFile(?string $imagePath): void
     {
-        if ($imagePath && str_starts_with($imagePath, 'storage/')) {
-            $relativePath = str_replace('storage/', '', $imagePath);
+        if ($imagePath) {
+            $relativePath = ltrim(preg_replace('/^storage\//i', '', $imagePath), '/');
             if (Storage::disk('public')->exists($relativePath)) {
                 Storage::disk('public')->delete($relativePath);
             }
