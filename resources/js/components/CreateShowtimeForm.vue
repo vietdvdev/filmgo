@@ -92,8 +92,6 @@
           <p v-if="fieldErrors.room_id" class="mt-1 text-xs text-red-600 font-semibold">{{ fieldErrors.room_id }}</p>
         </div>
 
-
-
         <!-- Ngày & Giờ -->
         <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div>
@@ -120,7 +118,7 @@
           </div>
         </div>
 
-        <!-- Zeit & Overlap -->
+        <!-- Overlap -->
         <div class="p-4 bg-slate-50 border border-slate-200 space-y-2">
           <div class="flex justify-between items-center text-sm">
             <span class="text-slate-500 font-medium flex items-center gap-1.5">
@@ -150,9 +148,8 @@
           </div>
         </div>
 
-        <!-- Cấu hình giá vé (Strict Auto-calculation) -->
+        <!-- Cấu hình giá vé -->
         <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <!-- Ô 1: GIÁ TIÊU CHUẨN -->
           <div class="bg-slate-50 border border-slate-200 p-4 flex flex-col justify-between">
             <div>
               <h4 class="text-xs font-bold uppercase tracking-wider text-slate-700 mb-2">1. GIÁ TIÊU CHUẨN</h4>
@@ -172,7 +169,6 @@
             </p>
           </div>
 
-          <!-- Ô 2: PHỤ THU NGÀY/GIỜ + ĐỊNH DẠNG -->
           <div class="bg-amber-50/50 border border-amber-200/70 p-4 flex flex-col justify-between">
             <div>
               <h4 class="text-xs font-bold uppercase tracking-wider text-slate-700 mb-2">2. PHỤ THU</h4>
@@ -191,7 +187,6 @@
             </div>
           </div>
 
-          <!-- Ô 3: GIÁ THỰC TẾ -->
           <div class="bg-blue-50 border border-blue-200 p-4 flex flex-col justify-between">
             <div>
               <h4 class="text-xs font-bold uppercase tracking-wider text-slate-700 mb-2">3. GIÁ THỰC TẾ</h4>
@@ -202,42 +197,6 @@
                 (Bằng giá tiêu chuẩn + phụ thu)
               </p>
             </div>
-          </div>
-        </div>
-
-        <!-- Cấu Hình Mở Bán -->
-        <div class="space-y-3">
-          <h3 class="text-xs font-bold uppercase tracking-wider text-slate-700 border-b border-slate-100 pb-2">Cấu Hình Mở Bán</h3>
-          <div class="p-5 bg-slate-50 border border-slate-200 space-y-4">
-            <label class="flex items-center gap-2.5 cursor-pointer select-none w-max">
-              <input type="checkbox" v-model="isScheduled" @change="handleScheduleToggle"
-                class="w-4 h-4 text-blue-600 border-slate-300 rounded focus:ring-blue-500">
-              <span class="text-sm font-bold uppercase tracking-wider text-slate-700">Hẹn giờ mở bán tự động</span>
-            </label>
-            <transition name="mo-ban-fade">
-              <div v-if="isScheduled" class="space-y-3 pl-6 border-l-2 border-blue-300 ml-1">
-                <div>
-                  <label class="block text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-1">Thời gian mở bán</label>
-                  <input v-model="publishAt" type="datetime-local"
-                    class="block w-full md:w-1/2 px-3 py-2 border border-slate-300 text-sm focus:outline-none focus:border-blue-600 focus:ring-1 focus:ring-blue-600 bg-white">
-                  <p class="mt-1 text-xs text-slate-400">Hệ thống sẽ tự động mở bán đúng giờ bạn chọn.</p>
-                </div>
-                <div class="flex flex-wrap gap-2">
-                  <button type="button" @click="setScheduleNow"
-                    class="px-2.5 py-1 bg-white border border-slate-300 hover:border-blue-400 hover:text-blue-600 text-slate-600 text-xs font-semibold transition-colors">
-                    ⚡ Ngay bây giờ
-                  </button>
-                  <button type="button" @click="setScheduleTomorrow"
-                    class="px-2.5 py-1 bg-white border border-slate-300 hover:border-blue-400 hover:text-blue-600 text-slate-600 text-xs font-semibold transition-colors">
-                    🌅 09:00 Sáng mai
-                  </button>
-                  <button type="button" @click="setSchedule24hBefore"
-                    class="px-2.5 py-1 bg-white border border-slate-300 hover:border-blue-400 hover:text-blue-600 text-slate-600 text-xs font-semibold transition-colors">
-                    🕐 Trước giờ chiếu 24h
-                  </button>
-                </div>
-              </div>
-            </transition>
           </div>
         </div>
 
@@ -266,29 +225,16 @@
 import { ref, reactive, computed, onMounted } from 'vue';
 import axios from 'axios';
 
-// Get preloaded data
-const { movies, csrfToken, urls } = window.__SHOWTIME_DATA__ || {
-  movies: [],
-  csrfToken: '',
-  urls: {}
-};
+const { movies, csrfToken, urls } = window.__SHOWTIME_DATA__ || { movies: [], csrfToken: '', urls: {} };
 
 axios.defaults.headers.common['X-CSRF-TOKEN'] = csrfToken;
 axios.defaults.headers.common['Accept']       = 'application/json';
 
 const today = new Date().toISOString().split('T')[0];
 
-// Returns current time as 'HH:MM' string in local timezone
-const nowTimeLocal = () => {
-  const d = new Date();
-  return String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0');
-};
-
-// Returns true if the selected show_date + start_time is in the past
 const isDatetimePast = (showDate, startTime) => {
   if (!showDate || !startTime) return false;
-  const selected = new Date(`${showDate}T${startTime}:00`);
-  return selected < new Date();
+  return new Date(`${showDate}T${startTime}:00`) < new Date();
 };
 
 const form = reactive({
@@ -316,66 +262,30 @@ const priceReason     = ref('');
 const submitting      = ref(false);
 const toasts          = ref([]);
 
-// ── Cấu hình mở bán ─────────────────────────────────────────
-const isScheduled  = ref(false);
-const publishAt    = ref('');
-
-const padZero = n => String(n).padStart(2, '0');
-const formatDateTimeLocal = (d) => {
-  return `${d.getFullYear()}-${padZero(d.getMonth()+1)}-${padZero(d.getDate())}T${padZero(d.getHours())}:${padZero(d.getMinutes())}`;
-};
-
-const handleScheduleToggle = () => {
-  if (!isScheduled.value) {
-    publishAt.value = '';
-  } else if (!publishAt.value) {
-    setScheduleNow();
-  }
-};
-const setScheduleNow = () => { publishAt.value = formatDateTimeLocal(new Date()); };
-const setScheduleTomorrow = () => {
-  const d = new Date(); d.setDate(d.getDate() + 1); d.setHours(9, 0, 0, 0);
-  publishAt.value = formatDateTimeLocal(d);
-};
-const setSchedule24hBefore = () => {
-  if (!form.show_date || !form.start_time) {
-    addToast('Vui lòng chọn Ngày chiếu và Giờ chiếu trước.', 'error'); return;
-  }
-  const sd = new Date(`${form.show_date}T${form.start_time}:00`);
-  sd.setHours(sd.getHours() - 24);
-  publishAt.value = formatDateTimeLocal(sd);
-};
-
 let overlapTimer = null;
 let priceTimer   = null;
 
-// Derived properties
-const selectedMovie = computed(() =>
-  movies.find(m => m.id == form.movie_id) || null
-);
+const selectedMovie = computed(() => movies.find(m => m.id == form.movie_id) || null);
 
 const computedEndTime = computed(() => {
   if (!selectedMovie.value || !form.start_time) return '';
-  const [h, m]  = form.start_time.split(':').map(Number);
-  const total   = h * 60 + m + selectedMovie.value.duration;
-  const eh      = Math.floor(total / 60) % 24;
-  const em      = total % 60;
+  const [h, m] = form.start_time.split(':').map(Number);
+  const total  = h * 60 + m + selectedMovie.value.duration;
+  const eh     = Math.floor(total / 60) % 24;
+  const em     = total % 60;
   return String(eh).padStart(2, '0') + ':' + String(em).padStart(2, '0');
 });
 
-// Toasts
 const addToast = (message, type) => {
   const id = Date.now();
   toasts.value.push({ id, message, type: type || 'success' });
   setTimeout(() => removeToast(id), 5000);
 };
-const removeToast = id => {
-  toasts.value = toasts.value.filter(t => t.id !== id);
-};
+const removeToast = id => { toasts.value = toasts.value.filter(t => t.id !== id); };
 
-const BASE_PRICE      = 80000;
-const standardPrice   = ref(BASE_PRICE);
-const surchargeAmt    = ref(0);   // phụ thu ngày/giờ/lễ từ API suggestPrice
+const BASE_PRICE    = 80000;
+const standardPrice = ref(BASE_PRICE);
+const surchargeAmt  = ref(0);
 
 const formatSurcharge = computed(() =>
   autoFormat.value ? Number(autoFormat.value.surcharge_price || 0) : 0
@@ -385,7 +295,6 @@ const computedActualPrice = computed(() =>
   Number(standardPrice.value || 0) + Number(surchargeAmt.value || 0) + formatSurcharge.value
 );
 
-// Load cinemas
 const fetchCinemas = async () => {
   loadingCinemas.value = true;
   try {
@@ -398,7 +307,6 @@ const fetchCinemas = async () => {
   }
 };
 
-// 1. Khi chọn Rạp -> reset phim, phòng, định dạng
 const onCinemaChange = () => {
   form.movie_id      = '';
   form.room_id       = '';
@@ -410,7 +318,6 @@ const onCinemaChange = () => {
   overlapOk.value    = false;
 };
 
-// 2. Khi chọn Phim -> Tải danh sách Phòng chiếu của rạp tương thích với phim
 const onMovieChange = async () => {
   form.room_id       = '';
   form.format_id     = '';
@@ -426,7 +333,6 @@ const onMovieChange = async () => {
   try {
     const url = urls.roomsByMovie.replace(':movie_id', form.movie_id);
     const res = await axios.get(url);
-    // Chỉ lấy phòng thuộc rạp đã chọn
     rooms.value = (res.data.data || []).filter(r => r.cinema_id == form.cinema_id);
   } catch (e) {
     addToast('Không thể tải danh sách phòng chiếu phù hợp.', 'error');
@@ -435,7 +341,6 @@ const onMovieChange = async () => {
   }
 };
 
-// 3. Khi chọn Phòng chiếu -> Tự động lấy định dạng giao điểm
 const onRoomChange = async () => {
   autoFormat.value   = null;
   form.format_id     = '';
@@ -463,14 +368,12 @@ const onRoomChange = async () => {
   triggerPriceSuggestion();
 };
 
-// Overlap check
 const triggerOverlapCheck = () => {
   clearTimeout(overlapTimer);
   overlapError.value = '';
-  overlapOk.value = false;
+  overlapOk.value    = false;
   if (!form.movie_id || !form.room_id || !form.show_date || !form.start_time) return;
 
-  // Frontend guard: reject past datetime immediately
   if (isDatetimePast(form.show_date, form.start_time)) {
     overlapError.value = 'Thời gian bắt đầu suất chiếu không được ở trong quá khứ. Vui lòng chọn thời gian từ hiện tại trở đi.';
     return;
@@ -480,12 +383,7 @@ const triggerOverlapCheck = () => {
     checkingOverlap.value = true;
     try {
       const res = await axios.get(urls.checkOverlap, {
-        params: {
-          room_id:    form.room_id,
-          show_date:  form.show_date,
-          start_time: form.start_time,
-          movie_id:   form.movie_id
-        }
+        params: { room_id: form.room_id, show_date: form.show_date, start_time: form.start_time, movie_id: form.movie_id }
       });
       if (res.data.overlap) {
         overlapError.value = res.data.message;
@@ -493,16 +391,13 @@ const triggerOverlapCheck = () => {
         overlapOk.value = true;
       }
     } catch (e) {
-      overlapError.value = (e.response && e.response.data && e.response.data.message)
-        ? e.response.data.message
-        : 'Lỗi kiểm tra lịch chiếu.';
+      overlapError.value = (e.response?.data?.message) ? e.response.data.message : 'Lỗi kiểm tra lịch chiếu.';
     } finally {
       checkingOverlap.value = false;
     }
   }, 400);
 };
 
-// Price suggestion
 const triggerPriceSuggestion = () => {
   clearTimeout(priceTimer);
   if (!form.show_date || !form.start_time) return;
@@ -511,18 +406,15 @@ const triggerPriceSuggestion = () => {
       const res = await axios.get(urls.suggestPrice, {
         params: { show_date: form.show_date, start_time: form.start_time }
       });
-      // Tách phụ thu ngày/giờ = suggested_price - BASE_PRICE
-      // standardPrice luôn giữ nguyên BASE_PRICE để người dùng có thể chỉnh
-      surchargeAmt.value  = Number(res.data.suggested_price || BASE_PRICE) - BASE_PRICE;
-      priceReason.value   = res.data.reason || '';
+      surchargeAmt.value = Number(res.data.suggested_price || BASE_PRICE) - BASE_PRICE;
+      priceReason.value  = res.data.reason || '';
     } catch (e) { /* silent */ }
   }, 400);
 };
 
 const onDateOrTimeChange = () => { triggerOverlapCheck(); triggerPriceSuggestion(); };
-const setPrice           = p => { standardPrice.value = p; };
+const setPrice = p => { standardPrice.value = p; };
 
-// Submit Form
 const submitForm = async () => {
   if (overlapError.value) { addToast('Không thể lưu do trùng lịch chiếu!', 'error'); return; }
   if (isDatetimePast(form.show_date, form.start_time)) {
@@ -541,35 +433,27 @@ const submitForm = async () => {
       show_date:  form.show_date,
       start_time: form.start_time,
       base_price: computedActualPrice.value,
-      publish_at: isScheduled.value ? (publishAt.value || null) : null,
+      publish_at: null,
     });
     addToast(res.data.message || 'Tạo suất chiếu thành công!', 'success');
     setTimeout(() => { window.location.href = res.data.redirect || urls.redirect; }, 1500);
   } catch (e) {
-    const d = e.response && e.response.data;
-    if (d && d.errors) {
-      Object.entries(d.errors).forEach(([k, v]) => {
-        fieldErrors[k] = Array.isArray(v) ? v[0] : v;
-      });
-      const first = Object.values(d.errors).flat()[0];
-      addToast(first, 'error');
+    const d = e.response?.data;
+    if (d?.errors) {
+      Object.entries(d.errors).forEach(([k, v]) => { fieldErrors[k] = Array.isArray(v) ? v[0] : v; });
+      addToast(Object.values(d.errors).flat()[0], 'error');
     } else {
-      addToast((d && d.message) ? d.message : 'Đã xảy ra lỗi hệ thống.', 'error');
+      addToast(d?.message || 'Đã xảy ra lỗi hệ thống.', 'error');
     }
   } finally {
     submitting.value = false;
   }
 };
 
-onMounted(() => {
-  fetchCinemas();
-});
-
+onMounted(() => { fetchCinemas(); });
 </script>
 
 <style scoped>
 .toast-fade-enter-active, .toast-fade-leave-active { transition: all .3s ease; }
 .toast-fade-enter-from, .toast-fade-leave-to { opacity:0; transform:translateY(-12px); }
-.mo-ban-fade-enter-active, .mo-ban-fade-leave-active { transition: opacity .25s ease, transform .25s ease; }
-.mo-ban-fade-enter-from, .mo-ban-fade-leave-to { opacity:0; transform:translateY(-6px); }
 </style>
