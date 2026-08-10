@@ -133,6 +133,45 @@ class ManagerShowtimeApiController extends Controller
     }
 
     /**
+     * API: Luồng Ưu Tiên Phim (Movie-first) - Lấy danh sách Phòng chiếu tương thích với Phim.
+     * GET /manager/showtimes/api/rooms-by-movie/{movieId}
+     */
+    public function getRoomsByMovie($movieId)
+    {
+        $movie = Movie::findOrFail($movieId);
+        $cinemaIds = $this->getCinemaIds();
+
+        $movieFormatNames = $movie->formats()->pluck('name')->toArray();
+
+        if (empty($movieFormatNames)) {
+            return response()->json([
+                'success' => true,
+                'data'    => [],
+                'message' => 'Phim này chưa được gán định dạng chiếu nào.',
+            ]);
+        }
+
+        $rooms = Room::whereIn('cinema_id', $cinemaIds)
+            ->where('status', 'active')
+            ->with('cinema:id,name')
+            ->get(['id', 'room_name', 'room_type', 'capacity', 'cinema_id'])
+            ->filter(function ($room) use ($movieFormatNames) {
+                $supported = $this->getSupportedFormatsByRoomType($room->room_type);
+                return count(array_intersect($movieFormatNames, $supported)) > 0;
+            })
+            ->map(function ($room) {
+                $room->cinema_name = $room->cinema?->name;
+                return $room;
+            })
+            ->values();
+
+        return response()->json([
+            'success' => true,
+            'data'    => $rooms,
+        ]);
+    }
+
+    /**
      * API 1: Luồng Ưu Tiên Phòng (Room-first) - Lấy danh sách Phim tương thích với Phòng chiếu.
      * GET /api/rooms/{id}/movies
      */

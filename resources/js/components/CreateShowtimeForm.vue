@@ -29,7 +29,7 @@
 
       <form @submit.prevent="submitForm" class="space-y-6">
 
-        <!-- Rạp chiếu -->
+        <!-- 1. Rạp chiếu -->
         <div>
           <label for="cinema_id" class="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1">
             1. Chọn Rạp Chiếu
@@ -38,50 +38,20 @@
             :disabled="loadingCinemas"
             class="block w-full px-3 py-2.5 border border-slate-300 text-sm focus:outline-none focus:border-blue-600 focus:ring-1 focus:ring-blue-600 bg-white disabled:bg-slate-100 disabled:text-slate-400">
             <option value="">-- {{ loadingCinemas ? 'Đang tải danh sách rạp...' : 'Chọn rạp chiếu' }} --</option>
-            <option v-for="c in cinemas" :key="c.id" :value="c.id">
-              {{ c.name }}
-            </option>
+            <option v-for="c in cinemas" :key="c.id" :value="c.id">{{ c.name }}</option>
           </select>
-          <p v-if="fieldErrors.cinema_id" class="mt-1 text-xs text-red-600 font-semibold">
-            {{ fieldErrors.cinema_id }}
-          </p>
+          <p v-if="fieldErrors.cinema_id" class="mt-1 text-xs text-red-600 font-semibold">{{ fieldErrors.cinema_id }}</p>
         </div>
 
-        <!-- Phòng chiếu -->
-        <div>
-          <label for="room_id" class="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1">
-            2. Chọn Phòng Chiếu
-          </label>
-          <select id="room_id" v-model="form.room_id" required @change="onRoomChange"
-            :disabled="!form.cinema_id || loadingRooms"
-            class="block w-full px-3 py-2.5 border border-slate-300 text-sm focus:outline-none focus:border-blue-600 focus:ring-1 focus:ring-blue-600 bg-white disabled:bg-slate-100 disabled:text-slate-400">
-            <option value="">
-              -- {{ loadingRooms ? 'Đang tải danh sách phòng...' : !form.cinema_id ? 'Vui lòng chọn rạp trước' : 'Chọn phòng chiếu' }} --
-            </option>
-            <option v-for="r in rooms" :key="r.id" :value="r.id">
-              {{ r.room_name }} ({{ r.room_type }} – {{ r.capacity }} ghế)
-            </option>
-          </select>
-          <p v-if="rooms.length === 0 && form.cinema_id && !loadingRooms" class="mt-1 text-xs text-amber-600 font-semibold">
-            Rạp này chưa có phòng chiếu nào hoạt động.
-          </p>
-          <p v-if="fieldErrors.room_id" class="mt-1 text-xs text-red-600 font-semibold">
-            {{ fieldErrors.room_id }}
-          </p>
-        </div>
-
-        <!-- Phim -->
+        <!-- 2. Phim -->
         <div>
           <label for="movie_id" class="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1">
-            3. Chọn Phim Chiếu
+            2. Chọn Phim Chiếu
           </label>
           <select id="movie_id" v-model="form.movie_id" required @change="onMovieChange"
-            :disabled="!form.room_id || loadingMovies"
-            class="block w-full px-3 py-2.5 border border-slate-300 text-sm focus:outline-none focus:border-blue-600 focus:ring-1 focus:ring-blue-600 bg-white disabled:bg-slate-100 disabled:text-slate-400">
-            <option value="">
-              -- {{ !form.room_id ? 'Vui lòng chọn phòng chiếu trước' : loadingMovies ? 'Đang tải phim phù hợp...' : 'Chọn phim chiếu' }} --
-            </option>
-            <option v-for="m in roomMovies" :key="m.id" :value="m.id">
+            class="block w-full px-3 py-2.5 border border-slate-300 text-sm focus:outline-none focus:border-blue-600 focus:ring-1 focus:ring-blue-600 bg-white">
+            <option value="">-- Chọn phim chiếu --</option>
+            <option v-for="m in movies" :key="m.id" :value="m.id">
               {{ m.title }} ({{ m.duration }} phút)
             </option>
           </select>
@@ -90,22 +60,47 @@
             &nbsp;•&nbsp;
             Giới hạn tuổi: <strong>{{ selectedMovie.age_limit || 'T18' }}</strong>
           </p>
-          <p v-if="fieldErrors.movie_id" class="mt-1 text-xs text-red-600 font-semibold">
-            {{ fieldErrors.movie_id }}
-          </p>
+          <p v-if="fieldErrors.movie_id" class="mt-1 text-xs text-red-600 font-semibold">{{ fieldErrors.movie_id }}</p>
         </div>
 
-        <!-- Định dạng chiếu -->
-        <div>
+        <!-- 3. Phòng chiếu (chỉ hiện sau khi chọn phim) -->
+        <div v-if="form.movie_id">
+          <label for="room_id" class="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1">
+            3. Chọn Phòng Chiếu
+          </label>
+          <div v-if="loadingRooms" class="flex items-center gap-2 text-blue-600 text-xs font-semibold py-2">
+            <svg class="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24">
+              <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
+              <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
+            </svg>
+            Đang tải danh sách phòng chiếu phù hợp...
+          </div>
+          <template v-else>
+            <div v-if="rooms.length === 0"
+              class="flex items-center gap-2 p-3 bg-amber-50 border border-amber-200 text-amber-800 text-xs font-semibold">
+              <span class="material-symbols-outlined text-base">warning</span>
+              Rạp này không có phòng chiếu nào phù hợp với phim đã chọn.
+            </div>
+            <select v-else id="room_id" v-model="form.room_id" required @change="onRoomChange"
+              class="block w-full px-3 py-2.5 border border-slate-300 text-sm focus:outline-none focus:border-blue-600 focus:ring-1 focus:ring-blue-600 bg-white">
+              <option value="">-- Chọn phòng chiếu --</option>
+              <option v-for="r in rooms" :key="r.id" :value="r.id">
+                {{ r.room_name }} ({{ r.room_type }} – {{ r.capacity }} ghế)
+              </option>
+            </select>
+          </template>
+          <p v-if="fieldErrors.room_id" class="mt-1 text-xs text-red-600 font-semibold">{{ fieldErrors.room_id }}</p>
+        </div>
+
+        <!-- 4. Định dạng chiếu -->
+        <div v-if="form.room_id">
           <label for="format_id" class="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1">
             4. Định Dạng Chiếu
           </label>
           <select id="format_id" v-model="form.format_id" required @change="onFormatChange"
-            :disabled="!form.movie_id || loadingFormats"
+            :disabled="loadingFormats"
             class="block w-full px-3 py-2.5 border border-slate-300 text-sm focus:outline-none focus:border-blue-600 focus:ring-1 focus:ring-blue-600 bg-white disabled:bg-slate-100 disabled:text-slate-400">
-            <option value="">
-              -- {{ !form.movie_id ? 'Vui lòng chọn phim trước' : loadingFormats ? 'Đang tải định dạng giao điểm...' : 'Chọn định dạng chiếu' }} --
-            </option>
+            <option value="">-- {{ loadingFormats ? 'Đang tải định dạng...' : 'Chọn định dạng chiếu' }} --</option>
             <option v-for="f in formats" :key="f.id" :value="f.id">
               {{ f.name }} {{ f.surcharge_price > 0 ? '(+' + f.surcharge_price.toLocaleString() + 'đ)' : '' }}
             </option>
@@ -419,60 +414,43 @@ const fetchCinemas = async () => {
   }
 };
 
-const roomMovies     = ref([]);
-const loadingMovies  = ref(false);
-
-// 1. Khi chọn Rạp chiếu -> Tải danh sách phòng chiếu của rạp
-const onCinemaChange = async () => {
-  form.room_id   = '';
+// 1. Khi chọn Rạp -> reset phim, phòng, định dạng
+const onCinemaChange = () => {
   form.movie_id  = '';
+  form.room_id   = '';
   form.format_id = '';
-  rooms.value      = [];
-  roomMovies.value = [];
-  formats.value    = [];
+  rooms.value    = [];
+  formats.value  = [];
+  overlapError.value = '';
+  overlapOk.value    = false;
+};
+
+// 2. Khi chọn Phim -> Tải danh sách Phòng chiếu của rạp tương thích với phim
+const onMovieChange = async () => {
+  form.room_id   = '';
+  form.format_id = '';
+  rooms.value    = [];
+  formats.value  = [];
   overlapError.value = '';
   overlapOk.value    = false;
 
-  if (!form.cinema_id) return;
+  if (!form.movie_id || !form.cinema_id) return;
 
   loadingRooms.value = true;
   try {
-    const url = urls.roomsByCinema.replace(':cinema_id', form.cinema_id);
+    const url = urls.roomsByMovie.replace(':movie_id', form.movie_id);
     const res = await axios.get(url);
-    rooms.value = res.data || [];
+    // Chỉ lấy phòng thuộc rạp đã chọn
+    rooms.value = (res.data.data || []).filter(r => r.cinema_id == form.cinema_id);
   } catch (e) {
-    addToast('Không thể tải danh sách phòng chiếu của rạp này.', 'error');
+    addToast('Không thể tải danh sách phòng chiếu phù hợp.', 'error');
   } finally {
     loadingRooms.value = false;
   }
 };
 
-// 2. Khi chọn Phòng chiếu -> Tải danh sách Phim tương thích với phòng đó
+// 3. Khi chọn Phòng chiếu -> Tải danh sách Định dạng giao điểm
 const onRoomChange = async () => {
-  form.movie_id  = '';
-  form.format_id = '';
-  roomMovies.value = [];
-  formats.value    = [];
-  overlapError.value = '';
-  overlapOk.value    = false;
-
-  if (!form.room_id) return;
-
-  loadingMovies.value = true;
-  try {
-    const res = await axios.get(`/api/rooms/${form.room_id}/movies`);
-    roomMovies.value = res.data.data || res.data || [];
-  } catch (e) {
-    addToast('Không thể tải danh sách phim phù hợp với phòng chiếu này.', 'error');
-  } finally {
-    loadingMovies.value = false;
-  }
-
-  triggerOverlapCheck();
-};
-
-// 3. Khi chọn Phim -> Tải danh sách Định dạng giao điểm giữa Phòng và Phim
-const onMovieChange = async () => {
   form.format_id = '';
   formats.value  = [];
   overlapError.value = '';
@@ -484,11 +462,9 @@ const onMovieChange = async () => {
   try {
     const res = await axios.get(`/api/rooms/${form.room_id}/movies/${form.movie_id}/formats`);
     formats.value = res.data.data || res.data || [];
-    if (formats.value.length === 1) {
-      form.format_id = formats.value[0].id;
-    }
+    if (formats.value.length === 1) form.format_id = formats.value[0].id;
   } catch (e) {
-    addToast('Không thể tải danh sách định dạng chiếu giao điểm.', 'error');
+    addToast('Không thể tải danh sách định dạng chiếu.', 'error');
   } finally {
     loadingFormats.value = false;
   }
@@ -603,6 +579,7 @@ const submitForm = async () => {
 onMounted(() => {
   fetchCinemas();
 });
+
 </script>
 
 <style scoped>
