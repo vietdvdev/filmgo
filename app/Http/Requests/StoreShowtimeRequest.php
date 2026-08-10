@@ -29,7 +29,6 @@ class StoreShowtimeRequest extends FormRequest
             'show_date'  => 'required|date|after_or_equal:today',
             'start_time' => 'required|date_format:H:i',
             'base_price' => 'required|integer|min:0',
-            'publish_at' => 'nullable|date_format:Y-m-d\TH:i',
         ];
     }
 
