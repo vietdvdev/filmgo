@@ -455,9 +455,7 @@ class ManagerShowtimeApiController extends Controller
             ], 422);
         }
 
-        $publishAtInput = $request->input('publish_at');
-        $publishAt = $publishAtInput ? Carbon::parse($publishAtInput, 'Asia/Ho_Chi_Minh')->setTimezone(config('app.timezone')) : null;
-        $status = ($publishAt === null || $publishAt->lte(now())) ? 'active' : 'upcoming';
+        $status = 'active';
 
         DB::beginTransaction();
         try {
@@ -470,7 +468,6 @@ class ManagerShowtimeApiController extends Controller
                 'end_time'   => $endTimeStr,
                 'base_price' => $request->integer('base_price'),
                 'status'     => $status,
-                'publish_at' => $publishAt,
             ]);
 
             // [v2.0] Pre-load SeatType surcharge map để tránh N+1 query
