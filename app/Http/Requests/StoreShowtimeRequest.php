@@ -23,7 +23,7 @@ class StoreShowtimeRequest extends FormRequest
     {
         return [
             'movie_id'   => 'required|exists:movies,id',
-            'format_id'  => 'required|exists:formats,id',
+            'format_id'  => 'nullable|exists:formats,id',
             'cinema_id'  => 'required|exists:cinemas,id',
             'room_id'    => 'required|exists:rooms,id',
             'show_date'  => 'required|date|after_or_equal:today',
@@ -41,8 +41,6 @@ class StoreShowtimeRequest extends FormRequest
         return [
             'movie_id.required'   => 'Vui lòng chọn phim.',
             'movie_id.exists'     => 'Phim được chọn không tồn tại.',
-            'format_id.required'  => 'Vui lòng chọn định dạng chiếu.',
-            'format_id.exists'    => 'Định dạng chiếu được chọn không tồn tại.',
             'cinema_id.required'  => 'Vui lòng chọn rạp chiếu.',
             'cinema_id.exists'    => 'Rạp chiếu được chọn không tồn tại.',
             'room_id.required'    => 'Vui lòng chọn phòng chiếu.',
@@ -82,10 +80,35 @@ class StoreShowtimeRequest extends FormRequest
                 }
             }
 
-            // 2. Kiểm tra ràng buộc Định dạng chiếu và Tiêu chuẩn Phòng chiếu
+            // 2. Tự động resolve format_id nếu chưa có: lấy format đầu tiên giao điểm giữa phim và phòng
+            $hasBasicErrors = $validator->errors()->hasAny(['movie_id', 'room_id', 'cinema_id']);
+            if ($movieId && $roomId && !$formatId && !$hasBasicErrors) {
+                $room   = \App\Models\Room::find($roomId);
+                $movie  = \App\Models\Movie::find($movieId);
+                if ($room && $movie) {
+                    $supportedByRoom = match(strtoupper($room->room_type)) {
+                        '2D'   => ['2D'],
+                        '3D'   => ['2D', '3D'],
+                        'IMAX' => ['2D', '3D', 'IMAX'],
+                        '4DX'  => ['2D', '3D', '4DX'],
+                        default => ['2D', strtoupper($room->room_type)],
+                    };
+                    $format = \App\Models\Format::whereHas('movies', fn($q) => $q->where('movies.id', $movieId))
+                        ->whereIn('name', $supportedByRoom)
+                        ->orderBy('id')
+                        ->first();
+                    if ($format) {
+                        $this->merge(['format_id' => $format->id]);
+                    } else {
+                        $validator->errors()->add('room_id', 'Không tìm thấy định dạng chiếu phù hợp giữa phim và phòng chiếu này.');
+                    }
+                }
+            }
+
+            // 3. Kiểm tra ràng buộc Định dạng chiếu và Tiêu chuẩn Phòng chiếu
             // Guard: chỉ chạy cross-check khi các field cơ bản không có lỗi, tránh N+1 query vô nghĩa
             $hasBasicErrors = $validator->errors()->hasAny(['movie_id', 'format_id', 'room_id', 'cinema_id']);
-            if ($movieId && $formatId && $roomId && !$hasBasicErrors) {
+            if ($movieId && ($formatId = $this->input('format_id')) && $roomId && !$hasBasicErrors) {
                 $formatService = app(\App\Services\FormatService::class);
                 $formatErrors  = $formatService->validateShowtimeFormatAndRoom((int)$movieId, (int)$formatId, (int)$roomId);
 

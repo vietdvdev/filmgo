@@ -92,23 +92,7 @@
           <p v-if="fieldErrors.room_id" class="mt-1 text-xs text-red-600 font-semibold">{{ fieldErrors.room_id }}</p>
         </div>
 
-        <!-- 4. Định dạng chiếu -->
-        <div v-if="form.room_id">
-          <label for="format_id" class="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1">
-            4. Định Dạng Chiếu
-          </label>
-          <select id="format_id" v-model="form.format_id" required @change="onFormatChange"
-            :disabled="loadingFormats"
-            class="block w-full px-3 py-2.5 border border-slate-300 text-sm focus:outline-none focus:border-blue-600 focus:ring-1 focus:ring-blue-600 bg-white disabled:bg-slate-100 disabled:text-slate-400">
-            <option value="">-- {{ loadingFormats ? 'Đang tải định dạng...' : 'Chọn định dạng chiếu' }} --</option>
-            <option v-for="f in formats" :key="f.id" :value="f.id">
-              {{ f.name }} {{ f.surcharge_price > 0 ? '(+' + f.surcharge_price.toLocaleString() + 'đ)' : '' }}
-            </option>
-          </select>
-          <p v-if="fieldErrors.format_id" class="mt-1 text-xs text-red-600 font-semibold">
-            {{ fieldErrors.format_id }}
-          </p>
-        </div>
+
 
         <!-- Ngày & Giờ -->
         <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -319,6 +303,7 @@ const form = reactive({
 
 const cinemas         = ref([]);
 const formats         = ref([]);
+const autoFormat      = ref(null);
 const rooms           = ref([]);
 const fieldErrors     = reactive({});
 const checkingOverlap = ref(false);
@@ -392,10 +377,9 @@ const BASE_PRICE      = 80000;
 const standardPrice   = ref(BASE_PRICE);
 const surchargeAmt    = ref(0);   // phụ thu ngày/giờ/lễ từ API suggestPrice
 
-const formatSurcharge = computed(() => {
-  const f = formats.value.find(f => f.id == form.format_id);
-  return f ? Number(f.surcharge_price || 0) : 0;
-});
+const formatSurcharge = computed(() =>
+  autoFormat.value ? Number(autoFormat.value.surcharge_price || 0) : 0
+);
 
 const computedActualPrice = computed(() =>
   Number(standardPrice.value || 0) + Number(surchargeAmt.value || 0) + formatSurcharge.value
@@ -416,21 +400,23 @@ const fetchCinemas = async () => {
 
 // 1. Khi chọn Rạp -> reset phim, phòng, định dạng
 const onCinemaChange = () => {
-  form.movie_id  = '';
-  form.room_id   = '';
-  form.format_id = '';
-  rooms.value    = [];
-  formats.value  = [];
+  form.movie_id      = '';
+  form.room_id       = '';
+  form.format_id     = '';
+  autoFormat.value   = null;
+  rooms.value        = [];
+  formats.value      = [];
   overlapError.value = '';
   overlapOk.value    = false;
 };
 
 // 2. Khi chọn Phim -> Tải danh sách Phòng chiếu của rạp tương thích với phim
 const onMovieChange = async () => {
-  form.room_id   = '';
-  form.format_id = '';
-  rooms.value    = [];
-  formats.value  = [];
+  form.room_id       = '';
+  form.format_id     = '';
+  autoFormat.value   = null;
+  rooms.value        = [];
+  formats.value      = [];
   overlapError.value = '';
   overlapOk.value    = false;
 
@@ -449,10 +435,11 @@ const onMovieChange = async () => {
   }
 };
 
-// 3. Khi chọn Phòng chiếu -> Tải danh sách Định dạng giao điểm
+// 3. Khi chọn Phòng chiếu -> Tự động lấy định dạng giao điểm
 const onRoomChange = async () => {
-  form.format_id = '';
-  formats.value  = [];
+  autoFormat.value   = null;
+  form.format_id     = '';
+  formats.value      = [];
   overlapError.value = '';
   overlapOk.value    = false;
 
@@ -462,18 +449,16 @@ const onRoomChange = async () => {
   try {
     const res = await axios.get(`/api/rooms/${form.room_id}/movies/${form.movie_id}/formats`);
     formats.value = res.data.data || res.data || [];
-    if (formats.value.length === 1) form.format_id = formats.value[0].id;
+    if (formats.value.length > 0) {
+      autoFormat.value = formats.value[0];
+      form.format_id   = formats.value[0].id;
+    }
   } catch (e) {
-    addToast('Không thể tải danh sách định dạng chiếu.', 'error');
+    addToast('Không thể tải định dạng chiếu.', 'error');
   } finally {
     loadingFormats.value = false;
   }
 
-  triggerOverlapCheck();
-};
-
-// 4. Khi chọn Định dạng -> Kích hoạt kiểm tra trùng lịch & gợi ý giá vé
-const onFormatChange = () => {
   triggerOverlapCheck();
   triggerPriceSuggestion();
 };
