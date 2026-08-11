@@ -202,4 +202,33 @@ class DashboardController extends BaseController
 
         return response()->json($result);
     }
+
+    /**
+     * 4. API Thống kê doanh thu phim (stats/movie-revenue)
+     * Lấy doanh thu của các phim trong khoảng thời gian start_date và end_date.
+     * Mặc định là 30 ngày qua.
+     */
+    public function movieRevenueStats(Request $request)
+    {
+        $startDateInput = $request->query('start_date');
+        $endDateInput   = $request->query('end_date');
+
+        if ($startDateInput && $endDateInput) {
+            $startDate = Carbon::parse($startDateInput)->startOfDay();
+            $endDate   = Carbon::parse($endDateInput)->endOfDay();
+        } else {
+            // Mặc định là 30 ngày gần đây
+            $startDate = now()->subDays(29)->startOfDay();
+            $endDate   = now()->endOfDay();
+        }
+
+        // Cache theo khoảng ngày — TTL 5 phút
+        $cacheKey = 'admin_stats_movie_revenue_' . $startDate->format('Y-m-d') . '_' . $endDate->format('Y-m-d');
+
+        $data = Cache::remember($cacheKey, 300, function () use ($startDate, $endDate) {
+            return $this->dashboardService->getMovieRevenueStatistics($startDate, $endDate);
+        });
+
+        return response()->json($data);
+    }
 }
