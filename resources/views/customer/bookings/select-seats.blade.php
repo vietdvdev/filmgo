@@ -59,15 +59,17 @@
                         </div>
 
                         <!-- Grid Seat map -->
-                        <div class="w-full overflow-x-auto pb-4 no-scrollbar">
-                            <div class="min-w-[600px] flex flex-col gap-3 justify-center items-center">
+                        <div class="w-full overflow-x-auto pb-6 pt-2 px-2 no-scrollbar relative">
+                            <div class="min-w-max flex flex-col gap-3 md:justify-center w-max mx-auto">
                                 @foreach($seatsByRow as $row => $seats)
-                                    <div class="flex items-center gap-3">
+                                    <div class="flex items-center gap-2 relative">
                                         <!-- Row Label Left -->
-                                        <div class="w-8 text-center text-sm font-black text-slate-400">{{ $row }}</div>
+                                        <div class="sticky left-0 z-20 w-8 h-9 flex items-center justify-center text-sm font-black text-slate-600 bg-white/95 backdrop-blur-sm rounded-r-lg shadow-[2px_0_5px_rgba(0,0,0,0.05)] border-y border-r border-slate-100">
+                                            {{ $row }}
+                                        </div>
                                         
                                         <!-- Seats in Row -->
-                                        <div class="flex gap-2">
+                                        <div class="flex gap-2 px-1">
                                             @foreach($seats as $ss)
                                                 @php
                                                     $seatType = $ss->seat->seatType;
@@ -80,22 +82,22 @@
                                                     $isBooked = ($ss->status !== 'available') && !$isHeldByMe;
 
                                                     // Xác định class CSS
-                                                    $btnClass = 'w-9 h-9 rounded-xl border flex items-center justify-center text-xs font-black transition-all duration-150 ';
+                                                    $btnClass = 'w-9 h-9 rounded-xl border-2 flex items-center justify-center text-xs font-black transition-all duration-200 ';
 
                                                     if ($isHeldByMe) {
                                                         // Ghế đang do mình giữ → hiển thị màu đỏ selected
-                                                        $btnClass .= 'bg-brand-primary border-brand-primary text-white shadow-md shadow-brand-primary/20 selected-seat';
+                                                        $btnClass .= 'bg-brand-primary border-brand-primary text-white shadow-[0_0_12px_rgba(229,9,20,0.4)] scale-110 z-10 selected-seat';
                                                     } elseif ($isBooked) {
                                                         // Ghế đã có người khác đặt → disabled
-                                                        $btnClass .= 'bg-slate-100 border-slate-200 text-slate-300 cursor-not-allowed';
+                                                        $btnClass .= 'bg-slate-200 border-slate-300 text-slate-400 cursor-not-allowed opacity-70';
                                                     } else {
                                                         // Ghế trống → màu theo loại ghế
                                                         if ($seatType->name === 'VIP') {
-                                                            $btnClass .= 'bg-amber-50 hover:bg-amber-100 border-amber-300 text-amber-800 seat-available';
+                                                            $btnClass .= 'bg-gradient-to-br from-amber-100 to-amber-200 border-amber-400 text-amber-800 hover:from-amber-200 hover:to-amber-300 shadow-sm seat-available';
                                                         } elseif ($seatType->name === 'Sweetbox') {
-                                                            $btnClass .= 'bg-pink-50 hover:bg-pink-100 border-pink-300 text-pink-700 seat-available';
+                                                            $btnClass .= 'bg-gradient-to-br from-pink-100 to-pink-200 border-pink-400 text-pink-800 hover:from-pink-200 hover:to-pink-300 shadow-sm seat-available';
                                                         } else {
-                                                            $btnClass .= 'bg-slate-50 hover:bg-slate-100 border-slate-300 text-slate-700 seat-available';
+                                                            $btnClass .= 'bg-white border-slate-200 text-slate-600 hover:border-brand-primary hover:text-brand-primary shadow-sm seat-available';
                                                         }
                                                     }
                                                 @endphp
@@ -114,7 +116,9 @@
                                         </div>
                                         
                                         <!-- Row Label Right -->
-                                        <div class="w-8 text-center text-sm font-black text-slate-400">{{ $row }}</div>
+                                        <div class="sticky right-0 z-20 w-8 h-9 flex items-center justify-center text-sm font-black text-slate-600 bg-white/95 backdrop-blur-sm rounded-l-lg shadow-[-2px_0_5px_rgba(0,0,0,0.05)] border-y border-l border-slate-100">
+                                            {{ $row }}
+                                        </div>
                                     </div>
                                 @endforeach
                             </div>
@@ -124,23 +128,23 @@
                     <!-- Seat Legend -->
                     <div class="flex flex-wrap justify-center gap-6 mt-12 pt-6 border-t border-slate-200">
                         <div class="flex items-center gap-2">
-                            <span class="w-5 h-5 rounded-md bg-slate-50 border border-slate-300 block shadow-inner"></span>
+                            <span class="w-5 h-5 rounded-md bg-white border-2 border-slate-200 block shadow-sm"></span>
                             <span class="text-xs text-slate-600 font-semibold">Ghế Thường</span>
                         </div>
                         <div class="flex items-center gap-2">
-                            <span class="w-5 h-5 rounded-md bg-amber-50 border border-amber-300 block shadow-inner"></span>
+                            <span class="w-5 h-5 rounded-md bg-gradient-to-br from-amber-100 to-amber-200 border-2 border-amber-400 block shadow-sm"></span>
                             <span class="text-xs text-slate-600 font-semibold">Ghế VIP (+{{ number_format(20000) }}đ)</span>
                         </div>
                         <div class="flex items-center gap-2">
-                            <span class="w-5 h-5 rounded-md bg-pink-50 border border-pink-300 block shadow-inner"></span>
+                            <span class="w-5 h-5 rounded-md bg-gradient-to-br from-pink-100 to-pink-200 border-2 border-pink-400 block shadow-sm"></span>
                             <span class="text-xs text-slate-600 font-semibold">Sweetbox (+{{ number_format(40000) }}đ)</span>
                         </div>
                         <div class="flex items-center gap-2">
-                            <span class="w-5 h-5 rounded-md bg-brand-primary border border-brand-primary block shadow-md"></span>
+                            <span class="w-5 h-5 rounded-md bg-brand-primary border-2 border-brand-primary block shadow-[0_0_8px_rgba(229,9,20,0.4)]"></span>
                             <span class="text-xs text-slate-600 font-semibold">Đang Chọn</span>
                         </div>
                         <div class="flex items-center gap-2">
-                            <span class="w-5 h-5 rounded-md bg-slate-100 border border-slate-200 block shadow-inner"></span>
+                            <span class="w-5 h-5 rounded-md bg-slate-200 border-2 border-slate-300 block opacity-70"></span>
                             <span class="text-xs text-slate-400 font-semibold">Đã Có Khách</span>
                         </div>
                     </div>
@@ -280,13 +284,13 @@
                 
                 const type = btn.dataset.type;
                 if (type === 'VIP') {
-                    btn.classList.remove('bg-amber-50', 'hover:bg-amber-100', 'border-amber-300', 'text-amber-800', 'seat-available');
+                    btn.classList.remove('bg-gradient-to-br', 'from-amber-100', 'to-amber-200', 'border-amber-400', 'text-amber-800', 'hover:from-amber-200', 'hover:to-amber-300', 'shadow-sm', 'seat-available');
                 } else if (type === 'Sweetbox') {
-                    btn.classList.remove('bg-pink-50', 'hover:bg-pink-100', 'border-pink-300', 'text-pink-700', 'seat-available');
+                    btn.classList.remove('bg-gradient-to-br', 'from-pink-100', 'to-pink-200', 'border-pink-400', 'text-pink-800', 'hover:from-pink-200', 'hover:to-pink-300', 'shadow-sm', 'seat-available');
                 } else {
-                    btn.classList.remove('bg-slate-50', 'hover:bg-slate-100', 'border-slate-300', 'text-slate-700', 'seat-available');
+                    btn.classList.remove('bg-white', 'border-slate-200', 'text-slate-600', 'hover:border-brand-primary', 'hover:text-brand-primary', 'shadow-sm', 'seat-available');
                 }
-                btn.classList.add('bg-brand-primary', 'border-brand-primary', 'text-white', 'shadow-md', 'shadow-brand-primary/20', 'selected-seat');
+                btn.classList.add('bg-brand-primary', 'border-brand-primary', 'text-white', 'shadow-[0_0_12px_rgba(229,9,20,0.4)]', 'scale-110', 'z-10', 'selected-seat');
                 
                 if (!document.getElementById('input-' + seatId)) {
                     const input = document.createElement('input');
@@ -305,14 +309,14 @@
                     selectedSeats.splice(index, 1);
                 }
                 
-                btn.classList.remove('bg-brand-primary', 'border-brand-primary', 'text-white', 'shadow-md', 'shadow-brand-primary/20', 'selected-seat');
+                btn.classList.remove('bg-brand-primary', 'border-brand-primary', 'text-white', 'shadow-[0_0_12px_rgba(229,9,20,0.4)]', 'scale-110', 'z-10', 'selected-seat');
                 const type = btn.dataset.type;
                 if (type === 'VIP') {
-                    btn.classList.add('bg-amber-50', 'hover:bg-amber-100', 'border-amber-300', 'text-amber-800', 'seat-available');
+                    btn.classList.add('bg-gradient-to-br', 'from-amber-100', 'to-amber-200', 'border-amber-400', 'text-amber-800', 'hover:from-amber-200', 'hover:to-amber-300', 'shadow-sm', 'seat-available');
                 } else if (type === 'Sweetbox') {
-                    btn.classList.add('bg-pink-50', 'hover:bg-pink-100', 'border-pink-300', 'text-pink-700', 'seat-available');
+                    btn.classList.add('bg-gradient-to-br', 'from-pink-100', 'to-pink-200', 'border-pink-400', 'text-pink-800', 'hover:from-pink-200', 'hover:to-pink-300', 'shadow-sm', 'seat-available');
                 } else {
-                    btn.classList.add('bg-slate-50', 'hover:bg-slate-100', 'border-slate-300', 'text-slate-700', 'seat-available');
+                    btn.classList.add('bg-white', 'border-slate-200', 'text-slate-600', 'hover:border-brand-primary', 'hover:text-brand-primary', 'shadow-sm', 'seat-available');
                 }
                 
                 const input = document.getElementById('input-' + seatId);
