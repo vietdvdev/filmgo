@@ -272,7 +272,8 @@
                             <h3 class="font-headline-sm text-headline-sm">Định Dạng Chiếu <span class="text-error">*</span></h3>
                         </div>
 
-                        <p class="text-xs text-on-surface-variant">Chọn các định dạng mà bộ phim hỗ trợ. Manager chỉ có thể tạo suất chiếu theo đúng các định dạng này.</p>
+                        <!-- Giải thích bằng tiếng Việt: Đổi từ chọn nhiều (checkbox) sang chọn 1 (radio) -->
+                        <p class="text-xs text-on-surface-variant">Chọn 1 định dạng chiếu duy nhất cho bộ phim này.</p>
 
                         <div class="grid grid-cols-2 gap-2">
                             @foreach($formats as $format)
@@ -285,9 +286,10 @@
                                     ];
                                     $colorClass = $fmtColors[$format->name] ?? 'peer-checked:border-primary peer-checked:bg-primary/10 peer-checked:text-primary';
                                 @endphp
-                                <input type="checkbox" name="formats[]" id="format_{{ $format->id }}"
+                                <!-- Đổi type sang radio, name thành format_id -->
+                                <input type="radio" name="format_id" id="format_{{ $format->id }}"
                                     value="{{ $format->id }}" class="hidden peer"
-                                    {{ in_array($format->id, old('formats', [])) ? 'checked' : '' }}>
+                                    {{ old('format_id') == $format->id ? 'checked' : '' }}>
                                 <label for="format_{{ $format->id }}"
                                     class="cursor-pointer flex flex-col items-center justify-center gap-1 px-3 py-3 border border-outline-variant rounded-lg text-on-surface-variant hover:bg-surface-container-low {{ $colorClass }} transition-all duration-200 select-none">
                                     <span class="font-black text-lg leading-none">{{ $format->name }}</span>
@@ -299,7 +301,7 @@
                                 </label>
                             @endforeach
                         </div>
-                        @error('formats')
+                        @error('format_id')
                             <p class="text-error font-body-md text-xs mt-1">{{ $message }}</p>
                         @enderror
                     </div>
