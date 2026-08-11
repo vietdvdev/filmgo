@@ -1353,42 +1353,416 @@ const POS = (() => {
     }
 
     function selectPayment(method) {
-        const cashBtn = document.getElementById('btn-fnb-cash');
-        const transferBtn = document.getElementById('btn-fnb-transfer');
-        const qrPanel = document.getElementById('fnb-qr-panel');
+        // This handles the TICKET checkout modal (btn-cash / btn-transfer)
+        state.paymentMethod = method;
+        const cashBtn     = document.getElementById('btn-cash');
+        const transferBtn = document.getElementById('btn-transfer');
+        const cashPanel   = document.getElementById('cash-panel');
+        const transferPanel = document.getElementById('transfer-panel');
         if (!cashBtn || !transferBtn) return;
-        
+
+        if (method === 'cash') {
+            cashBtn.className     = 'flex flex-col items-center gap-2 p-3 border-2 border-primary bg-primary/5 rounded-xl transition-all shadow-sm';
+            cashBtn.querySelector('span.material-symbols-outlined').className = 'material-symbols-outlined text-primary text-3xl';
+            cashBtn.querySelector('span:last-child').className = 'text-xs font-black text-primary';
+            transferBtn.className = 'flex flex-col items-center gap-2 p-3 border-2 border-gray-200 bg-white rounded-xl hover:border-primary/40 transition-all text-gray-500 hover:text-primary';
+            transferBtn.querySelector('span.material-symbols-outlined').className = 'material-symbols-outlined text-3xl';
+            transferBtn.querySelector('span:last-child').className = 'text-xs font-black';
+            if (cashPanel)    cashPanel.classList.remove('hidden');
+            if (transferPanel) transferPanel.classList.add('hidden');
+        } else {
+            transferBtn.className = 'flex flex-col items-center gap-2 p-3 border-2 border-primary bg-primary/5 rounded-xl transition-all shadow-sm';
+            transferBtn.querySelector('span.material-symbols-outlined').className = 'material-symbols-outlined text-primary text-3xl';
+            transferBtn.querySelector('span:last-child').className = 'text-xs font-black text-primary';
+            cashBtn.className     = 'flex flex-col items-center gap-2 p-3 border-2 border-gray-200 bg-white rounded-xl hover:border-primary/40 transition-all text-gray-500 hover:text-primary';
+            cashBtn.querySelector('span.material-symbols-outlined').className = 'material-symbols-outlined text-3xl';
+            cashBtn.querySelector('span:last-child').className = 'text-xs font-black';
+            if (cashPanel)    cashPanel.classList.add('hidden');
+            if (transferPanel) transferPanel.classList.remove('hidden');
+        }
+    }
+
+    // ── Format tiền ──────────────────────────────────────────────────────
+    function debounce(fn, delay) {
+        let timer;
+        return (...args) => {
+            clearTimeout(timer);
+            timer = setTimeout(() => fn(...args), delay);
+        };
+    }
+
+    function formatMoney(n) {
+        return new Intl.NumberFormat('vi-VN').format(n || 0) + 'đ';
+    }
+
+    // ── Tính thối tiền ───────────────────────────────────────────────────
+    function calcChange() {
+        const given  = parseFloat(document.getElementById('cash-given')?.value) || 0;
+        const totals = calcTotals();
+        const change = Math.max(0, given - totals.grand);
+        const el = document.getElementById('change-amount');
+        if (el) el.textContent = formatMoney(change);
+    }
+
+    // ── Xác nhận & thanh toán ────────────────────────────────────────────
+    async function confirmCheckout() {
+        if (!state.selectedSeats.length || !state.currentShowtime) return;
+
+        const btn = document.getElementById('btn-confirm-payment');
+        btn.disabled = true;
+        btn.innerHTML = '<span class="material-symbols-outlined animate-spin" style="font-size:20px">progress_activity</span> Đang xử lý...';
+
+        try {
+            const totals = calcTotals();
+            const combosPayload = Object.fromEntries(
+                Object.entries(state.combos).filter(([, q]) => q > 0)
+            );
+            const res = await apiFetch('/staff/pos/api/checkout', {
+                method: 'POST',
+                body: JSON.stringify({
+                    showtime_id:     state.currentShowtime.id,
+                    seats:           state.selectedSeats.map(s => s.showtime_seat_id),
+                    combos:          combosPayload,
+                    payment_method:  state.paymentMethod,
+                    customer_phone:  document.getElementById('customer-phone')?.value.trim() || null,
+                    voucher_code:    state.voucher?.code || null,
+                }),
+            });
+
+            if (!res.success) { toast(res.message || 'Đặt vé thất bại!', 'error'); return; }
+
+            state.currentBooking = res.booking;
+            document.getElementById('checkout-modal').classList.add('hidden');
+            openSuccessModal(res.booking);
+        } catch(e) { toast('Lỗi kết nối: ' + e.message, 'error'); }
+        finally {
+            btn.disabled = false;
+            btn.innerHTML = '<span class="material-symbols-outlined text-2xl">check_circle</span> XÁC NHẬN & XUẤT VÉ';
+        }
+    }
+
+    // ── Modal thành công ─────────────────────────────────────────────────
+    function openSuccessModal(booking) {
+        document.getElementById('success-booking-code').textContent = booking.booking_code;
+        document.getElementById('success-movie').textContent  = booking.showtime?.movie  || '—';
+        document.getElementById('success-time').textContent   = booking.showtime?.start_time ? String(booking.showtime.start_time).substring(0,5) : '—';
+        document.getElementById('success-seats').textContent  = (booking.seats || []).map(s => s.label).join(', ');
+        document.getElementById('success-total').textContent  = formatMoney(booking.final_total);
+        document.getElementById('qr-code-container').innerHTML = '';
+        document.getElementById('qr-display-area').classList.add('hidden');
+        document.getElementById('success-modal').classList.remove('hidden');
+
+        // Cache để dùng lúc in
+        state.currentBooking = booking;
+    }
+
+    // ── In vé nhiệt ──────────────────────────────────────────────────────
+    function handlePrintTicket() {
+        const b = state.currentBooking;
+        if (!b) return;
+        document.body.classList.remove('printing-fnb');
+        document.body.classList.add('printing-ticket');
+
+        document.getElementById('pt-code').textContent  = b.booking_code;
+        document.getElementById('pt-movie').textContent = b.showtime?.movie || '';
+        document.getElementById('pt-date').textContent  = b.showtime?.show_date || '';
+        document.getElementById('pt-time').textContent  = b.showtime?.start_time ? String(b.showtime.start_time).substring(0,5) : '';
+        document.getElementById('pt-room').textContent  = b.showtime?.room || '';
+        document.getElementById('pt-cinema').textContent = b.showtime?.cinema || '';
+
+        const seatsHtml = (b.seats||[]).map(s =>
+            `<div style="display:flex;justify-content:space-between;padding:2px 0;"><span>${s.label} (${s.type})</span><span>${formatMoney(s.price)}</span></div>`
+        ).join('');
+        document.getElementById('pt-seats').innerHTML = seatsHtml;
+
+        const comboWrap = document.getElementById('pt-combo-wrap');
+        if (b.combos && b.combos.length) {
+            comboWrap.style.display = '';
+            document.getElementById('pt-combos').innerHTML = b.combos.map(c =>
+                `<div style="display:flex;justify-content:space-between;padding:2px 0;"><span>${c.quantity}x ${c.name}</span><span>${formatMoney(c.subtotal)}</span></div>`
+            ).join('');
+        } else { comboWrap.style.display = 'none'; }
+
+        const discRow = document.getElementById('pt-discount-row');
+        if (b.discount_amount > 0) {
+            discRow.style.display = '';
+            document.getElementById('pt-discount').textContent = '-' + formatMoney(b.discount_amount);
+        } else { discRow.style.display = 'none'; }
+
+        document.getElementById('pt-total').textContent  = formatMoney(b.final_total);
+        document.getElementById('pt-method').textContent = b.payment_method === 'cash' ? 'Tiền mặt' : 'Chuyển khoản';
+
+        window.print();
+    }
+
+    // ── Hiển thị QR vé điện tử ───────────────────────────────────────────
+    function handleShowQR() {
+        const b = state.currentBooking;
+        if (!b || !b.seats?.length) return;
+        const qrArea = document.getElementById('qr-display-area');
+        const qrCon  = document.getElementById('qr-code-container');
+        qrCon.innerHTML = '';
+        const qrVal = b.seats[0].qr || b.booking_code;
+        new QRCode(qrCon, { text: qrVal, width: 160, height: 160, correctLevel: QRCode.CorrectLevel.M });
+        document.getElementById('qr-booking-code-label').textContent = qrVal;
+        qrArea.classList.remove('hidden');
+    }
+
+    // ── Reset toàn bộ POS ────────────────────────────────────────────────
+    function resetPOS() {
+        document.getElementById('success-modal').classList.add('hidden');
+        state.selectedSeats = [];
+        state.combos = {};
+        state.voucher = null;
+        state.currentBooking = null;
+
+        document.querySelectorAll('[id^="combo-qty-"]').forEach(el => { el.textContent = '0'; });
+
+        const vi = document.getElementById('voucher-input');    if(vi) vi.value = '';
+        const vInfo = document.getElementById('voucher-info'); if(vInfo) vInfo.classList.add('hidden');
+        const cp = document.getElementById('customer-phone'); if(cp) cp.value = '';
+
+        if (state.currentShowtime) loadSeatMap(state.currentShowtime.id);
+        updateCart();
+        toast('Đã sẵn sàng đón khách tiếp theo!', 'success');
+    }
+
+    // ── Init ─────────────────────────────────────────────────────────────
+    function init() {
+        loadMovies();
+        document.getElementById('pos-date').addEventListener('change', loadMovies);
+        document.getElementById('pos-search').addEventListener('input', debounce(loadMovies, 350));
+
+        // Toast listener (từ _FNB dispatch)
+        document.addEventListener('pos-toast', e => toast(e.detail.msg, e.detail.type));
+
+        // F2 tạo đơn mới nhanh
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'F2') {
+                e.preventDefault();
+                if (!document.getElementById('success-modal').classList.contains('hidden')) resetPOS();
+            }
+        });
+    }
+
+    return {
+        init, loadMovies, loadSeatMap, toggleSeat,
+        showTooltip, moveTooltip, hideTooltip,
+        changeCombo, applyVoucher, removeVoucher,
+        openCheckout, closeCheckout, selectPayment, calcChange,
+        confirmCheckout,
+        openSuccessModal,
+        handlePrintTicket, handleShowQR, resetPOS,
+    };
+
+})();
+
+// ─── F&B MODE FUNCTIONS ───────────────────────────────────────────────────────
+const _FNB = (() => {
+    'use strict';
+    const fnbState = { combos:{}, comboInfo:{}, items:{}, itemInfo:{}, loaded:false };
+    let currentFnbBooking = null;
+    const csrf = () => document.querySelector('meta[name="csrf-token"]').content;
+
+    async function apiFetch(url, opts={}) {
+        const r = await fetch(url, { headers:{'Content-Type':'application/json','X-CSRF-TOKEN':csrf(),'Accept':'application/json'}, ...opts });
+        return r.json();
+    }
+    function fmt(n){ return new Intl.NumberFormat('vi-VN').format(n||0)+'đ'; }
+    function toast(msg,type){ document.dispatchEvent(new CustomEvent('pos-toast',{detail:{msg,type}})); }
+
+    async function switchMode(mode) {
+        const root      = document.getElementById('pos-root');
+        const tabTicket = document.getElementById('tab-ticket');
+        const tabFnb    = document.getElementById('tab-fnb');
+        const movieList = document.getElementById('movie-list');
+        const fnbPanel  = document.getElementById('fnb-panel');
+        const dateInput = document.getElementById('pos-date');
+        const btnCO     = document.getElementById('btn-checkout');
+
+        if (mode === 'fnb') {
+            root.classList.add('fnb-mode');
+            tabTicket.classList.remove('active');
+            tabFnb.classList.add('fnb-active');
+            movieList.classList.add('hidden');
+            fnbPanel.classList.remove('hidden');
+            dateInput.style.display = 'none';
+            if (btnCO) btnCO.closest('#pos-bottom-bar')?.classList.remove('show');
+            if (!fnbState.loaded) await loadFnbProducts();
+        } else {
+            root.classList.remove('fnb-mode');
+            tabFnb.classList.remove('fnb-active');
+            tabTicket.classList.add('active');
+            movieList.classList.remove('hidden');
+            fnbPanel.classList.add('hidden');
+            dateInput.style.display = '';
+        }
+    }
+
+    async function loadFnbProducts() {
+        const data   = await apiFetch('/staff/pos/api/combo-items');
+        const groups = data.data || [];
+
+        groups.forEach(g => g.items.forEach(i => { fnbState.itemInfo[i.id] = i; }));
+
+        document.querySelectorAll('[data-combo-id]').forEach(el => {
+            const id = el.dataset.comboId;
+            fnbState.comboInfo[id] = { name: el.dataset.comboName, price: Number(el.dataset.comboPrice) };
+        });
+
+        const listEl  = document.getElementById('fnb-product-list');
+        const loading = document.getElementById('fnb-loading');
+        if (loading) loading.style.display = 'none';
+
+        let html = '';
+
+        const comboEls = document.querySelectorAll('[data-combo-id]');
+        if (comboEls.length) {
+            html += `<div class="mb-4"><p class="text-[10px] font-bold uppercase tracking-widest text-primary mb-2">🎁 COMBO GÓI</p>`;
+            comboEls.forEach(el => {
+                const id = el.dataset.comboId, name = el.dataset.comboName, price = el.dataset.comboPrice;
+                html += `<div class="flex items-center gap-3 mb-2 px-3 py-2.5 rounded-xl border border-gray-100 bg-white hover:border-primary/30 hover:bg-blue-50/50 transition-colors">
+                    <div class="flex-1 min-w-0"><p class="text-sm font-bold text-gray-900 truncate">${name}</p><p class="text-xs font-black text-primary mt-0.5">${fmt(Number(price))}</p></div>
+                    <div class="flex items-center gap-1 bg-gray-50 rounded-lg p-1 border border-gray-200">
+                        <button onclick="_FNB.changeFnbCombo(${id},-1)" class="w-7 h-7 rounded-md hover:bg-white font-bold text-sm flex items-center justify-center text-gray-600">−</button>
+                        <span id="fnb-combo-qty-${id}" class="w-7 text-center text-sm font-black text-gray-900">0</span>
+                        <button onclick="_FNB.changeFnbCombo(${id},1)" class="w-7 h-7 rounded-md bg-primary text-white font-bold text-sm flex items-center justify-center hover:bg-blue-700">+</button>
+                    </div></div>`;
+            });
+            html += '</div>';
+        }
+
+        groups.forEach(g => {
+            if (!g.items.length) return;
+            html += `<div class="mb-3"><p class="text-[10px] font-bold uppercase tracking-widest text-orange-600 mb-2">🍿 ${g.type}</p>`;
+            g.items.forEach(item => {
+                html += `<div class="flex items-center gap-3 mb-2 px-3 py-2.5 rounded-xl border border-gray-100 bg-white hover:border-orange-300 hover:bg-orange-50/50 transition-colors">
+                    <div class="flex-1 min-w-0"><p class="text-sm font-bold text-gray-900 truncate">${item.name}</p><p class="text-xs font-black text-orange-600 mt-0.5">${fmt(item.price)} <span class="text-gray-400 font-normal">/${item.unit}</span></p></div>
+                    <div class="flex items-center gap-1 bg-gray-50 rounded-lg p-1 border border-gray-200">
+                        <button onclick="_FNB.changeFnbItem(${item.id},-1)" class="w-7 h-7 rounded-md hover:bg-white font-bold text-sm flex items-center justify-center text-gray-600">−</button>
+                        <span id="fnb-item-qty-${item.id}" class="w-7 text-center text-sm font-black text-gray-900">0</span>
+                        <button onclick="_FNB.changeFnbItem(${item.id},1)" class="w-7 h-7 rounded-md bg-orange-500 text-white font-bold text-sm flex items-center justify-center hover:bg-orange-600">+</button>
+                    </div></div>`;
+            });
+            html += '</div>';
+        });
+
+        listEl.innerHTML = html || '<p class="text-xs text-gray-400 text-center py-6">Chưa có sản phẩm nào</p>';
+        fnbState.loaded = true;
+    }
+
+    function changeFnbCombo(id, delta) {
+        const qty = Math.max(0, (fnbState.combos[id] ?? 0) + delta);
+        if (qty === 0) delete fnbState.combos[id]; else fnbState.combos[id] = qty;
+        const el = document.getElementById(`fnb-combo-qty-${id}`);
+        if (el) el.textContent = qty;
+        updateFnbCart();
+    }
+
+    function changeFnbItem(id, delta) {
+        const qty = Math.max(0, (fnbState.items[id] ?? 0) + delta);
+        if (qty === 0) delete fnbState.items[id]; else fnbState.items[id] = qty;
+        const el = document.getElementById(`fnb-item-qty-${id}`);
+        if (el) el.textContent = qty;
+        updateFnbCart();
+    }
+
+    function updateFnbCart() {
+        let total = 0, count = 0, html = '';
+
+        Object.entries(fnbState.combos).forEach(([id, qty]) => {
+            const p = fnbState.comboInfo[id];
+            if (!p || qty <= 0) return;
+            const sub = p.price * qty; total += sub; count += qty;
+            html += `<div class="flex justify-between items-center py-2.5 border-b border-gray-100 text-sm bg-white px-3 rounded-xl shadow-sm mb-2">
+                <div><p class="font-bold text-gray-900 truncate max-w-[180px]">🎁 ${p.name}</p><p class="text-xs text-gray-500 font-semibold mt-0.5">SL: ${qty}</p></div>
+                <span class="font-black text-orange-600">${fmt(sub)}</span></div>`;
+        });
+        Object.entries(fnbState.items).forEach(([id, qty]) => {
+            const p = fnbState.itemInfo[id];
+            if (!p || qty <= 0) return;
+            const sub = p.price * qty; total += sub; count += qty;
+            html += `<div class="flex justify-between items-center py-2.5 border-b border-gray-100 text-sm bg-white px-3 rounded-xl shadow-sm mb-2">
+                <div><p class="font-bold text-gray-900 truncate max-w-[180px]">🍿 ${p.name}</p><p class="text-xs text-gray-500 font-semibold mt-0.5">SL: ${qty}</p></div>
+                <span class="font-black text-orange-600">${fmt(sub)}</span></div>`;
+        });
+
+        const seatsEl = document.getElementById('fnb-only-cart-items');
+        if (seatsEl) seatsEl.innerHTML = html || '<p class="text-xs text-gray-400 text-center py-4">Chưa chọn sản phẩm nào</p>';
+
+        const totEl = document.getElementById('fnb-only-total');
+        if (totEl) totEl.textContent = fmt(total);
+
+        const btn = document.getElementById('btn-checkout-fnb');
+        if (btn) btn.disabled = count === 0;
+    }
+
+    function selectPayment(method) {
+        // Handles the F&B cart column (btn-fnb-cash / btn-fnb-transfer)
+        const cashBtn     = document.getElementById('btn-fnb-cash');
+        const transferBtn = document.getElementById('btn-fnb-transfer');
+        const qrPanel     = document.getElementById('fnb-qr-panel');
+        if (!cashBtn || !transferBtn) return;
+
         let total = 0;
         Object.entries(fnbState.combos).forEach(([id, qty]) => { total += (fnbState.comboInfo[id]?.price||0) * qty; });
-        Object.entries(fnbState.items).forEach(([id, qty]) => { total += (fnbState.itemInfo[id]?.price||0) * qty; });
-        
+        Object.entries(fnbState.items).forEach(([id, qty])  => { total += (fnbState.itemInfo[id]?.price||0) * qty; });
+
         if (method === 'cash') {
-            cashBtn.className = "flex flex-col items-center gap-1 p-2 border-2 border-orange-500 bg-orange-50 rounded-xl transition-all shadow-sm";
-            cashBtn.querySelector('span:last-child').className = "text-xs font-black text-orange-700";
-            cashBtn.querySelector('.material-symbols-outlined').className = "material-symbols-outlined text-orange-600";
-            
-            transferBtn.className = "flex flex-col items-center gap-1 p-2 border-2 border-gray-200 bg-white rounded-xl hover:border-orange-500/40 transition-all text-gray-500";
-            transferBtn.querySelector('span:last-child').className = "text-xs font-black";
-            transferBtn.querySelector('.material-symbols-outlined').className = "material-symbols-outlined";
-            
-            if(qrPanel) qrPanel.classList.add('hidden');
+            cashBtn.className     = 'flex flex-col items-center gap-1 p-2 border-2 border-orange-500 bg-orange-50 rounded-xl transition-all shadow-sm';
+            cashBtn.querySelectorAll('span')[0].className   = 'material-symbols-outlined text-orange-600';
+            cashBtn.querySelectorAll('span')[1].className   = 'text-xs font-black text-orange-700';
+            transferBtn.className = 'flex flex-col items-center gap-1 p-2 border-2 border-gray-200 bg-white rounded-xl hover:border-orange-500/40 transition-all text-gray-500';
+            transferBtn.querySelectorAll('span')[0].className = 'material-symbols-outlined';
+            transferBtn.querySelectorAll('span')[1].className = 'text-xs font-black';
+            if (qrPanel) qrPanel.classList.add('hidden');
         } else {
-            transferBtn.className = "flex flex-col items-center gap-1 p-2 border-2 border-orange-500 bg-orange-50 rounded-xl transition-all shadow-sm";
-            transferBtn.querySelector('span:last-child').className = "text-xs font-black text-orange-700";
-            transferBtn.querySelector('.material-symbols-outlined').className = "material-symbols-outlined text-orange-600";
-            
-            cashBtn.className = "flex flex-col items-center gap-1 p-2 border-2 border-gray-200 bg-white rounded-xl hover:border-orange-500/40 transition-all text-gray-500";
-            cashBtn.querySelector('span:last-child').className = "text-xs font-black";
-            cashBtn.querySelector('.material-symbols-outlined').className = "material-symbols-outlined";
-            
-            if(qrPanel && total > 0) {
+            transferBtn.className = 'flex flex-col items-center gap-1 p-2 border-2 border-orange-500 bg-orange-50 rounded-xl transition-all shadow-sm';
+            transferBtn.querySelectorAll('span')[0].className = 'material-symbols-outlined text-orange-600';
+            transferBtn.querySelectorAll('span')[1].className = 'text-xs font-black text-orange-700';
+            cashBtn.className     = 'flex flex-col items-center gap-1 p-2 border-2 border-gray-200 bg-white rounded-xl hover:border-orange-500/40 transition-all text-gray-500';
+            cashBtn.querySelectorAll('span')[0].className   = 'material-symbols-outlined';
+            cashBtn.querySelectorAll('span')[1].className   = 'text-xs font-black';
+            if (qrPanel && total > 0) {
                 qrPanel.classList.remove('hidden');
-                document.getElementById('fnb-qr-img').src = `https://img.vietqr.io/image/MB-0123456789-compact2.png?amount=${total}&addInfo=${encodeURIComponent('Dat ve FilmGo')}&accountName=CINEMA%20FILMGO`;
+                document.getElementById('fnb-qr-img').src = `https://img.vietqr.io/image/MB-0123456789-compact2.png?amount=${total}&addInfo=${encodeURIComponent('Dat F&B FilmGo')}&accountName=CINEMA%20FILMGO`;
             }
         }
     }
 
-    let currentFnbBooking = null;
+    async function checkoutFnb() {
+        const hasItems = Object.values(fnbState.combos).some(q=>q>0) || Object.values(fnbState.items).some(q=>q>0);
+        if (!hasItems) { alert('Vui lòng chọn ít nhất một sản phẩm!'); return; }
+
+        // Detect selected payment method
+        const cashBtn = document.getElementById('btn-fnb-cash');
+        const pm      = cashBtn?.className.includes('border-orange-500') ? 'cash' : 'transfer';
+        const phone   = document.getElementById('fnb-customer-phone')?.value.trim();
+        const voucher = document.getElementById('fnb-voucher-input')?.value.trim();
+        const btn     = document.getElementById('btn-checkout-fnb');
+
+        btn.disabled = true;
+        btn.innerHTML = '<span class="material-symbols-outlined animate-spin" style="font-size:20px">progress_activity</span> Đang xử lý...';
+
+        try {
+            const res = await apiFetch('/staff/pos/api/checkout-fnb', {
+                method: 'POST',
+                body: JSON.stringify({ combos: fnbState.combos, combo_items: fnbState.items, payment_method: pm, customer_phone: phone||null, voucher_code: voucher||null }),
+            });
+            if (!res.success) { alert('Lỗi: ' + res.message); return; }
+
+            openFnbSuccessModal(res.booking);
+
+            // Reset cart
+            fnbState.combos = {}; fnbState.items = {};
+            document.querySelectorAll('[id^="fnb-combo-qty-"],[id^="fnb-item-qty-"]').forEach(el => el.textContent = '0');
+            updateFnbCart();
+        } catch(e) { alert('Lỗi kết nối: ' + e.message); }
+        finally {
+            btn.disabled = false;
+            btn.innerHTML = '<span class="material-symbols-outlined" style="font-size:20px">point_of_sale</span> XÁC NHẬN & THANH TOÁN';
+        }
+    }
 
     function openFnbSuccessModal(booking) {
         currentFnbBooking = booking;
@@ -1406,42 +1780,35 @@ const POS = (() => {
     function resetFnb() {
         document.getElementById('fnb-success-modal').classList.add('hidden');
         fnbState.combos = {}; fnbState.items = {};
-        document.querySelectorAll('[id^="fnb-combo-qty-"],[id^="fnb-item-qty-"]').forEach(el=>el.textContent='0');
+        document.querySelectorAll('[id^="fnb-combo-qty-"],[id^="fnb-item-qty-"]').forEach(el => el.textContent = '0');
         updateFnbCart();
-        if(document.getElementById('fnb-customer-phone')) document.getElementById('fnb-customer-phone').value = '';
-        if(document.getElementById('fnb-voucher-input')) document.getElementById('fnb-voucher-input').value = '';
+        const ph = document.getElementById('fnb-customer-phone'); if(ph) ph.value = '';
+        const vc = document.getElementById('fnb-voucher-input'); if(vc) vc.value = '';
         selectPayment('cash');
         currentFnbBooking = null;
-        toast("Đã sẵn sàng đơn F&B mới!", "success");
+        toast('Đã sẵn sàng đơn F&B mới!', 'success');
     }
 
     function handlePrintFnb() {
         if (!currentFnbBooking) return;
         document.body.classList.remove('printing-ticket');
         document.body.classList.add('printing-fnb');
-        
+
         document.getElementById('pf-code').textContent = currentFnbBooking.booking_code;
         document.getElementById('pf-date').textContent = new Date().toLocaleString('vi-VN');
         let html = '';
-        (currentFnbBooking.combos||[]).forEach(c => {
-            html += `<tr><td style="padding:4px 0;">${c.quantity}x ${c.name}</td><td style="text-align:right;">${fmt(c.subtotal)}</td></tr>`;
-        });
-        (currentFnbBooking.combo_items||[]).forEach(i => {
-            html += `<tr><td style="padding:4px 0;">${i.quantity}x ${i.name}</td><td style="text-align:right;">${fmt(i.subtotal)}</td></tr>`;
-        });
+        (currentFnbBooking.combos||[]).forEach(c => { html += `<tr><td style="padding:4px 0;">${c.quantity}x ${c.name}</td><td style="text-align:right;">${fmt(c.subtotal)}</td></tr>`; });
+        (currentFnbBooking.combo_items||[]).forEach(i => { html += `<tr><td style="padding:4px 0;">${i.quantity}x ${i.name}</td><td style="text-align:right;">${fmt(i.subtotal)}</td></tr>`; });
         document.getElementById('pf-items').innerHTML = html;
-        document.getElementById('pf-discount').textContent = currentFnbBooking.discount_amount > 0 ? ('-' + fmt(currentFnbBooking.discount_amount)) : '0đ';
-        document.getElementById('pf-total').textContent = fmt(currentFnbBooking.final_total);
+        document.getElementById('pf-discount').textContent = (currentFnbBooking.discount_amount > 0) ? ('-' + fmt(currentFnbBooking.discount_amount)) : '0đ';
+        document.getElementById('pf-total').textContent   = fmt(currentFnbBooking.final_total);
         document.getElementById('pf-payment').textContent = currentFnbBooking.payment_method === 'cash' ? 'Tiền mặt' : 'Chuyển khoản';
-        
+
         window.print();
     }
 
     return { switchMode, changeFnbCombo, changeFnbItem, checkoutFnb, selectPayment, openFnbSuccessModal, resetFnb, handlePrintFnb };
 })();
-
-// Bridge: expose F&B methods qua POS object (đã export trong IIFE)
-// switchMode etc. đã được gọi trực tiếp qua _FNB.xxx trong HTML
 
 document.addEventListener('DOMContentLoaded', POS.init);
 </script>
