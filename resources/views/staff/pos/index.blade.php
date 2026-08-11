@@ -18,9 +18,17 @@
     }
 
     /* ── Tab Mode F&B ─── */
-    #pos-root.fnb-mode { grid-template-columns: 1fr; max-width: 800px; margin: 0 auto; }
+    #pos-root.fnb-mode { grid-template-columns: 1fr 400px; max-width: none; margin: 0; }
+    @media (max-width: 1024px) {
+        #pos-root.fnb-mode { grid-template-columns: 1fr 340px; }
+    }
+    @media (max-width: 768px) {
+        #pos-root.fnb-mode { display: flex; flex-direction: column; height: auto; min-height: calc(100vh - 64px); }
+    }
     #pos-root.fnb-mode #pos-col-seat { display: none; }
-    #pos-root.fnb-mode .movie-col { border-right: none; height: calc(100vh - 64px); max-height: none; }
+    #pos-root.fnb-mode .movie-col { border-right: none; height: calc(100vh - 64px); max-height: none; background: #fffaf5; }
+    #fnb-cart-col { display: none; }
+    #pos-root.fnb-mode #fnb-cart-col { display: flex; }
 
     .pos-tab-btn {
         flex: 1; padding: 8px; border-radius: 10px; font-size: 12px; font-weight: 700;
@@ -140,22 +148,6 @@
                 <p class="text-sm font-bold">Đang tải danh sách...</p>
             </div>
             <div id="fnb-product-list"></div>
-            
-            {{-- Giỏ hàng F&B riêng khi chỉ bán bắp nước --}}
-            <div id="fnb-only-cart" class="mt-6 border-t border-orange-200 pt-4 hidden">
-                <h3 class="text-xs font-black text-orange-800 uppercase tracking-wider mb-2">Giỏ Hàng F&B</h3>
-                <div id="fnb-only-cart-items" class="space-y-1 mb-4"></div>
-                <div class="flex justify-between items-center text-sm font-black text-gray-900 border-t border-orange-100 pt-2 mb-4">
-                    <span>TỔNG CỘNG</span>
-                    <span id="fnb-only-total" class="text-orange-600 text-lg">0đ</span>
-                </div>
-                <button id="btn-checkout-fnb" onclick="_FNB.checkoutFnb()" disabled
-                        class="w-full py-3.5 font-black text-sm rounded-xl disabled:opacity-40 disabled:cursor-not-allowed transition-all flex items-center justify-center gap-2 text-white shadow-lg shadow-orange-500/30 hover:shadow-orange-500/50 hover:-translate-y-0.5 active:translate-y-0"
-                        style="background:linear-gradient(135deg, #f97316, #ea580c)">
-                    <span class="material-symbols-outlined" style="font-size:20px">point_of_sale</span>
-                    THANH TOÁN F&B
-                </button>
-            </div>
         </div>
     </div>
 
@@ -203,6 +195,61 @@
                     <span class="material-symbols-outlined">arrow_forward</span>
                 </button>
             </div>
+        </div>
+    </div>
+
+    {{-- ════════════════════════════════════════════════════════════
+         CỘT PHẢI — Giỏ hàng F&B Độc Lập
+    ════════════════════════════════════════════════════════════ --}}
+    <div id="fnb-cart-col" class="hidden flex-col bg-white border-l border-gray-200 shadow-xl z-20 overflow-hidden">
+        <div class="p-5 border-b border-gray-100 flex-shrink-0">
+            <h3 class="text-sm font-black text-orange-600 uppercase tracking-widest flex items-center gap-2">
+                <span class="material-symbols-outlined text-lg">shopping_basket</span>
+                Giỏ Hàng F&B
+            </h3>
+        </div>
+        
+        {{-- Danh sách món --}}
+        <div id="fnb-only-cart-items" class="flex-1 overflow-y-auto p-5 space-y-2 bg-gray-50/50">
+            <p class="text-xs text-gray-400 text-center py-4">Chưa chọn sản phẩm nào</p>
+        </div>
+
+        {{-- Thanh toán --}}
+        <div class="p-5 border-t border-gray-200 bg-white flex-shrink-0 shadow-[0_-4px_20px_rgba(0,0,0,0.03)] space-y-4">
+            <div class="space-y-3">
+                <input id="fnb-customer-phone" type="tel" placeholder="SĐT Khách hàng..."
+                       class="w-full text-sm font-semibold border border-gray-300 rounded-xl px-4 py-2.5 focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 outline-none transition-all">
+                <div class="flex gap-2">
+                    <input id="fnb-voucher-input" type="text" placeholder="Mã giảm giá..."
+                           class="flex-1 text-sm font-bold border border-gray-300 rounded-xl px-4 py-2.5 focus:ring-2 focus:ring-green-500/20 focus:border-green-500 outline-none uppercase">
+                    <button class="px-4 py-2.5 bg-gray-900 hover:bg-gray-800 text-white text-xs font-black rounded-xl transition-all">ÁP DỤNG</button>
+                </div>
+            </div>
+
+            {{-- Chọn thanh toán --}}
+            <div class="grid grid-cols-2 gap-2 mt-4">
+                <button id="btn-fnb-cash" onclick="_FNB.selectPayment('cash')"
+                        class="flex flex-col items-center gap-1 p-2 border-2 border-orange-500 bg-orange-50 rounded-xl transition-all shadow-sm">
+                    <span class="material-symbols-outlined text-orange-600">payments</span>
+                    <span class="text-xs font-black text-orange-700">Tiền Mặt</span>
+                </button>
+                <button id="btn-fnb-transfer" onclick="_FNB.selectPayment('transfer')"
+                        class="flex flex-col items-center gap-1 p-2 border-2 border-gray-200 bg-white rounded-xl hover:border-orange-500/40 transition-all text-gray-500">
+                    <span class="material-symbols-outlined">qr_code_2</span>
+                    <span class="text-xs font-black">Chuyển Khoản</span>
+                </button>
+            </div>
+            
+            <div class="flex justify-between items-end pt-3 border-t border-gray-100">
+                <span class="text-sm font-black text-gray-900 uppercase">Tổng Cộng</span>
+                <span id="fnb-only-total" class="text-2xl font-black text-orange-600 leading-none">0đ</span>
+            </div>
+
+            <button id="btn-checkout-fnb" onclick="_FNB.checkoutFnb()" disabled
+                    class="w-full py-4 mt-2 bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 active:scale-[0.98] text-white font-black text-sm rounded-xl transition-all flex items-center justify-center gap-2 shadow-xl shadow-orange-500/30 disabled:opacity-50 disabled:cursor-not-allowed">
+                <span class="material-symbols-outlined text-xl">point_of_sale</span>
+                XÁC NHẬN & THANH TOÁN
+            </button>
         </div>
     </div>
 </div>
@@ -1497,7 +1544,6 @@ const _FNB = (() => {
         const fnbPanel  = document.getElementById('fnb-panel');
         const dateInput = document.getElementById('pos-date');
         const btnCO     = document.getElementById('btn-checkout');
-        const btnFnb    = document.getElementById('btn-checkout-fnb');
 
         if (mode === 'fnb') {
             root.classList.add('fnb-mode');
@@ -1507,7 +1553,6 @@ const _FNB = (() => {
             fnbPanel.classList.remove('hidden');
             dateInput.style.display = 'none';
             if (btnCO)  btnCO.classList.add('hidden');
-            if (btnFnb) btnFnb.classList.remove('hidden');
             if (!fnbState.loaded) await loadFnbProducts();
         } else {
             root.classList.remove('fnb-mode');
@@ -1517,10 +1562,8 @@ const _FNB = (() => {
             fnbPanel.classList.add('hidden');
             dateInput.style.display = '';
             if (btnCO)  btnCO.classList.remove('hidden');
-            if (btnFnb) btnFnb.classList.add('hidden');
         }
     }
-
     async function loadFnbProducts() {
         const data    = await apiFetch('/staff/pos/api/combo-items');
         const groups  = data.data || [];
@@ -1609,36 +1652,35 @@ const _FNB = (() => {
             const p = fnbState.comboInfo[id];
             if (!p || qty <= 0) return;
             const sub = p.price * qty; total += sub; count += qty;
-            html += `<div class="flex justify-between items-center py-1.5 border-b border-gray-50 text-xs">
-                <div><p class="font-semibold text-gray-800 truncate max-w-[140px]">🎁 ${p.name}</p><p class="text-gray-400">${qty}x</p></div>
-                <span class="font-bold text-primary">${fmt(sub)}</span></div>`;
+            html += `<div class="flex justify-between items-center py-2.5 border-b border-gray-100 text-sm bg-white px-3 rounded-xl shadow-sm mb-2">
+                <div><p class="font-bold text-gray-900 truncate max-w-[180px]">🎁 ${p.name}</p><p class="text-xs text-gray-500 font-semibold mt-0.5">SL: ${qty}</p></div>
+                <span class="font-black text-orange-600">${fmt(sub)}</span></div>`;
         });
         Object.entries(fnbState.items).forEach(([id, qty]) => {
             const p = fnbState.itemInfo[id];
             if (!p || qty <= 0) return;
             const sub = p.price * qty; total += sub; count += qty;
-            html += `<div class="flex justify-between items-center py-1.5 border-b border-gray-50 text-xs">
-                <div><p class="font-semibold text-gray-800 truncate max-w-[140px]">🍿 ${p.name}</p><p class="text-gray-400">${qty}x</p></div>
-                <span class="font-bold text-orange-500">${fmt(sub)}</span></div>`;
+            html += `<div class="flex justify-between items-center py-2.5 border-b border-gray-100 text-sm bg-white px-3 rounded-xl shadow-sm mb-2">
+                <div><p class="font-bold text-gray-900 truncate max-w-[180px]">🍿 ${p.name}</p><p class="text-xs text-gray-500 font-semibold mt-0.5">SL: ${qty}</p></div>
+                <span class="font-black text-orange-600">${fmt(sub)}</span></div>`;
         });
 
-        const seatsEl = document.getElementById('cart-seats');
-        seatsEl.innerHTML = html || '<p class="text-xs text-gray-400 text-center py-4">Chưa chọn sản phẩm nào</p>';
-        document.getElementById('total-seat-count').textContent = count;
-        document.getElementById('total-seat-price').textContent = '—';
-        document.getElementById('total-combo-price').textContent = fmt(total);
-        document.getElementById('grand-total').textContent = fmt(total);
+        const seatsEl = document.getElementById('fnb-only-cart-items');
+        if(seatsEl) seatsEl.innerHTML = html || '<p class="text-xs text-gray-400 text-center py-4">Chưa chọn sản phẩm nào</p>';
+        
+        const totEl = document.getElementById('fnb-only-total');
+        if(totEl) totEl.textContent = fmt(total);
+
         const btn = document.getElementById('btn-checkout-fnb');
         if (btn) btn.disabled = count === 0;
     }
-
     async function checkoutFnb() {
         const hasItems = Object.values(fnbState.combos).some(q=>q>0) || Object.values(fnbState.items).some(q=>q>0);
         if (!hasItems) { alert('Vui lòng chọn ít nhất một sản phẩm!'); return; }
 
-        const pm     = document.querySelector('[id^="btn-cash"]')?.classList.contains('border-primary') ? 'cash' : 'transfer';
-        const phone  = document.getElementById('customer-phone')?.value.trim();
-        const voucher= document.getElementById('voucher-input')?.value.trim();
+        const pm     = document.querySelector('[id^="btn-fnb-cash"]')?.classList.contains('border-orange-500') ? 'cash' : 'transfer';
+        const phone  = document.getElementById('fnb-customer-phone')?.value.trim();
+        const voucher= document.getElementById('fnb-voucher-input')?.value.trim();
         const btn    = document.getElementById('btn-checkout-fnb');
 
         btn.disabled = true;
@@ -1651,17 +1693,40 @@ const _FNB = (() => {
             });
             if (!res.success) { alert('Lỗi: ' + res.message); return; }
 
-            // Hiện modal success F&B
             openFnbSuccessModal(res.booking);
 
-            // Reset
             fnbState.combos = {}; fnbState.items = {};
             document.querySelectorAll('[id^="fnb-combo-qty-"],[id^="fnb-item-qty-"]').forEach(el=>el.textContent='0');
             updateFnbCart();
+            if(document.getElementById('fnb-customer-phone')) document.getElementById('fnb-customer-phone').value = '';
         } catch(e) { alert('Lỗi kết nối: ' + e.message); }
         finally {
             btn.disabled = false;
-            btn.innerHTML = '<span class="material-symbols-outlined" style="font-size:18px">fastfood</span> BÁN F&B';
+            btn.innerHTML = '<span class="material-symbols-outlined" style="font-size:20px">point_of_sale</span> XÁC NHẬN & THANH TOÁN';
+        }
+    }
+    
+    function selectPayment(method) {
+        const cashBtn = document.getElementById('btn-fnb-cash');
+        const transferBtn = document.getElementById('btn-fnb-transfer');
+        if (!cashBtn || !transferBtn) return;
+        
+        if (method === 'cash') {
+            cashBtn.className = "flex flex-col items-center gap-1 p-2 border-2 border-orange-500 bg-orange-50 rounded-xl transition-all shadow-sm";
+            cashBtn.querySelector('span:last-child').className = "text-xs font-black text-orange-700";
+            cashBtn.querySelector('.material-symbols-outlined').className = "material-symbols-outlined text-orange-600";
+            
+            transferBtn.className = "flex flex-col items-center gap-1 p-2 border-2 border-gray-200 bg-white rounded-xl hover:border-orange-500/40 transition-all text-gray-500";
+            transferBtn.querySelector('span:last-child').className = "text-xs font-black";
+            transferBtn.querySelector('.material-symbols-outlined').className = "material-symbols-outlined";
+        } else {
+            transferBtn.className = "flex flex-col items-center gap-1 p-2 border-2 border-orange-500 bg-orange-50 rounded-xl transition-all shadow-sm";
+            transferBtn.querySelector('span:last-child').className = "text-xs font-black text-orange-700";
+            transferBtn.querySelector('.material-symbols-outlined').className = "material-symbols-outlined text-orange-600";
+            
+            cashBtn.className = "flex flex-col items-center gap-1 p-2 border-2 border-gray-200 bg-white rounded-xl hover:border-orange-500/40 transition-all text-gray-500";
+            cashBtn.querySelector('span:last-child').className = "text-xs font-black";
+            cashBtn.querySelector('.material-symbols-outlined').className = "material-symbols-outlined";
         }
     }
 
@@ -1677,7 +1742,7 @@ const _FNB = (() => {
         modal.classList.remove('hidden');
     }
 
-    return { switchMode, changeFnbCombo, changeFnbItem, checkoutFnb, openFnbSuccessModal };
+    return { switchMode, changeFnbCombo, changeFnbItem, checkoutFnb, selectPayment, openFnbSuccessModal };
 })();
 
 // Bridge: expose F&B methods qua POS object (đã export trong IIFE)
