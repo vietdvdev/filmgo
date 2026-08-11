@@ -690,6 +690,50 @@
     </div>
 </div>
 
+{{-- Modal xác nhận thanh toán F&B --}}
+<div id="fnb-confirm-modal"
+     class="hidden fixed inset-0 z-[70] flex items-center justify-center no-print"
+     role="dialog" aria-modal="true">
+    <div class="absolute inset-0 bg-black/50 backdrop-blur-sm"></div>
+    <div class="relative bg-white rounded-2xl shadow-2xl w-full max-w-sm mx-4 overflow-hidden">
+        {{-- Header --}}
+        <div class="bg-gradient-to-r from-amber-500 to-orange-500 px-6 py-5 text-center">
+            <span class="material-symbols-outlined text-white text-5xl block mb-1" style="font-variation-settings:'FILL' 1">warning</span>
+            <h3 class="text-lg font-black text-white">Xác nhận thanh toán</h3>
+            <p class="text-amber-100 text-xs mt-1">Vui lòng kiểm tra lại thông tin trước khi xác nhận</p>
+        </div>
+        {{-- Body --}}
+        <div class="p-5 space-y-3">
+            <div class="bg-gray-50 rounded-xl p-4 space-y-2 text-sm">
+                <div class="flex justify-between">
+                    <span class="text-gray-500 font-semibold">Khách hàng:</span>
+                    <span id="fnb-confirm-phone" class="font-black text-gray-900">—</span>
+                </div>
+                <div class="flex justify-between">
+                    <span class="text-gray-500 font-semibold">Thanh toán:</span>
+                    <span id="fnb-confirm-method" class="font-black text-orange-600">Tiền mặt</span>
+                </div>
+                <div class="flex justify-between border-t border-gray-200 pt-2 mt-1">
+                    <span class="text-gray-700 font-black uppercase text-xs">Tổng tiền:</span>
+                    <span id="fnb-confirm-total" class="text-xl font-black text-orange-600">0đ</span>
+                </div>
+            </div>
+            <p class="text-xs text-gray-400 text-center">Hành động này không thể hoàn tác sau khi xác nhận.</p>
+        </div>
+        {{-- Buttons --}}
+        <div class="px-5 pb-5 grid grid-cols-2 gap-3">
+            <button onclick="_FNB.closeFnbConfirm()"
+                    class="py-3 border-2 border-gray-200 text-gray-600 font-bold text-sm rounded-xl hover:bg-gray-50 transition-all">
+                Huỷ bỏ
+            </button>
+            <button id="btn-fnb-confirm-proceed" onclick="_FNB.proceedCheckoutFnb()"
+                    class="py-3 bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 text-white font-black text-sm rounded-xl transition-all flex items-center justify-center gap-1">
+                <span class="material-symbols-outlined text-sm">check_circle</span> XÁC NHẬN
+            </button>
+        </div>
+    </div>
+</div>
+
 {{-- Toast notification --}}
 <div id="pos-toast" class="fixed bottom-6 left-1/2 -translate-x-1/2 z-[999] hidden no-print">
     <div class="px-5 py-3 rounded-xl text-sm font-semibold text-white shadow-xl flex items-center gap-2" id="pos-toast-inner"></div>
@@ -1732,15 +1776,57 @@ const _FNB = (() => {
 
     async function checkoutFnb() {
         const hasItems = Object.values(fnbState.combos).some(q=>q>0) || Object.values(fnbState.items).some(q=>q>0);
-        if (!hasItems) { alert('Vui lòng chọn ít nhất một sản phẩm!'); return; }
+        if (!hasItems) { toast('Vui lòng chọn ít nhất một sản phẩm!', 'error'); return; }
 
-        // Detect selected payment method
+        // 1. Validate SĐT khách hàng (bắt buộc)
+        const phoneEl = document.getElementById('fnb-customer-phone');
+        const phone   = phoneEl?.value.trim();
+        if (!phone) {
+            phoneEl?.focus();
+            phoneEl?.classList.add('border-red-500', 'ring-2', 'ring-red-400/30');
+            toast('Vui lòng nhập số điện thoại khách hàng trước khi thanh toán!', 'error');
+            setTimeout(() => phoneEl?.classList.remove('border-red-500', 'ring-2', 'ring-red-400/30'), 3000);
+            return;
+        }
+
+        // 2. Detect phương thức thanh toán
         const cashBtn = document.getElementById('btn-fnb-cash');
         const pm      = cashBtn?.className.includes('border-orange-500') ? 'cash' : 'transfer';
-        const phone   = document.getElementById('fnb-customer-phone')?.value.trim();
         const voucher = document.getElementById('fnb-voucher-input')?.value.trim();
-        const btn     = document.getElementById('btn-checkout-fnb');
 
+        // Tính tổng tiền để hiển thị
+        let total = 0;
+        Object.entries(fnbState.combos).forEach(([id, qty]) => { total += (fnbState.comboInfo[id]?.price||0) * qty; });
+        Object.entries(fnbState.items).forEach(([id, qty])  => { total += (fnbState.itemInfo[id]?.price||0) * qty; });
+
+        // 3. Với tiền mặt → hiển thị modal xác nhận
+        if (pm === 'cash') {
+            document.getElementById('fnb-confirm-phone').textContent  = phone;
+            document.getElementById('fnb-confirm-method').textContent = 'Tiền mặt 💵';
+            document.getElementById('fnb-confirm-total').textContent  = fmt(total);
+            // Lưu tạm để dùng sau khi user xác nhận
+            fnbState._pendingPhone   = phone;
+            fnbState._pendingVoucher = voucher;
+            fnbState._pendingPm      = pm;
+            document.getElementById('fnb-confirm-modal').classList.remove('hidden');
+            return;
+        }
+
+        // 4. Với chuyển khoản → tiến hành luôn
+        await _doCheckoutFnb(pm, phone, voucher);
+    }
+
+    function closeFnbConfirm() {
+        document.getElementById('fnb-confirm-modal').classList.add('hidden');
+    }
+
+    async function proceedCheckoutFnb() {
+        document.getElementById('fnb-confirm-modal').classList.add('hidden');
+        await _doCheckoutFnb(fnbState._pendingPm, fnbState._pendingPhone, fnbState._pendingVoucher);
+    }
+
+    async function _doCheckoutFnb(pm, phone, voucher) {
+        const btn = document.getElementById('btn-checkout-fnb');
         btn.disabled = true;
         btn.innerHTML = '<span class="material-symbols-outlined animate-spin" style="font-size:20px">progress_activity</span> Đang xử lý...';
 
@@ -1749,15 +1835,16 @@ const _FNB = (() => {
                 method: 'POST',
                 body: JSON.stringify({ combos: fnbState.combos, combo_items: fnbState.items, payment_method: pm, customer_phone: phone||null, voucher_code: voucher||null }),
             });
-            if (!res.success) { alert('Lỗi: ' + res.message); return; }
+            if (!res.success) { toast('Lỗi: ' + res.message, 'error'); return; }
 
             openFnbSuccessModal(res.booking);
 
             // Reset cart
             fnbState.combos = {}; fnbState.items = {};
+            fnbState._pendingPhone = fnbState._pendingVoucher = fnbState._pendingPm = null;
             document.querySelectorAll('[id^="fnb-combo-qty-"],[id^="fnb-item-qty-"]').forEach(el => el.textContent = '0');
             updateFnbCart();
-        } catch(e) { alert('Lỗi kết nối: ' + e.message); }
+        } catch(e) { toast('Lỗi kết nối: ' + e.message, 'error'); }
         finally {
             btn.disabled = false;
             btn.innerHTML = '<span class="material-symbols-outlined" style="font-size:20px">point_of_sale</span> XÁC NHẬN & THANH TOÁN';
@@ -1807,7 +1894,7 @@ const _FNB = (() => {
         window.print();
     }
 
-    return { switchMode, changeFnbCombo, changeFnbItem, checkoutFnb, selectPayment, openFnbSuccessModal, resetFnb, handlePrintFnb };
+    return { switchMode, changeFnbCombo, changeFnbItem, checkoutFnb, closeFnbConfirm, proceedCheckoutFnb, selectPayment, openFnbSuccessModal, resetFnb, handlePrintFnb };
 })();
 
 document.addEventListener('DOMContentLoaded', POS.init);
