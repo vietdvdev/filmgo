@@ -141,7 +141,7 @@ class ManagerShowtimeApiController extends Controller
         $movie = Movie::findOrFail($movieId);
         $cinemaIds = $this->getCinemaIds();
 
-        $movieFormatNames = $movie->formats()->pluck('name')->toArray();
+        $movieFormatNames = $movie->format ? [$movie->format->name] : [];
 
         if (empty($movieFormatNames)) {
             return response()->json([
@@ -189,7 +189,7 @@ class ManagerShowtimeApiController extends Controller
         $supportedFormats = $this->getSupportedFormatsByRoomType($room->room_type);
 
         $movies = Movie::where('status', '!=', 'stopped')
-            ->whereHas('formats', function ($q) use ($supportedFormats) {
+            ->whereHas('format', function ($q) use ($supportedFormats) {
                 $q->whereIn('name', $supportedFormats);
             })
             ->orderBy('title')
@@ -224,9 +224,8 @@ class ManagerShowtimeApiController extends Controller
 
         $roomFormats = $this->getSupportedFormatsByRoomType($room->room_type);
 
-        $formats = Format::whereHas('movies', function ($q) use ($movie) {
-                $q->where('movies.id', $movie->id);
-            })
+        // Cập nhật lấy format của phim (chỉ có 1 format_id)
+        $formats = Format::where('id', $movie->format_id)
             ->whereIn('name', $roomFormats)
             ->orderBy('id')
             ->get(['id', 'name', 'surcharge_price']);

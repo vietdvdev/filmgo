@@ -36,11 +36,11 @@ class Format extends Model
     ];
 
     /**
-     * Quan hệ N-N: Định dạng thuộc về nhiều Phim (thông qua bảng movie_formats)
+     * Quan hệ 1-N: Một định dạng có nhiều bộ phim sử dụng
      */
-    public function movies(): BelongsToMany
+    public function movies(): HasMany
     {
-        return $this->belongsToMany(Movie::class, 'movie_formats', 'format_id', 'movie_id');
+        return $this->hasMany(Movie::class, 'format_id');
     }
 
     /**
