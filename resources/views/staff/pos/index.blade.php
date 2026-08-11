@@ -5,23 +5,32 @@
 @push('styles')
 <style>
     /* ── POS Layout: Full-height, no scroll ─── */
-    #pos-root { height: calc(100vh - 64px); display: grid; grid-template-columns: 280px 1fr 340px; }
+    #pos-root { height: calc(100vh - 64px); display: grid; grid-template-columns: 340px 1fr; }
 
-    /* ── Tab Mode F&B: ẩn cột giữa (sơ đồ ghế), mở rộng cột trái ─── */
-    #pos-root.fnb-mode { grid-template-columns: 1fr 340px; }
+    /* ── Responsive ─── */
+    @media (max-width: 1024px) {
+        #pos-root { grid-template-columns: 280px 1fr; }
+    }
+    @media (max-width: 768px) {
+        #pos-root { display: flex; flex-direction: column; height: auto; min-height: calc(100vh - 64px); }
+        .movie-col { max-height: 45vh; border-right: none; border-bottom: 1px solid #e5e7eb; }
+        .seat-col { flex: 1; }
+    }
+
+    /* ── Tab Mode F&B ─── */
+    #pos-root.fnb-mode { grid-template-columns: 1fr; max-width: 800px; margin: 0 auto; }
     #pos-root.fnb-mode #pos-col-seat { display: none; }
-    #pos-root.fnb-mode #ticket-cart-panel { display: none; }
-    #pos-root.fnb-mode #total-seat-row { display: none; }
-    #pos-root.fnb-mode #right-fnb-list { display: none; }
+    #pos-root.fnb-mode .movie-col { border-right: none; height: calc(100vh - 64px); max-height: none; }
 
     .pos-tab-btn {
-        flex: 1; padding: 6px; border-radius: 8px; font-size: 11px; font-weight: 700;
+        flex: 1; padding: 8px; border-radius: 10px; font-size: 12px; font-weight: 700;
         cursor: pointer; transition: all 0.2s; border: none; outline: none;
-        display: flex; align-items: center; justify-content: center; gap: 4px;
+        display: flex; align-items: center; justify-content: center; gap: 6px;
     }
-    .pos-tab-btn.active { background: #3b82f6; color: #fff; box-shadow: 0 2px 8px rgba(59,130,246,0.4); }
-    .pos-tab-btn.fnb-active { background: #f97316; color: #fff; box-shadow: 0 2px 8px rgba(249,115,22,0.4); }
-    .pos-tab-btn:not(.active):not(.fnb-active) { background: #f3f4f6; color: #6b7280; }
+    .pos-tab-btn.active { background: linear-gradient(135deg, #3b82f6, #2563eb); color: #fff; box-shadow: 0 4px 12px rgba(59,130,246,0.3); }
+    .pos-tab-btn.fnb-active { background: linear-gradient(135deg, #f97316, #ea580c); color: #fff; box-shadow: 0 4px 12px rgba(249,115,22,0.3); }
+    .pos-tab-btn:not(.active):not(.fnb-active) { background: transparent; color: #64748b; }
+    .pos-tab-btn:not(.active):not(.fnb-active):hover { background: #f1f5f9; color: #334155; }
 
     /* ── Seat Map ─── */
     .seat-btn {
@@ -33,50 +42,44 @@
     .seat-available:hover { background: #dcfce7; transform: scale(1.12); }
     .seat-holding    { background: #fef9c3; border-color: #eab308; color: #a16207; cursor: not-allowed; }
     .seat-booked     { background: #fef2f2; border-color: #ef4444; color: #b91c1c; cursor: not-allowed; }
-    .seat-selected   { background: #3b82f6; border-color: #1d4ed8; color: #fff; transform: scale(1.08); }
+    .seat-selected   { background: #3b82f6; border-color: #1d4ed8; color: #fff; transform: scale(1.08); box-shadow: 0 0 10px rgba(59,130,246,0.5); }
     .seat-maintenance{ background: #f3f4f6; border-color: #d1d5db; color: #9ca3af; cursor: not-allowed; }
     .seat-vip        { border-style: dashed; }
 
-    /* ── Screen indicator ─── */
-    .screen-bar { height: 6px; background: linear-gradient(90deg, #93c5fd, #3b82f6, #93c5fd); border-radius: 4px; }
+    .screen-bar { height: 6px; background: linear-gradient(90deg, transparent, #3b82f6, transparent); border-radius: 4px; box-shadow: 0 2px 10px rgba(59,130,246,0.3); }
 
-    /* ── Print styles — Máy in nhiệt 80mm ─── */
-    @@media print {
-        html, body {
-            margin: 0 !important;
-            padding: 0 !important;
-            width: 80mm !important;
-            max-width: 80mm !important;
-            min-height: auto !important;
-        }
-        * { box-sizing: border-box !important; }
-        #pos-root, #checkout-modal, #success-modal, #pos-toast,
-        aside, header { display: none !important; }
-        #print-ticket-area { display: block !important; }
-
-        @@page {
-            size: 80mm auto;
-            margin: 0;
-        }
-        #print-ticket-area {
-            width: 80mm;
-            max-width: 80mm;
-            margin: 0;
-            padding: 1mm 1.5mm 0.5mm;
-            font-family: 'Courier New', Courier, monospace;
-            font-size: 10pt;
-            line-height: 1.1;
-            color: #000;
-        }
-        #print-ticket-area div,
-        #print-ticket-area table,
-        #print-ticket-area td,
-        #print-ticket-area th {
-            margin: 0 !important;
-            padding: 0 !important;
-        }
+    /* ── Bottom Action Bar (Sticky) ─── */
+    .pos-bottom-bar {
+        position: sticky; bottom: 0; left: 0; right: 0;
+        background: rgba(255, 255, 255, 0.95);
+        backdrop-filter: blur(12px);
+        border-top: 1px solid rgba(0,0,0,0.05);
+        box-shadow: 0 -10px 30px rgba(0,0,0,0.08);
+        padding: 16px 24px;
+        display: flex; align-items: center; justify-content: space-between;
+        z-index: 40;
+        transform: translateY(100%);
+        transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
     }
-    /* Ẩn trong giao diện thường */
+    .pos-bottom-bar.show { transform: translateY(0); }
+
+    /* ── Checkout Modal Layout ─── */
+    #checkout-modal .modal-content { max-height: 90vh; display: flex; flex-direction: column; }
+    #checkout-modal .modal-body { overflow-y: auto; flex: 1; }
+
+    /* ── Print styles ─── */
+    @media print {
+        html, body { margin: 0 !important; padding: 0 !important; width: 80mm !important; max-width: 80mm !important; min-height: auto !important; }
+        * { box-sizing: border-box !important; }
+        #pos-root, #checkout-modal, #success-modal, #pos-toast, aside, header { display: none !important; }
+        #print-ticket-area { display: block !important; }
+        @page { size: 80mm auto; margin: 0; }
+        #print-ticket-area {
+            width: 80mm; max-width: 80mm; margin: 0; padding: 1mm 1.5mm 0.5mm;
+            font-family: 'Courier New', Courier, monospace; font-size: 10pt; line-height: 1.1; color: #000;
+        }
+        #print-ticket-area div, #print-ticket-area table, #print-ticket-area td, #print-ticket-area th { margin: 0 !important; padding: 0 !important; }
+    }
     #print-ticket-area { display: none; }
 </style>
 @endpush
@@ -87,330 +90,291 @@
     {{-- ════════════════════════════════════════════════════════════
          CỘT TRÁI — Chọn Phim & Suất chiếu
     ════════════════════════════════════════════════════════════ --}}
-    <div class="bg-white border-r border-gray-200 flex flex-col overflow-hidden">
+    <div class="movie-col bg-white border-r border-gray-200 flex flex-col overflow-hidden shadow-sm z-10">
 
         {{-- Header + Date picker --}}
-        <div class="px-4 py-3 border-b border-gray-100 flex-shrink-0">
-            <div class="flex items-center justify-between mb-2">
-                <h2 class="text-sm font-bold text-gray-800 flex items-center gap-1.5">
-                    <span class="material-symbols-outlined text-primary" style="font-size:18px">movie</span>
+        <div class="px-5 py-4 border-b border-gray-100 flex-shrink-0">
+            <div class="flex items-center justify-between mb-3">
+                <h2 class="text-base font-black text-gray-800 flex items-center gap-2">
+                    <span class="material-symbols-outlined text-primary">movie</span>
                     Phim & Suất Chiếu
                 </h2>
-                <span id="movie-count" class="text-[10px] font-bold px-2 py-0.5 bg-primary/10 text-primary rounded-full">—</span>
+                <span id="movie-count" class="text-xs font-bold px-2.5 py-1 bg-primary/10 text-primary rounded-full">—</span>
             </div>
 
-            <div class="mb-3">
+            <div class="mb-4 relative">
+                <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-lg">search</span>
                 <input id="pos-search" type="search" placeholder="Tìm phim, phòng, giờ..."
-                       class="w-full text-xs border border-gray-200 rounded-lg px-3 py-2 focus:ring-2 focus:ring-primary/30 focus:border-primary outline-none"
+                       class="w-full text-sm bg-gray-50 border border-gray-200 rounded-xl pl-10 pr-4 py-2.5 focus:bg-white focus:ring-2 focus:ring-primary/30 focus:border-primary outline-none transition-all"
                        autocomplete="off">
             </div>
 
             {{-- Tab Switcher: Bán Vé / Bán F&B --}}
-            <div class="flex gap-1 p-1 rounded-xl mb-2" style="background:#f1f5f9">
+            <div class="flex gap-1 p-1.5 rounded-2xl mb-3 bg-gray-100 border border-gray-200 shadow-inner">
                 <button class="pos-tab-btn active" id="tab-ticket" onclick="_FNB.switchMode('ticket')">
-                    <span class="material-symbols-outlined" style="font-size:14px">confirmation_number</span>
+                    <span class="material-symbols-outlined text-[18px]">confirmation_number</span>
                     Bán Vé
                 </button>
                 <button class="pos-tab-btn" id="tab-fnb" onclick="_FNB.switchMode('fnb')">
-                    <span class="material-symbols-outlined" style="font-size:14px">fastfood</span>
+                    <span class="material-symbols-outlined text-[18px]">fastfood</span>
                     Bán F&B
                 </button>
             </div>
 
             <input type="date" id="pos-date" value="{{ today()->toDateString() }}"
-                   class="w-full text-xs border border-gray-200 rounded-lg px-3 py-2 focus:ring-2 focus:ring-primary/30 focus:border-primary outline-none">
+                   class="w-full text-sm font-bold text-gray-700 bg-gray-50 border border-gray-200 rounded-xl px-4 py-2.5 focus:bg-white focus:ring-2 focus:ring-primary/30 outline-none transition-all">
         </div>
 
         {{-- Movie + Showtime list --}}
-        <div id="movie-list" class="flex-1 overflow-y-auto p-3 space-y-2">
-            <div class="text-center py-8 text-gray-400">
-                <span class="material-symbols-outlined text-4xl mb-2 block">hourglass_empty</span>
-                <p class="text-xs">Đang tải danh sách phim...</p>
+        <div id="movie-list" class="flex-1 overflow-y-auto p-4 space-y-3 bg-slate-50/50">
+            <div class="text-center py-10 text-gray-400">
+                <span class="material-symbols-outlined text-5xl mb-3 block animate-pulse">hourglass_empty</span>
+                <p class="text-sm font-medium">Đang tải danh sách phim...</p>
             </div>
         </div>
+
         {{-- F&B Panel: sản phẩm đồ ăn (hiện khi mode fnb) --}}
-        <div id="fnb-panel" class="hidden flex-1 overflow-y-auto p-3">
-            <div class="text-center py-6 text-gray-400" id="fnb-loading">
-                <span class="material-symbols-outlined text-3xl block mb-2">hourglass_empty</span>
-                <p class="text-xs">Đang tải danh sách...</p>
+        <div id="fnb-panel" class="hidden flex-1 overflow-y-auto p-4 bg-orange-50/30">
+            <div class="text-center py-10 text-orange-300" id="fnb-loading">
+                <span class="material-symbols-outlined text-5xl block mb-3 animate-spin">progress_activity</span>
+                <p class="text-sm font-bold">Đang tải danh sách...</p>
             </div>
             <div id="fnb-product-list"></div>
+            
+            {{-- Giỏ hàng F&B riêng khi chỉ bán bắp nước --}}
+            <div id="fnb-only-cart" class="mt-6 border-t border-orange-200 pt-4 hidden">
+                <h3 class="text-xs font-black text-orange-800 uppercase tracking-wider mb-2">Giỏ Hàng F&B</h3>
+                <div id="fnb-only-cart-items" class="space-y-1 mb-4"></div>
+                <div class="flex justify-between items-center text-sm font-black text-gray-900 border-t border-orange-100 pt-2 mb-4">
+                    <span>TỔNG CỘNG</span>
+                    <span id="fnb-only-total" class="text-orange-600 text-lg">0đ</span>
+                </div>
+                <button id="btn-checkout-fnb" onclick="_FNB.checkoutFnb()" disabled
+                        class="w-full py-3.5 font-black text-sm rounded-xl disabled:opacity-40 disabled:cursor-not-allowed transition-all flex items-center justify-center gap-2 text-white shadow-lg shadow-orange-500/30 hover:shadow-orange-500/50 hover:-translate-y-0.5 active:translate-y-0"
+                        style="background:linear-gradient(135deg, #f97316, #ea580c)">
+                    <span class="material-symbols-outlined" style="font-size:20px">point_of_sale</span>
+                    THANH TOÁN F&B
+                </button>
+            </div>
         </div>
     </div>
 
     {{-- ════════════════════════════════════════════════════════════
          CỘT GIỮA — Sơ đồ ghế real-time
     ════════════════════════════════════════════════════════════ --}}
-    {{-- CỘT GIỮA — Sơ đồ ghế real-time --}}
-    <div class="flex flex-col overflow-hidden" id="pos-col-seat">
+    <div class="seat-col flex flex-col overflow-hidden relative" id="pos-col-seat">
 
         {{-- Header suất chiếu đang chọn --}}
-        <div id="seat-header" class="px-5 py-3 bg-white border-b border-gray-200 flex-shrink-0">
+        <div id="seat-header" class="px-6 py-4 bg-white/80 backdrop-blur-md border-b border-gray-200 flex-shrink-0 z-10 sticky top-0 shadow-sm">
             <div class="flex items-center justify-between">
                 <div>
-                    <p class="text-xs text-gray-500 uppercase tracking-wider font-semibold">Sơ đồ ghế POS (Real-time)</p>
-                    <h2 id="seat-showtime-title" class="text-sm font-bold text-gray-800 mt-0.5">
-                        Chọn phim và suất chiếu để bắt đầu
+                    <p class="text-[11px] text-gray-500 uppercase tracking-widest font-black mb-1">Sơ đồ ghế POS</p>
+                    <h2 id="seat-showtime-title" class="text-lg font-black text-gray-900">
+                        Vui lòng chọn suất chiếu
                     </h2>
                 </div>
             </div>
         </div>
 
         {{-- Seat map container --}}
-        <div id="seat-map-container" class="flex-1 overflow-auto p-5 flex flex-col items-center">
-            <div class="text-center py-16 text-gray-300">
-                <span class="material-symbols-outlined text-6xl mb-3 block">event_seat</span>
-                <p class="text-sm font-medium">Chưa chọn suất chiếu</p>
-            </div>
-        </div>
-    </div>
-
-    {{-- ════════════════════════════════════════════════════════════
-         CỘT PHẢI — Giỏ hàng + Checkout
-    ════════════════════════════════════════════════════════════ --}}
-    <div class="bg-white border-l border-gray-200 flex flex-col overflow-hidden">
-
-        {{-- ── Giỏ hàng ghế ─────────────────────── --}}
-        <div id="ticket-cart-panel">
-            <div class="px-4 py-3 border-b border-gray-100 flex-shrink-0">
-                <h3 class="text-xs font-bold text-gray-700 uppercase tracking-wider flex items-center gap-1.5">
-                    <span class="material-symbols-outlined text-primary" style="font-size:16px">shopping_cart</span>
-                    Giỏ hàng
-                </h3>
-            </div>
-
-            {{-- Danh sách ghế đã chọn --}}
-            <div id="cart-seats" class="px-4 py-2 flex-shrink-0 min-h-[80px] max-h-[160px] overflow-y-auto">
-                <p id="no-seat-msg" class="text-xs text-gray-400 text-center py-4">Chưa chọn ghế nào</p>
+        <div id="seat-map-container" class="flex-1 overflow-auto p-6 flex flex-col items-center bg-[radial-gradient(#e5e7eb_1px,transparent_1px)] [background-size:20px_20px]">
+            <div class="text-center py-20 text-gray-300">
+                <span class="material-symbols-outlined text-7xl mb-4 block opacity-50">event_seat</span>
+                <p class="text-base font-bold text-gray-400">Chưa chọn suất chiếu</p>
             </div>
         </div>
 
-        {{-- ── F&B Combos ──────────────────────── --}}
-        <div id="right-fnb-list" class="border-t border-gray-100 flex-shrink-0">
-            <div class="px-4 py-2 bg-orange-50 border-b border-orange-100">
-                <h3 class="text-xs font-bold text-orange-700 uppercase tracking-wider flex items-center gap-1.5">
-                    <span class="material-symbols-outlined" style="font-size:16px">fastfood</span>
-                    Bắp Nước (F&B)
-                </h3>
-            </div>
-            <div id="combo-list" class="px-4 py-2 space-y-2 max-h-[180px] overflow-y-auto">
-                @forelse($combos as $combo)
-                <div class="flex items-center gap-2" data-combo-id="{{ $combo->id }}"
-                     data-combo-name="{{ $combo->combo_name }}" data-combo-price="{{ $combo->price }}">
-                    <div class="flex-1 min-w-0">
-                        <p class="text-xs font-semibold text-gray-800 truncate">{{ $combo->combo_name }}</p>
-                        <p class="text-[10px] text-orange-600 font-bold">{{ number_format($combo->price) }}đ</p>
-                    </div>
-                    <div class="flex items-center gap-1 flex-shrink-0">
-                        <button onclick="POS.changeCombo({{ $combo->id }}, -1)"
-                                class="w-6 h-6 rounded bg-gray-100 hover:bg-gray-200 text-gray-600 font-bold text-sm flex items-center justify-center transition-colors">−</button>
-                        <span id="combo-qty-{{ $combo->id }}" class="w-6 text-center text-xs font-bold text-gray-800">0</span>
-                        <button onclick="POS.changeCombo({{ $combo->id }}, 1)"
-                                class="w-6 h-6 rounded bg-primary hover:bg-blue-700 text-white font-bold text-sm flex items-center justify-center transition-colors">+</button>
-                    </div>
-                </div>
-                @empty
-                <p class="text-xs text-gray-400 text-center py-2">Chưa có combo nào</p>
-                @endforelse
-            </div>
-        </div>
-
-        {{-- ── Voucher ──────────────────────────── --}}
-        <div class="border-t border-gray-100 px-4 py-3 flex-shrink-0">
-            <div class="flex gap-2">
-                <input id="voucher-input" type="text" placeholder="Mã giảm giá..."
-                       class="flex-1 text-xs border border-gray-200 rounded-lg px-3 py-2 focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none uppercase"
-                       oninput="this.value = this.value.toUpperCase()">
-                <button onclick="POS.applyVoucher()"
-                        class="px-3 py-2 bg-green-600 hover:bg-green-700 text-white text-xs font-bold rounded-lg transition-colors">
-                    Áp dụng
-                </button>
-            </div>
-            <div id="voucher-info" class="hidden mt-2 px-3 py-2 bg-green-50 border border-green-200 rounded-lg">
-                <div class="flex items-center justify-between">
-                    <span id="voucher-label" class="text-xs font-semibold text-green-700"></span>
-                    <button onclick="POS.removeVoucher()" class="text-red-500 hover:text-red-700 text-xs font-bold">✕ Xóa</button>
-                </div>
-            </div>
-        </div>
-
-        {{-- ── Tổng tiền ──────────────────────── --}}
-        <div class="border-t border-gray-200 px-4 py-3 flex-shrink-0 bg-gray-50 space-y-1.5">
-            <div id="total-seat-row" class="flex justify-between text-xs text-gray-600">
-                <span>Tiền ghế (<span id="total-seat-count">0</span> ghế)</span>
-                <span id="total-seat-price">0đ</span>
-            </div>
-            <div class="flex justify-between text-xs text-gray-600">
-                <span>Combo F&B</span>
-                <span id="total-combo-price">0đ</span>
-            </div>
-            <div id="discount-row" class="hidden flex justify-between text-xs text-green-600">
-                <span>Giảm giá</span>
-                <span id="total-discount">0đ</span>
-            </div>
-            <div class="flex justify-between text-sm font-black text-gray-900 pt-1 border-t border-gray-200">
-                <span>TỔNG CỘNG</span>
-                <span id="grand-total" class="text-primary text-base">0đ</span>
-            </div>
-        </div>
-
-        {{-- ── Thông tin khách & Nút thanh toán ─ --}}
-        <div class="border-t border-gray-200 px-4 py-3 flex-shrink-0 space-y-3">
+        {{-- Sticky Bottom Bar (Mới) --}}
+        <div id="pos-bottom-bar" class="pos-bottom-bar">
             <div>
-                <label class="text-[10px] font-bold text-gray-500 uppercase tracking-wider block mb-1">SĐT Khách (tuỳ chọn)</label>
-                <input id="customer-phone" type="tel" placeholder="0901234567..."
-                       class="w-full text-xs border border-gray-200 rounded-lg px-3 py-2 focus:ring-2 focus:ring-primary/20 outline-none">
-            </div>
-            <button id="btn-checkout" onclick="POS.openCheckout()"
-                    disabled
-                    class="w-full py-3.5 bg-primary text-white font-black text-sm rounded-xl
-                           disabled:opacity-40 disabled:cursor-not-allowed
-                           enabled:hover:bg-blue-700 enabled:active:scale-[0.98]
-                           transition-all flex items-center justify-center gap-2">
-                <span class="material-symbols-outlined" style="font-size:20px">point_of_sale</span>
-                THANH TOÁN
-            </button>
-
-            {{-- Nút Bán F&B (chỉ hiện trong mode F&B) --}}
-            <button id="btn-checkout-fnb" onclick="_FNB.checkoutFnb()"
-                    disabled
-                    class="hidden w-full py-3.5 font-black text-sm rounded-xl
-                           disabled:opacity-40 disabled:cursor-not-allowed
-                           transition-all flex items-center justify-center gap-2 text-white"
-                    style="background:#f97316">
-                <span class="material-symbols-outlined" style="font-size:20px">fastfood</span>
-                BÁN F&amp;B
-            </button>
-        </div>
-    </div>
-</div>
-
-{{-- ════════════════════════════════════════════════════════════
-     MODAL THÀNH CÔNG BÁN F&B
-════════════════════════════════════════════════════════════ --}}
-<div id="fnb-success-modal"
-     class="hidden fixed inset-0 z-[60] flex items-center justify-center no-print"
-     role="dialog" aria-modal="true">
-    <div class="absolute inset-0 bg-black/60 backdrop-blur-sm" onclick="document.getElementById('fnb-success-modal').classList.add('hidden')"></div>
-    <div class="relative bg-white rounded-2xl shadow-2xl w-full max-w-sm mx-4 overflow-hidden">
-        {{-- Header --}}
-        <div class="px-6 pt-6 pb-4 text-center" style="background:linear-gradient(135deg,#f97316,#ea580c)">
-            <div class="w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-3"
-                 style="background:rgba(255,255,255,0.2)">
-                <span class="material-symbols-outlined text-white" style="font-size:36px; font-variation-settings:'FILL' 1">check_circle</span>
-            </div>
-            <h2 class="text-xl font-black text-white">Bán F&amp;B Thành Công!</h2>
-            <div class="mt-3 inline-flex items-center gap-2 px-4 py-1.5 rounded-full"
-                 style="background:rgba(255,255,255,0.2)">
-                <span class="text-white font-mono font-black tracking-widest text-base" id="fnb-success-code">—</span>
-            </div>
-        </div>
-        {{-- Items --}}
-        <div class="px-5 py-3">
-            <p class="text-xs font-bold uppercase text-gray-500 tracking-wider mb-2">Sản phẩm đã bán:</p>
-            <ul id="fnb-success-items" class="space-y-0.5 max-h-40 overflow-y-auto"></ul>
-            <div class="flex justify-between items-center mt-3 pt-3 border-t border-gray-100">
-                <span class="font-bold text-gray-700">Tổng cộng</span>
-                <span class="font-black text-orange-600 text-xl" id="fnb-success-total"></span>
-            </div>
-        </div>
-        {{-- Actions --}}
-        <div class="px-5 pb-5">
-            <button onclick="document.getElementById('fnb-success-modal').classList.add('hidden')"
-                    class="w-full py-3 font-black text-white rounded-xl transition-all"
-                    style="background:#f97316"
-                    onmouseover="this.style.background='#ea580c'"
-                    onmouseout="this.style.background='#f97316'">
-                Hoàn Tất &amp; Bán Tiếp
-            </button>
-        </div>
-    </div>
-</div>
-
-{{-- ════════════════════════════════════════════════════════════
-     MODAL THANH TOÁN
-════════════════════════════════════════════════════════════ --}}
-<div id="checkout-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm no-print">
-    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md mx-4 overflow-hidden">
-
-        {{-- Header --}}
-        <div class="bg-primary px-6 py-4 flex items-center justify-between">
-            <div>
-                <h2 class="text-white font-black text-lg">Xác Nhận Thanh Toán</h2>
-                <p id="modal-showtime-info" class="text-blue-200 text-xs mt-0.5"></p>
-            </div>
-            <button onclick="POS.closeCheckout()" class="text-white/60 hover:text-white text-2xl leading-none">✕</button>
-        </div>
-
-        {{-- Summary --}}
-        <div class="px-6 py-4 bg-gray-50 border-b">
-            <div class="flex justify-between items-center">
-                <div>
-                    <p class="text-xs text-gray-500">Ghế: <span id="modal-seats" class="font-bold text-gray-800"></span></p>
-                    <p class="text-xs text-gray-500 mt-0.5">Combo: <span id="modal-combos" class="font-bold text-gray-800"></span></p>
+                <p class="text-sm font-semibold text-gray-600 mb-0.5">Đã chọn: <span id="bb-seat-count" class="font-black text-gray-900">0</span> ghế</p>
+                <div class="flex items-center gap-2">
+                    <p class="text-xs text-gray-500" id="bb-seat-list">...</p>
                 </div>
+            </div>
+            <div class="flex items-center gap-6">
                 <div class="text-right">
-                    <p class="text-xs text-gray-500">Tổng cần thanh toán</p>
-                    <p id="modal-total" class="text-2xl font-black text-primary"></p>
+                    <p class="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-0.5">Tạm tính</p>
+                    <p id="bb-total-price" class="text-2xl font-black text-primary leading-none">0đ</p>
                 </div>
-            </div>
-        </div>
-
-        {{-- Payment method selector --}}
-        <div class="px-6 py-4">
-            <p class="text-xs font-bold text-gray-600 uppercase tracking-wider mb-3">Phương thức thanh toán</p>
-            <div class="grid grid-cols-2 gap-3 mb-4">
-                <button id="btn-cash" onclick="POS.selectPayment('cash')"
-                        class="flex flex-col items-center gap-2 p-4 border-2 border-primary bg-primary/5 rounded-xl transition-all">
-                    <span class="material-symbols-outlined text-primary text-3xl">payments</span>
-                    <span class="text-sm font-bold text-primary">Tiền Mặt</span>
-                </button>
-                <button id="btn-transfer" onclick="POS.selectPayment('transfer')"
-                        class="flex flex-col items-center gap-2 p-4 border-2 border-gray-200 rounded-xl hover:border-primary/40 transition-all">
-                    <span class="material-symbols-outlined text-gray-500 text-3xl">qr_code_2</span>
-                    <span class="text-sm font-bold text-gray-600">Chuyển Khoản</span>
+                <button onclick="POS.openCheckout()" id="btn-checkout" disabled
+                        class="px-8 py-3.5 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 active:scale-95 text-white font-black text-sm rounded-xl shadow-lg shadow-blue-500/30 transition-all flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 disabled:shadow-none">
+                    TIẾP TỤC
+                    <span class="material-symbols-outlined">arrow_forward</span>
                 </button>
             </div>
-
-            {{-- Panel Tiền Mặt --}}
-            <div id="cash-panel" class="space-y-3">
-                <div>
-                    <label class="text-xs font-semibold text-gray-600 block mb-1">Khách đưa</label>
-                    <input id="cash-given" type="number" placeholder="Nhập số tiền khách đưa..."
-                           oninput="POS.calcChange()"
-                           class="w-full border border-gray-200 rounded-lg px-4 py-3 text-sm font-bold focus:ring-2 focus:ring-primary/20 outline-none">
-                </div>
-                <div class="bg-green-50 border border-green-200 rounded-xl px-4 py-3 flex justify-between items-center">
-                    <span class="text-sm font-semibold text-gray-700">Tiền thối lại</span>
-                    <span id="change-amount" class="text-xl font-black text-green-700">0đ</span>
-                </div>
-            </div>
-
-            {{-- Panel Chuyển Khoản / QR --}}
-            <div id="transfer-panel" class="hidden text-center space-y-3">
-                <div class="bg-gray-50 border border-gray-200 rounded-xl p-4">
-                    {{-- QR tĩnh — nhúng URL bank transfer với số tiền --}}
-                    <div id="qr-display" class="flex justify-center mb-3">
-                        <img id="qr-img" src="" alt="QR Chuyển khoản" class="w-40 h-40 rounded-lg border-2 border-gray-200">
-                    </div>
-                    <p class="text-xs text-gray-500">STK: <strong class="text-gray-800">MB 0123456789</strong></p>
-                    <p class="text-xs text-gray-500 mt-0.5">Chủ TK: <strong class="text-gray-800">CINEMA FILMGO</strong></p>
-                    <p id="transfer-amount-label" class="text-primary font-black mt-1"></p>
-                </div>
-                <p class="text-[10px] text-gray-400">Nhân viên xác nhận sau khi khách chuyển khoản thành công</p>
-            </div>
-        </div>
-
-        {{-- Confirm button --}}
-        <div class="px-6 pb-5">
-            <button id="btn-confirm-payment" onclick="POS.confirmCheckout()"
-                    class="w-full py-3.5 bg-green-600 hover:bg-green-700 active:scale-[0.98] text-white font-black text-sm rounded-xl transition-all flex items-center justify-center gap-2">
-                <span class="material-symbols-outlined" style="font-size:20px">check_circle</span>
-                XÁC NHẬN & IN VÉ
-            </button>
         </div>
     </div>
 </div>
+
+{{-- ════════════════════════════════════════════════════════════
+     MODAL THANH TOÁN (MỞ RỘNG GỘP F&B, VOUCHER)
+════════════════════════════════════════════════════════════ --}}
+<div id="checkout-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm no-print">
+    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-4xl mx-4 overflow-hidden modal-content flex flex-col scale-100 transition-transform">
+        
+        {{-- Header --}}
+        <div class="bg-gradient-to-r from-gray-900 to-slate-800 px-6 py-4 flex items-center justify-between flex-shrink-0 shadow-md z-10">
+            <div>
+                <h2 class="text-white font-black text-xl flex items-center gap-2">
+                    <span class="material-symbols-outlined">receipt_long</span>
+                    Thanh Toán & Xuất Vé
+                </h2>
+                <p id="modal-showtime-info" class="text-gray-300 text-sm mt-0.5 font-medium"></p>
+            </div>
+            <button onclick="POS.closeCheckout()" class="text-gray-400 hover:text-white text-3xl leading-none transition-colors">&times;</button>
+        </div>
+
+        {{-- Body: 2 cột (Trái: F&B + Info, Phải: Tổng kết & Thanh toán) --}}
+        <div class="flex-1 flex flex-col md:flex-row overflow-hidden bg-gray-50">
+            
+            {{-- Cột Trái: Bắp nước & Voucher --}}
+            <div class="flex-1 overflow-y-auto border-r border-gray-200 bg-white flex flex-col">
+                {{-- Bắp nước --}}
+                <div class="p-6 border-b border-gray-100">
+                    <h3 class="text-sm font-black text-orange-600 uppercase tracking-widest flex items-center gap-2 mb-4">
+                        <span class="material-symbols-outlined text-lg">fastfood</span>
+                        Bắp Nước (F&B)
+                    </h3>
+                    <div id="combo-list" class="space-y-3">
+                        @forelse($combos as $combo)
+                        <div class="flex items-center gap-3 p-3 rounded-xl border border-gray-100 hover:border-orange-200 hover:bg-orange-50/50 transition-colors" 
+                             data-combo-id="{{ $combo->id }}" data-combo-name="{{ $combo->combo_name }}" data-combo-price="{{ $combo->price }}">
+                            <div class="w-12 h-12 rounded-lg bg-orange-100 flex items-center justify-center text-orange-500">
+                                <span class="material-symbols-outlined">kebab_dining</span>
+                            </div>
+                            <div class="flex-1 min-w-0">
+                                <p class="text-sm font-bold text-gray-900">{{ $combo->combo_name }}</p>
+                                <p class="text-xs font-black text-orange-600 mt-0.5">{{ number_format($combo->price) }}đ</p>
+                            </div>
+                            <div class="flex items-center gap-1 bg-gray-50 rounded-lg p-1 border border-gray-200">
+                                <button onclick="POS.changeCombo({{ $combo->id }}, -1)" class="w-8 h-8 rounded-md hover:bg-white hover:shadow-sm text-gray-600 font-bold flex items-center justify-center transition-all">−</button>
+                                <span id="combo-qty-{{ $combo->id }}" class="w-8 text-center text-sm font-black text-gray-900">0</span>
+                                <button onclick="POS.changeCombo({{ $combo->id }}, 1)" class="w-8 h-8 rounded-md bg-orange-500 text-white shadow-sm shadow-orange-500/30 hover:bg-orange-600 font-bold flex items-center justify-center transition-all">+</button>
+                            </div>
+                        </div>
+                        @empty
+                        <p class="text-sm text-gray-400 text-center py-4 bg-gray-50 rounded-xl">Chưa có combo nào</p>
+                        @endforelse
+                    </div>
+                </div>
+
+                {{-- Khách hàng & Voucher --}}
+                <div class="p-6 bg-slate-50 flex-1">
+                    <h3 class="text-sm font-black text-gray-700 uppercase tracking-widest flex items-center gap-2 mb-4">
+                        <span class="material-symbols-outlined text-lg">person</span>
+                        Thông tin thêm
+                    </h3>
+                    <div class="space-y-4">
+                        <div>
+                            <label class="text-xs font-bold text-gray-500 block mb-1.5">SĐT Khách hàng (tích điểm)</label>
+                            <input id="customer-phone" type="tel" placeholder="Ví dụ: 0901234567..."
+                                   class="w-full text-sm font-semibold border border-gray-300 rounded-xl px-4 py-3 focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all">
+                        </div>
+                        <div>
+                            <label class="text-xs font-bold text-gray-500 block mb-1.5">Mã giảm giá (Voucher)</label>
+                            <div class="flex gap-2">
+                                <input id="voucher-input" type="text" placeholder="Nhập mã..."
+                                       class="flex-1 text-sm font-bold border border-gray-300 rounded-xl px-4 py-3 focus:ring-2 focus:ring-green-500/20 focus:border-green-500 outline-none uppercase"
+                                       oninput="this.value = this.value.toUpperCase()">
+                                <button onclick="POS.applyVoucher()"
+                                        class="px-5 py-3 bg-gray-900 hover:bg-gray-800 text-white text-sm font-black rounded-xl transition-all shadow-md">
+                                    ÁP DỤNG
+                                </button>
+                            </div>
+                            <div id="voucher-info" class="hidden mt-2 px-4 py-3 bg-green-50 border border-green-200 rounded-xl flex items-center justify-between">
+                                <span id="voucher-label" class="text-sm font-bold text-green-700"></span>
+                                <button onclick="POS.removeVoucher()" class="text-red-500 hover:text-red-700 text-xs font-black bg-red-50 px-2 py-1 rounded">✕ XÓA</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            {{-- Cột Phải: Tổng kết & Thanh toán --}}
+            <div class="w-full md:w-[380px] bg-white flex flex-col flex-shrink-0">
+                <div class="p-6 border-b border-gray-100 flex-1 overflow-y-auto">
+                    <h3 class="text-sm font-black text-gray-900 uppercase tracking-widest mb-4">Tổng Kết Đơn Hàng</h3>
+                    
+                    {{-- Bill summary --}}
+                    <div class="bg-gray-50 rounded-2xl p-5 border border-gray-100 space-y-3 mb-6 shadow-inner">
+                        <div class="flex justify-between items-start">
+                            <div>
+                                <p class="text-xs font-bold text-gray-500">Tiền ghế (<span id="modal-seat-count">0</span>)</p>
+                                <p id="modal-seats" class="text-[10px] text-gray-400 mt-1 max-w-[150px] leading-tight"></p>
+                            </div>
+                            <span id="modal-seat-price" class="text-sm font-black text-gray-900">0đ</span>
+                        </div>
+                        <div class="flex justify-between items-start pt-3 border-t border-gray-200 border-dashed">
+                            <div>
+                                <p class="text-xs font-bold text-gray-500">Combo F&B</p>
+                                <p id="modal-combos" class="text-[10px] text-gray-400 mt-1 max-w-[150px] leading-tight"></p>
+                            </div>
+                            <span id="modal-combo-price" class="text-sm font-black text-gray-900">0đ</span>
+                        </div>
+                        <div id="modal-discount-row" class="hidden flex justify-between items-center pt-3 border-t border-gray-200 border-dashed">
+                            <span class="text-xs font-bold text-green-600">Giảm giá</span>
+                            <span id="modal-discount" class="text-sm font-black text-green-600">0đ</span>
+                        </div>
+                        <div class="flex justify-between items-end pt-4 border-t border-gray-300 mt-2">
+                            <span class="text-sm font-black text-gray-900 uppercase">Tổng Cần Thu</span>
+                            <span id="modal-total" class="text-3xl font-black text-primary leading-none">0đ</span>
+                        </div>
+                    </div>
+
+                    {{-- Payment methods --}}
+                    <h3 class="text-xs font-bold text-gray-500 uppercase tracking-widest mb-3">Phương Thức Thanh Toán</h3>
+                    <div class="grid grid-cols-2 gap-3 mb-5">
+                        <button id="btn-cash" onclick="POS.selectPayment('cash')"
+                                class="flex flex-col items-center gap-2 p-3 border-2 border-primary bg-primary/5 rounded-xl transition-all shadow-sm">
+                            <span class="material-symbols-outlined text-primary text-3xl">payments</span>
+                            <span class="text-xs font-black text-primary">Tiền Mặt</span>
+                        </button>
+                        <button id="btn-transfer" onclick="POS.selectPayment('transfer')"
+                                class="flex flex-col items-center gap-2 p-3 border-2 border-gray-200 bg-white rounded-xl hover:border-primary/40 transition-all text-gray-500 hover:text-primary">
+                            <span class="material-symbols-outlined text-3xl">qr_code_2</span>
+                            <span class="text-xs font-black">Chuyển Khoản</span>
+                        </button>
+                    </div>
+
+                    {{-- Cash panel --}}
+                    <div id="cash-panel" class="space-y-3 animate-fade-in">
+                        <div>
+                            <label class="text-xs font-bold text-gray-500 block mb-1">Khách đưa</label>
+                            <input id="cash-given" type="number" placeholder="Nhập số tiền..."
+                                   oninput="POS.calcChange()"
+                                   class="w-full border-2 border-gray-200 bg-gray-50 rounded-xl px-4 py-3 text-lg font-black text-gray-900 focus:bg-white focus:border-primary outline-none transition-colors">
+                        </div>
+                        <div class="bg-emerald-50 border border-emerald-200 rounded-xl px-4 py-3 flex justify-between items-center shadow-inner">
+                            <span class="text-xs font-bold text-emerald-800 uppercase">Thối lại khách</span>
+                            <span id="change-amount" class="text-xl font-black text-emerald-700">0đ</span>
+                        </div>
+                    </div>
+
+                    {{-- Transfer panel --}}
+                    <div id="transfer-panel" class="hidden animate-fade-in">
+                        <div class="bg-blue-50 border border-blue-200 rounded-2xl p-5 text-center shadow-inner">
+                            <div class="bg-white p-2 rounded-xl inline-block shadow-sm mb-3">
+                                <img id="qr-img" src="" alt="QR" class="w-32 h-32 object-contain">
+                            </div>
+                            <p class="text-xs text-blue-800 font-medium">Quét mã QR để thanh toán qua ứng dụng ngân hàng hoặc ví điện tử.</p>
+                        </div>
+                    </div>
+                </div>
+
+                {{-- Confirm Btn --}}
+                <div class="p-6 bg-gray-50 border-t border-gray-200">
+                    <button id="btn-confirm-payment" onclick="POS.confirmCheckout()"
+                            class="w-full py-4 bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 active:scale-[0.98] text-white font-black text-base rounded-xl transition-all flex items-center justify-center gap-2 shadow-xl shadow-green-500/30">
+                        <span class="material-symbols-outlined text-2xl">check_circle</span>
+                        XÁC NHẬN & XUẤT VÉ
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
 
 {{-- ════════════════════════════════════════════════════════════
      PHẦN 2: KHU VỰC IN VÉ NHIỆT 80mm (ẩn trong giao diện, hiện khi print)
@@ -1163,43 +1127,41 @@ const POS = (() => {
         const { seatTotal, comboTotal, discount, grand } = calcTotals();
         const hasItems = state.selectedSeats.length > 0;
 
-        // Seats list
-        const cartEl = document.getElementById('cart-seats');
-        const noMsg  = document.getElementById('no-seat-msg');
-        if (state.selectedSeats.length) {
-            noMsg?.remove();
-            cartEl.innerHTML = state.selectedSeats.map(s => `
-                <div class="flex justify-between items-center py-1.5 border-b border-gray-50">
-                    <div>
-                        <span class="text-xs font-bold text-gray-900">${s.label}</span>
-                        <span class="text-[10px] text-gray-400 ml-1">(${s.type})</span>
-                    </div>
-                    <div class="flex items-center gap-2">
-                        <span class="text-xs font-semibold text-primary">${formatMoney(s.price)}</span>
-                        <button onclick="POS.toggleSeat(${s.showtime_seat_id})" class="text-red-400 hover:text-red-600 text-xs">✕</button>
-                    </div>
-                </div>
-            `).join('');
-        } else {
-            cartEl.innerHTML = `<p id="no-seat-msg" class="text-xs text-gray-400 text-center py-4">Chưa chọn ghế nào</p>`;
+        const bbBar = document.getElementById('pos-bottom-bar');
+        const bbCount = document.getElementById('bb-seat-count');
+        const bbList = document.getElementById('bb-seat-list');
+        const bbTotal = document.getElementById('bb-total-price');
+        const btnCheckout = document.getElementById('btn-checkout');
+
+        if (bbBar) {
+            if (hasItems) {
+                bbBar.classList.add('show');
+                bbCount.textContent = state.selectedSeats.length;
+                bbList.textContent = state.selectedSeats.map(s => s.label).join(', ');
+                bbTotal.textContent = formatMoney(seatTotal + comboTotal - discount);
+                btnCheckout.disabled = false;
+            } else {
+                bbBar.classList.remove('show');
+                btnCheckout.disabled = true;
+            }
         }
 
-        // Totals
-        document.getElementById('total-seat-count').textContent = state.selectedSeats.length;
-        document.getElementById('total-seat-price').textContent = formatMoney(seatTotal);
-        document.getElementById('total-combo-price').textContent = formatMoney(comboTotal);
-        document.getElementById('grand-total').textContent = formatMoney(grand);
+        const msc = document.getElementById('modal-seat-count'); if(msc) msc.textContent = state.selectedSeats.length;
+        const ms = document.getElementById('modal-seats'); if(ms) ms.textContent = state.selectedSeats.map(s => s.label).join(', ') || '—';
+        const msp = document.getElementById('modal-seat-price'); if(msp) msp.textContent = formatMoney(seatTotal);
 
-        const discountRow = document.getElementById('discount-row');
-        if (discount > 0) {
-            discountRow.classList.remove('hidden');
-            document.getElementById('total-discount').textContent = '−' + formatMoney(discount);
-        } else {
-            discountRow.classList.add('hidden');
+        const mc = document.getElementById('modal-combos'); if(mc) mc.textContent = Object.entries(state.combos).filter(([,q]) => q > 0).map(([id, q]) => `${state.comboInfo[id]?.name} x${q}`).join(', ') || '—';
+        const mcp = document.getElementById('modal-combo-price'); if(mcp) mcp.textContent = formatMoney(comboTotal);
+
+        const discountRow = document.getElementById('modal-discount-row');
+        if (discount > 0 && discountRow) {
+            discountRow.classList.remove('hidden'); discountRow.classList.add('flex');
+            const md = document.getElementById('modal-discount'); if(md) md.textContent = '−' + formatMoney(discount);
+        } else if (discountRow) {
+            discountRow.classList.add('hidden'); discountRow.classList.remove('flex');
         }
 
-        // Checkout button
-        document.getElementById('btn-checkout').disabled = !hasItems || !state.currentShowtime;
+        const mt = document.getElementById('modal-total'); if(mt) mt.textContent = formatMoney(grand);
     }
 
     // ── Checkout Modal ───────────────────────────────────────────────────
@@ -1230,26 +1192,17 @@ const POS = (() => {
 
     function openCheckout() {
         if (!state.selectedSeats.length || !state.currentShowtime) return;
-
         const singleSeatErr = checkSingleSeatRule();
         if (singleSeatErr) { toast(singleSeatErr, 'error'); return; }
+        
         const totals = calcTotals();
-
-        document.getElementById('modal-showtime-info').textContent =
-            `${state.currentShowtime.movie} — ${String(state.currentShowtime.start_time).substring(0,5)}`;
-        document.getElementById('modal-seats').textContent = state.selectedSeats.map(s => s.label).join(', ');
-        document.getElementById('modal-combos').textContent =
-            Object.entries(state.combos).filter(([,q]) => q > 0).map(([id, q]) => `${state.comboInfo[id]?.name} x${q}`).join(', ') || '—';
-        document.getElementById('modal-total').textContent = formatMoney(totals.grand);
-        document.getElementById('transfer-amount-label').textContent = formatMoney(totals.grand);
-
-        // Reset cash input
-        document.getElementById('cash-given').value = '';
-        document.getElementById('change-amount').textContent = '0đ';
-
-        // QR chuyển khoản
+        document.getElementById('modal-showtime-info').textContent = `${state.currentShowtime.movie} — ${String(state.currentShowtime.start_time).substring(0,5)}`;
+        
+        const cg = document.getElementById('cash-given'); if(cg) cg.value = '';
+        const ca = document.getElementById('change-amount'); if(ca) ca.textContent = '0đ';
+        
         const qrUrl = `https://img.vietqr.io/image/MB-0123456789-compact2.png?amount=${totals.grand}&addInfo=${encodeURIComponent('Dat ve FilmGo')}&accountName=CINEMA%20FILMGO`;
-        document.getElementById('qr-img').src = qrUrl;
+        const qi = document.getElementById('qr-img'); if(qi) qi.src = qrUrl;
 
         document.getElementById('checkout-modal').classList.remove('hidden');
         selectPayment('cash');
