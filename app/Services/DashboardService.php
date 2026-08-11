@@ -255,4 +255,31 @@ class DashboardService
 
         return round((($current - $previous) / $previous) * 100, 2);
     }
+
+    /**
+     * Thống kê doanh thu và số lượng vé bán ra theo từng phim.
+     * Sắp xếp theo doanh thu giảm dần.
+     * 
+     * @param Carbon $startDate
+     * @param Carbon $endDate
+     * @return \Illuminate\Support\Collection
+     */
+    public function getMovieRevenueStatistics(Carbon $startDate, Carbon $endDate)
+    {
+        return DB::table('movies')
+            ->join('showtimes', 'movies.id', '=', 'showtimes.movie_id')
+            ->join('bookings', 'showtimes.id', '=', 'bookings.showtime_id')
+            ->join('booking_details', 'bookings.id', '=', 'booking_details.booking_id')
+            ->where('bookings.payment_status', 'paid')
+            ->whereBetween('bookings.created_at', [$startDate, $endDate])
+            ->select(
+                'movies.id',
+                'movies.title',
+                DB::raw('COUNT(booking_details.id) as tickets_count'),
+                DB::raw('SUM(booking_details.price) as total_revenue')
+            )
+            ->groupBy('movies.id', 'movies.title')
+            ->orderByDesc('total_revenue')
+            ->get();
+    }
 }
