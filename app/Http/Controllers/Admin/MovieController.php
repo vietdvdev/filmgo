@@ -67,8 +67,8 @@ class MovieController extends Controller
             'genres.*'      => 'exists:genres,id',
             'actor_names'   => 'nullable|array',
             'actor_names.*' => 'nullable|string|max:255',
-            'formats'       => 'required|array|min:1',
-            'formats.*'     => 'exists:formats,id',
+            // Định dạng chiếu: bắt buộc, là số nguyên và phải tồn tại trong bảng formats
+            'format_id'     => 'required|integer|exists:formats,id',
         ], [
             'title.required'        => 'Tên phim không được để trống.',
             'duration.required'     => 'Thời lượng không được để trống.',
@@ -79,8 +79,9 @@ class MovieController extends Controller
             'poster.image'          => 'File poster phải là hình ảnh.',
             'poster.mimes'          => 'Poster chỉ chấp nhận định dạng jpg, jpeg, png, webp.',
             'poster.max'            => 'Poster không được vượt quá 2MB.',
-            'formats.required'      => 'Vui lòng chọn ít nhất một định dạng chiếu.',
-            'formats.min'           => 'Vui lòng chọn ít nhất một định dạng chiếu.',
+            'format_id.required'    => 'Vui lòng chọn một định dạng chiếu.',
+            'format_id.integer'     => 'Định dạng chiếu không hợp lệ.',
+            'format_id.exists'      => 'Định dạng chiếu không tồn tại.',
         ]);
 
         $posterPath = null;
@@ -145,8 +146,8 @@ class MovieController extends Controller
             'genres.*'      => 'exists:genres,id',
             'actor_names'   => 'nullable|array',
             'actor_names.*' => 'nullable|string|max:255',
-            'formats'       => 'required|array|min:1',
-            'formats.*'     => 'exists:formats,id',
+            // Định dạng chiếu: bắt buộc, là số nguyên và phải tồn tại trong bảng formats
+            'format_id'     => 'required|integer|exists:formats,id',
         ], [
             'title.required'        => 'Tên phim không được để trống.',
             'duration.required'     => 'Thời lượng không được để trống.',
@@ -156,8 +157,9 @@ class MovieController extends Controller
             'poster.image'          => 'File poster phải là hình ảnh.',
             'poster.mimes'          => 'Poster chỉ chấp nhận định dạng jpg, jpeg, png, webp.',
             'poster.max'            => 'Poster không được vượt quá 2MB.',
-            'formats.required'      => 'Vui lòng chọn ít nhất một định dạng chiếu.',
-            'formats.min'           => 'Vui lòng chọn ít nhất một định dạng chiếu.',
+            'format_id.required'    => 'Vui lòng chọn một định dạng chiếu.',
+            'format_id.integer'     => 'Định dạng chiếu không hợp lệ.',
+            'format_id.exists'      => 'Định dạng chiếu không tồn tại.',
         ]);
 
         $posterPath = $movie->poster;
