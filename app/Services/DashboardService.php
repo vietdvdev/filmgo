@@ -258,11 +258,14 @@ class DashboardService
 
     /**
      * Thống kê doanh thu và số lượng vé bán ra theo từng phim.
-     * Sắp xếp theo doanh thu giảm dần.
+     * Sử dụng JOIN để kết nối các bảng movies, showtimes, bookings và booking_details.
+     * Chỉ tính những đơn hàng đã thanh toán (payment_status = paid).
+     * Dùng DB::raw SUM và COUNT để tính toán trực tiếp tại CSDL nhằm tối ưu bộ nhớ.
+     * Sắp xếp theo tổng doanh thu giảm dần để hiển thị Top phim.
      * 
-     * @param Carbon $startDate
-     * @param Carbon $endDate
-     * @return \Illuminate\Support\Collection
+     * @param Carbon $startDate Ngày bắt đầu
+     * @param Carbon $endDate Ngày kết thúc
+     * @return \Illuminate\Support\Collection Danh sách phim cùng dữ liệu doanh thu
      */
     public function getMovieRevenueStatistics(Carbon $startDate, Carbon $endDate)
     {
