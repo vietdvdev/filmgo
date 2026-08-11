@@ -219,6 +219,17 @@
 
     </div>
 
+    <!-- ── 2.5 Biểu đồ Doanh Thu Phim ── -->
+    <div class="bg-white border border-zinc-200/80 rounded-3xl p-6 shadow-sm mb-8">
+        <div class="flex justify-between items-center mb-6">
+            <h3 class="text-base font-black uppercase tracking-wider text-zinc-800">Top Phim Doanh Thu Cao Nhất</h3>
+            <span class="text-xs text-zinc-400 font-bold">Lọc theo ngày chọn</span>
+        </div>
+        <div class="h-[300px] relative w-full">
+            <canvas id="movieRevenueChart"></canvas>
+        </div>
+    </div>
+
     <!-- ── 3. Bảng Vận Hành & Cảnh Báo ── -->
     <div class="grid grid-cols-1 gap-6">
         
@@ -351,6 +362,7 @@
             // Lưu trữ các đối tượng biểu đồ
             let revenueChartInstance = null;
             let movieChartInstance = null;
+            let movieRevenueChartInstance = null;
 
             const formatMoney = (val) => {
                 return new Intl.NumberFormat('vi-VN').format(val) + 'đ';
@@ -578,6 +590,74 @@
                     });
                 } catch (err) {
                     console.error('Lỗi khi tạo biểu đồ phim:', err);
+                }
+
+                // Biểu đồ cột ngang cho Top Phim Doanh Thu Cao Nhất
+                try {
+                    // Lấy top 5 phim có doanh thu cao nhất từ movieRevenues
+                    const topRevenueMovies = [...movieRevenues.value].sort((a, b) => b.total_revenue - a.total_revenue).slice(0, 5);
+                    
+                    const ctx = document.getElementById('movieRevenueChart').getContext('2d');
+                    if (movieRevenueChartInstance) movieRevenueChartInstance.destroy();
+
+                    const revLabels = topRevenueMovies.map(m => m.title);
+                    const revData = topRevenueMovies.map(m => m.total_revenue);
+
+                    movieRevenueChartInstance = new Chart(ctx, {
+                        type: 'bar',
+                        data: {
+                            labels: revLabels,
+                            datasets: [{
+                                label: 'Doanh Thu',
+                                data: revData,
+                                backgroundColor: '#10b981', // Emerald-500
+                                borderColor: '#059669',
+                                borderWidth: 1,
+                                borderRadius: 6,
+                                barPercentage: 0.5
+                            }]
+                        },
+                        options: {
+                            indexAxis: 'y', // Đổi thành biểu đồ cột ngang
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            plugins: {
+                                legend: { display: false },
+                                tooltip: {
+                                    backgroundColor: '#ffffff',
+                                    titleColor: '#111827',
+                                    bodyColor: '#374151',
+                                    borderColor: '#e5e7eb',
+                                    borderWidth: 1,
+                                    callbacks: {
+                                        label: function(context) {
+                                            return ` Doanh thu: ${formatMoney(context.raw)}`;
+                                        }
+                                    }
+                                }
+                            },
+                            scales: {
+                                x: {
+                                    beginAtZero: true,
+                                    grid: { color: '#f3f4f6' },
+                                    ticks: {
+                                        color: '#6b7280',
+                                        font: { family: 'Inter', size: 10 },
+                                        callback: function(value) {
+                                            if (Math.floor(value) !== value) return;
+                                            return formatShortMoney(value);
+                                        }
+                                    }
+                                },
+                                y: {
+                                    grid: { display: false },
+                                    ticks: { color: '#6b7280', font: { family: 'Inter', size: 11, weight: 'bold' } }
+                                }
+                            }
+                        }
+                    });
+                } catch (err) {
+                    console.error('Lỗi khi tạo biểu đồ doanh thu phim:', err);
                 }
             };
 
