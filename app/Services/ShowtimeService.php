@@ -119,7 +119,10 @@ class ShowtimeService
             Showtime::whereIn('id', $toUpdateShowing)->update(['status' => 'showing']);
         }
 
-        return $showtimes;
+        // Lọc bỏ các suất chiếu đã kết thúc khỏi danh sách trả về cho khách hàng
+        return $showtimes->reject(function ($showtime) {
+            return $showtime->real_time_status === 'finished';
+        })->values();
     }
 
     /**
