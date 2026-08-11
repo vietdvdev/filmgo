@@ -264,6 +264,36 @@
         </div>
 
 
+        <!-- Bảng Thống kê doanh thu phim -->
+        <div class="bg-white border border-zinc-200/80 rounded-3xl p-6 shadow-sm">
+            <h3 class="text-base font-black uppercase tracking-wider text-zinc-800 mb-6 flex items-center gap-2">
+                <span class="material-symbols-outlined text-red-500">payments</span>
+                Thống Kê Doanh Thu Phim
+            </h3>
+            
+            <div class="overflow-x-auto">
+                <table class="w-full text-left text-xs font-semibold text-zinc-500">
+                    <thead>
+                        <tr class="border-b border-zinc-100 text-[10px] text-zinc-400 uppercase font-black tracking-wider">
+                            <th class="py-4">Tên Phim</th>
+                            <th class="py-4 text-center">Số Vé Bán Ra</th>
+                            <th class="py-4 text-right">Tổng Doanh Thu</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr v-for="movie in movieRevenues" :key="movie.id" class="border-b border-zinc-100/80 hover:bg-zinc-50/50 transition-all">
+                            <td class="py-4 font-bold text-zinc-800">@{{ movie.title }}</td>
+                            <td class="py-4 text-center text-zinc-600">@{{ movie.tickets_count }} <span class="text-[10px] text-zinc-400 font-normal">vé</span></td>
+                            <td class="py-4 text-right text-red-600 font-black tracking-wide">@{{ formatMoney(movie.total_revenue) }}</td>
+                        </tr>
+                        <tr v-if="movieRevenues.length === 0">
+                            <td colspan="3" class="py-8 text-center text-zinc-400 italic">Không có dữ liệu doanh thu trong khoảng thời gian này.</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
     </div>
 
 </div>
@@ -307,6 +337,7 @@
         setup() {
             const kpis = ref(null);
             const showtimes = ref([]);
+            const movieRevenues = ref([]);
             const loading = ref(true);
 
             // Các biến lọc Date Range
@@ -353,6 +384,10 @@
                     // 2. Load showtimes hôm nay
                     const showtimesRes = await axios.get('/api/admin/dashboard/ops/today-showtimes');
                     showtimes.value = showtimesRes.data;
+
+                    // 3. Load thống kê doanh thu phim
+                    const movieRevRes = await axios.get('/api/admin/dashboard/stats/movie-revenue', { params });
+                    movieRevenues.value = movieRevRes.data;
 
                     // 4. Render charts
                     await initCharts();
@@ -553,6 +588,7 @@
             return {
                 kpis,
                 showtimes,
+                movieRevenues,
                 loading,
                 filterType,
                 startDate,
