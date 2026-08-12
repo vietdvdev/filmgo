@@ -255,4 +255,34 @@ class DashboardService
 
         return round((($current - $previous) / $previous) * 100, 2);
     }
+
+    /**
+     * Thống kê doanh thu và số lượng vé bán ra theo từng phim.
+     * Sử dụng JOIN để kết nối các bảng movies, showtimes, bookings và booking_details.
+     * Chỉ tính những đơn hàng đã thanh toán (payment_status = paid).
+     * Dùng DB::raw SUM và COUNT để tính toán trực tiếp tại CSDL nhằm tối ưu bộ nhớ.
+     * Sắp xếp theo tổng doanh thu giảm dần để hiển thị Top phim.
+     * 
+     * @param Carbon $startDate Ngày bắt đầu
+     * @param Carbon $endDate Ngày kết thúc
+     * @return \Illuminate\Support\Collection Danh sách phim cùng dữ liệu doanh thu
+     */
+    public function getMovieRevenueStatistics(Carbon $startDate, Carbon $endDate)
+    {
+        return DB::table('movies')
+            ->join('showtimes', 'movies.id', '=', 'showtimes.movie_id')
+            ->join('bookings', 'showtimes.id', '=', 'bookings.showtime_id')
+            ->join('booking_details', 'bookings.id', '=', 'booking_details.booking_id')
+            ->where('bookings.payment_status', 'paid')
+            ->whereBetween('bookings.created_at', [$startDate, $endDate])
+            ->select(
+                'movies.id',
+                'movies.title',
+                DB::raw('COUNT(booking_details.id) as tickets_count'),
+                DB::raw('SUM(booking_details.price) as total_revenue')
+            )
+            ->groupBy('movies.id', 'movies.title')
+            ->orderByDesc('total_revenue')
+            ->get();
+    }
 }

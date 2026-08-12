@@ -69,5 +69,8 @@ Route::middleware(['web', 'auth', 'admin'])
 
         // GET /api/admin/dashboard/ops/today-showtimes
         Route::get('/ops/today-showtimes', [App\Http\Controllers\Admin\DashboardController::class, 'opsTodayShowtimes'])->name('api.admin.dashboard.ops.today-showtimes');
+
+        // GET /api/admin/dashboard/stats/movie-revenue
+        Route::get('/stats/movie-revenue', [App\Http\Controllers\Admin\DashboardController::class, 'movieRevenueStats'])->name('api.admin.dashboard.stats.movie-revenue');
     });
 
