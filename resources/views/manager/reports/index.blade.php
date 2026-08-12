@@ -127,6 +127,63 @@
         </div>
     </div>
 
+    {{-- ── Doanh thu theo phim (khi chọn 1 rạp cụ thể) ─────────────────────── --}}
+    @if($filterCinemaId && $movieStats->count() > 0)
+    <div class="bg-white border border-slate-200 shadow-sm overflow-hidden">
+        <div class="px-6 py-4 bg-slate-50 border-b border-slate-200 flex items-center gap-2">
+            <span class="material-symbols-outlined text-slate-500 text-lg">movie</span>
+            <h3 class="text-sm font-bold text-slate-800 uppercase tracking-wider">
+                Doanh Thu Theo Phim — {{ $allCinemas->firstWhere('id', $filterCinemaId)?->name }}
+            </h3>
+        </div>
+        <div class="overflow-x-auto">
+            <table class="min-w-full divide-y divide-slate-200 text-sm">
+                <thead class="bg-slate-100">
+                    <tr>
+                        <th class="px-5 py-3 text-left text-xs font-bold text-slate-500 uppercase tracking-wider w-8">#</th>
+                        <th class="px-5 py-3 text-left text-xs font-bold text-slate-500 uppercase tracking-wider">Phim</th>
+                        <th class="px-5 py-3 text-right text-xs font-bold text-slate-500 uppercase tracking-wider">Vé Đã Bán</th>
+                        <th class="px-5 py-3 text-right text-xs font-bold text-blue-600 uppercase tracking-wider bg-blue-50">Doanh Thu Vé</th>
+                        <th class="px-5 py-3 text-right text-xs font-bold text-slate-500 uppercase tracking-wider">Tỷ Trọng</th>
+                    </tr>
+                </thead>
+                <tbody class="bg-white divide-y divide-slate-100">
+                    @php $totalMovieRevenue = $movieStats->sum('ticket_revenue'); @endphp
+                    @foreach($movieStats as $i => $movie)
+                    <tr class="hover:bg-slate-50 transition-colors">
+                        <td class="px-5 py-3 text-slate-400 font-medium">{{ $i + 1 }}</td>
+                        <td class="px-5 py-3 font-semibold text-slate-900">{{ $movie->title }}</td>
+                        <td class="px-5 py-3 text-right font-semibold text-slate-800">
+                            {{ number_format($movie->ticket_count, 0, ',', '.') }}
+                            <span class="text-xs text-slate-400 font-normal">vé</span>
+                        </td>
+                        <td class="px-5 py-3 text-right font-extrabold text-blue-700 bg-blue-50">
+                            {{ number_format($movie->ticket_revenue, 0, ',', '.') }}<span class="text-xs font-semibold">đ</span>
+                        </td>
+                        <td class="px-5 py-3 text-right">
+                            @if($totalMovieRevenue > 0)
+                                @php $pct = round($movie->ticket_revenue / $totalMovieRevenue * 100) @endphp
+                                <div class="flex items-center justify-end gap-2">
+                                    <div class="w-16 bg-slate-200 rounded-full h-1.5">
+                                        <div class="bg-blue-500 h-1.5 rounded-full" style="width: {{ $pct }}%"></div>
+                                    </div>
+                                    <span class="text-xs font-bold text-slate-600 w-8 text-right">{{ $pct }}%</span>
+                                </div>
+                            @endif
+                        </td>
+                    </tr>
+                    @endforeach
+                </tbody>
+            </table>
+        </div>
+    </div>
+    @elseif($filterCinemaId && $movieStats->count() === 0)
+    <div class="bg-white border border-slate-200 shadow-sm px-6 py-10 text-center">
+        <span class="material-symbols-outlined text-4xl text-slate-300 block mb-2">movie_off</span>
+        <p class="text-sm font-semibold text-slate-500">Không có dữ liệu phim cho rạp và bộ lọc đã chọn.</p>
+    </div>
+    @endif
+
     {{-- ── Bảng thống kê chi tiết ───────────────────────────────────────────── --}}
     <div class="bg-white border border-slate-200 shadow-sm overflow-hidden">
 
