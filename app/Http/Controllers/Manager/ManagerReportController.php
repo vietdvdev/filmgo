@@ -112,25 +112,47 @@ class ManagerReportController extends Controller
         // ── Doanh thu theo phim (chỉ khi chọn 1 rạp cụ thể) ───────────────
         $movieStats = collect();
         if ($filterCinemaId && in_array((int) $filterCinemaId, $allCinemaIds)) {
-            $movieQuery = DB::table('bookings')
+            $cid = (int) $filterCinemaId;
+
+            // Vé + số suất chiếu
+            $movieTicketQuery = DB::table('bookings')
                 ->join('showtimes', 'bookings.showtime_id', '=', 'showtimes.id')
                 ->join('rooms', 'showtimes.room_id', '=', 'rooms.id')
                 ->join('movies', 'showtimes.movie_id', '=', 'movies.id')
-                ->where('rooms.cinema_id', (int) $filterCinemaId)
+                ->where('rooms.cinema_id', $cid)
                 ->where('bookings.payment_status', 'paid')
                 ->where('bookings.booking_type', 'ticket');
-            $applyDateFilter($movieQuery, 'bookings.created_at');
-            $movieStats = $movieQuery
-                ->groupBy('movies.id', 'movies.title', 'movies.poster')
+            $applyDateFilter($movieTicketQuery, 'bookings.created_at');
+            $movieTickets = $movieTicketQuery
+                ->groupBy('movies.id', 'movies.title')
                 ->select(
                     'movies.id',
                     'movies.title',
-                    'movies.poster',
+                    DB::raw('COUNT(DISTINCT showtimes.id) as showtime_count'),
                     DB::raw('COUNT(bookings.id) as ticket_count'),
                     DB::raw('SUM(bookings.final_total) as ticket_revenue')
                 )
-                ->orderByDesc('ticket_revenue')
-                ->get();
+                ->get()->keyBy('id');
+
+            // F&B kèm vé theo phim
+            $movieFnbQuery = DB::table('booking_combos')
+                ->join('bookings', 'booking_combos.booking_id', '=', 'bookings.id')
+                ->join('showtimes', 'bookings.showtime_id', '=', 'showtimes.id')
+                ->join('rooms', 'showtimes.room_id', '=', 'rooms.id')
+                ->join('movies', 'showtimes.movie_id', '=', 'movies.id')
+                ->where('rooms.cinema_id', $cid)
+                ->where('bookings.payment_status', 'paid');
+            $applyDateFilter($movieFnbQuery, 'bookings.created_at');
+            $movieFnb = $movieFnbQuery
+                ->groupBy('movies.id')
+                ->select('movies.id', DB::raw('SUM(booking_combos.subtotal) as fnb_revenue'))
+                ->get()->keyBy('id');
+
+            $movieStats = $movieTickets->map(function ($m) use ($movieFnb) {
+                $m->fnb_revenue   = $movieFnb[$m->id]->fnb_revenue ?? 0;
+                $m->total_revenue = $m->ticket_revenue + $m->fnb_revenue;
+                return $m;
+            })->sortByDesc('total_revenue')->values();
         }
 
         return view('manager.reports.index', compact(
