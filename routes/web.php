@@ -176,8 +176,8 @@ Route::prefix('admin')->group(function () {
         Route::resource('formats', FormatController::class)->names('admin.formats')->except(['create', 'edit', 'show']);
 
         // 13. Báo cáo doanh thu
-        Route::get('reports', [AdminReportController::class, 'index'])->name('admin.reports.index');
-
+        Route::get('reports/cinema', [AdminReportController::class, 'cinema'])->name('admin.reports.cinema');
+        Route::get('reports/movie', [AdminReportController::class, 'movie'])->name('admin.reports.movie');
 
     });
 });
