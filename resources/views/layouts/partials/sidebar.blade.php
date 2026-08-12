@@ -101,12 +101,34 @@
             <span>Người Dùng</span>
         </a>
 
-        <!-- Báo Cáo -->
-        <a href="{{ route('admin.reports.cinema') }}"
-           class="flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-semibold transition-all duration-200 {{ request()->routeIs('admin.reports.*') ? 'bg-primary/10 text-primary' : 'text-on-surface-variant hover:bg-surface-container-low hover:text-on-surface' }}">
-            <span class="material-symbols-outlined text-[20px]" style="font-variation-settings: 'FILL' {{ request()->routeIs('admin.reports.*') ? 1 : 0 }};">bar_chart</span>
-            <span>Báo Cáo</span>
-        </a>
+        <!-- Báo Cáo (Submenu) -->
+        <div class="flex flex-col">
+            <button type="button" onclick="toggleSubmenu('reports-submenu', 'reports-chevron')"
+               class="w-full flex items-center justify-between gap-3 px-3.5 py-2.5 rounded-xl text-sm font-semibold transition-all duration-200 {{ request()->routeIs('admin.reports.*') ? 'bg-primary/10 text-primary' : 'text-on-surface-variant hover:bg-surface-container-low hover:text-on-surface' }}">
+                <div class="flex items-center gap-3">
+                    <span class="material-symbols-outlined text-[20px]" style="font-variation-settings: 'FILL' {{ request()->routeIs('admin.reports.*') ? 1 : 0 }};">bar_chart</span>
+                    <span>Báo Cáo</span>
+                </div>
+                <span id="reports-chevron" class="material-symbols-outlined text-[18px] transition-transform duration-200 {{ request()->routeIs('admin.reports.*') ? 'rotate-180' : '' }}">expand_more</span>
+            </button>
+            
+            <!-- Danh sách báo cáo con -->
+            <div id="reports-submenu" class="flex flex-col gap-1 mt-1 pl-9 pr-2 overflow-hidden transition-all duration-300 {{ request()->routeIs('admin.reports.*') ? 'max-h-64 opacity-100' : 'max-h-0 opacity-0' }}">
+                <!-- Báo cáo doanh thu theo Rạp -->
+                <a href="{{ route('admin.reports.cinema') }}" 
+                   class="flex items-center gap-3 px-3.5 py-2 rounded-lg text-sm transition-all duration-200 {{ request()->routeIs('admin.reports.cinema') ? 'text-primary font-semibold bg-primary/5' : 'text-on-surface-variant hover:text-on-surface hover:bg-surface-container-low' }}">
+                    <span class="material-symbols-outlined text-[18px]">storefront</span>
+                    <span>Doanh thu theo Rạp</span>
+                </a>
+                
+                <!-- Báo cáo doanh thu theo Phim -->
+                <a href="{{ route('admin.reports.movie') }}" 
+                   class="flex items-center gap-3 px-3.5 py-2 rounded-lg text-sm transition-all duration-200 {{ request()->routeIs('admin.reports.movie') ? 'text-primary font-semibold bg-primary/5' : 'text-on-surface-variant hover:text-on-surface hover:bg-surface-container-low' }}">
+                    <span class="material-symbols-outlined text-[18px]">movie</span>
+                    <span>Doanh thu theo Phim</span>
+                </a>
+            </div>
+        </div>
 
         <!-- Cài Đặt -->
         <a href="#" class="flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-semibold text-on-surface-variant hover:bg-surface-container-low hover:text-on-surface transition-all duration-200">
@@ -192,4 +214,22 @@
     document.addEventListener('keydown', function(e) {
         if (e.key === 'Escape') closeLogoutModal();
     });
+
+    // Hàm toggle submenu cho sidebar
+    function toggleSubmenu(submenuId, chevronId) {
+        const submenu = document.getElementById(submenuId);
+        const chevron = document.getElementById(chevronId);
+        
+        if (submenu.classList.contains('max-h-0')) {
+            // Mở submenu
+            submenu.classList.remove('max-h-0', 'opacity-0');
+            submenu.classList.add('max-h-64', 'opacity-100');
+            chevron.classList.add('rotate-180');
+        } else {
+            // Đóng submenu
+            submenu.classList.remove('max-h-64', 'opacity-100');
+            submenu.classList.add('max-h-0', 'opacity-0');
+            chevron.classList.remove('rotate-180');
+        }
+    }
 </script>

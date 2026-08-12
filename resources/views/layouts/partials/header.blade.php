@@ -7,8 +7,7 @@
                 Dashboard
             </a>
             
-            <!-- Component Dropdown Báo cáo doanh thu -->
-            @include('layouts.partials.revenue-report-dropdown')
+            <!-- Đã loại bỏ Component Dropdown Báo cáo doanh thu ở đây, chuyển vào Sidebar -->
             @if(request()->routeIs('admin.movies.*'))
                 <span class="material-symbols-outlined text-sm text-outline-variant">chevron_right</span>
                 <a href="{{ route('admin.movies.index') }}" class="hover:text-primary transition-colors flex items-center gap-1.5 {{ request()->routeIs('admin.movies.index') ? 'text-primary font-semibold' : '' }}">
