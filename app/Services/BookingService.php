@@ -36,7 +36,7 @@ class BookingService
 
         return DB::transaction(function () use ($userId, $showtimeId, $showtimeSeatIds, $combosData, $voucherData) {
             // 1. Lấy thông tin suất chiếu
-            $showtime = Showtime::findOrFail($showtimeId);
+            $showtime = Showtime::with('room')->findOrFail($showtimeId);
 
             // 2. Khóa ghế để tránh race condition
             $showtimeSeats = ShowtimeSeat::with('seat.seatType')
@@ -171,6 +171,7 @@ class BookingService
             $booking = Booking::create([
                 'user_id'         => $userId,
                 'showtime_id'     => $showtimeId,
+                'cinema_id'       => $showtime->room->cinema_id,
                 'booking_code'    => $bookingCode,
                 'subtotal'        => $totalSeatPrice + $totalComboPrice,
                 'promotion_id'    => $promotionId,

@@ -201,6 +201,14 @@ Route::prefix('manager')->group(function () {
 
         Route::get('/dashboard', [App\Http\Controllers\Manager\ManagerDashboardController::class, 'index'])->name('manager.dashboard');
 
+        // Dashboard API endpoints
+        Route::get('/dashboard/api/kpis', [App\Http\Controllers\Manager\ManagerDashboardController::class, 'kpis'])->name('manager.dashboard.kpis');
+        Route::get('/dashboard/api/charts/revenue', [App\Http\Controllers\Manager\ManagerDashboardController::class, 'chartsRevenue'])->name('manager.dashboard.charts.revenue');
+        Route::get('/dashboard/api/charts/top-movies', [App\Http\Controllers\Manager\ManagerDashboardController::class, 'chartsTopMovies'])->name('manager.dashboard.charts.top-movies');
+        Route::get('/dashboard/api/ops/today-showtimes', [App\Http\Controllers\Manager\ManagerDashboardController::class, 'opsTodayShowtimes'])->name('manager.dashboard.ops.today-showtimes');
+        Route::get('/dashboard/api/recent-bookings', [App\Http\Controllers\Manager\ManagerDashboardController::class, 'recentBookings'])->name('manager.dashboard.recent-bookings');
+        Route::get('/dashboard/api/recent-combo-bookings', [App\Http\Controllers\Manager\ManagerDashboardController::class, 'recentComboBookings'])->name('manager.dashboard.recent-combo-bookings');
+
 
         // Quản lý rạp chiếu (xem thông tin rạp được phân công)
         Route::get('/cinemas', [ManagerCinemaController::class, 'index'])->name('manager.cinemas.index');
