@@ -109,9 +109,34 @@ class ManagerReportController extends Controller
             'total_revenue'  => $cinemas->sum('total_revenue'),
         ];
 
+        // ── Doanh thu theo phim (chỉ khi chọn 1 rạp cụ thể) ───────────────
+        $movieStats = collect();
+        if ($filterCinemaId && in_array((int) $filterCinemaId, $allCinemaIds)) {
+            $movieQuery = DB::table('bookings')
+                ->join('showtimes', 'bookings.showtime_id', '=', 'showtimes.id')
+                ->join('rooms', 'showtimes.room_id', '=', 'rooms.id')
+                ->join('movies', 'showtimes.movie_id', '=', 'movies.id')
+                ->where('rooms.cinema_id', (int) $filterCinemaId)
+                ->where('bookings.payment_status', 'paid')
+                ->where('bookings.booking_type', 'ticket');
+            $applyDateFilter($movieQuery, 'bookings.created_at');
+            $movieStats = $movieQuery
+                ->groupBy('movies.id', 'movies.title', 'movies.poster')
+                ->select(
+                    'movies.id',
+                    'movies.title',
+                    'movies.poster',
+                    DB::raw('COUNT(bookings.id) as ticket_count'),
+                    DB::raw('SUM(bookings.final_total) as ticket_revenue')
+                )
+                ->orderByDesc('ticket_revenue')
+                ->get();
+        }
+
         return view('manager.reports.index', compact(
             'cinemas', 'allCinemas', 'summary',
-            'filterCinemaId', 'filterType', 'filterDate', 'filterMonth', 'filterYear'
+            'filterCinemaId', 'filterType', 'filterDate', 'filterMonth', 'filterYear',
+            'movieStats'
         ));
     }
 }
