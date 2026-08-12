@@ -314,6 +314,7 @@ class PosController extends Controller
                 paymentMethod:  $validated['payment_method'],
                 customerPhone:  $validated['customer_phone'] ?? null,
                 voucherCode:    $validated['voucher_code'] ?? null,
+                cinemaId:       $this->getCinemaId(),
             );
 
             return response()->json([

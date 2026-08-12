@@ -199,6 +199,7 @@ class CounterBookingService
                 'user_id'         => $customerId,
                 'staff_id'        => $staffId,
                 'showtime_id'     => $showtimeId,
+                'cinema_id'       => $showtime->room->cinema_id,
                 'booking_code'    => $bookingCode,
                 'subtotal'        => $subtotal,         // Tổng trước giảm giá
                 'total_amount'    => $subtotal,         // Giá gốc (không áp giảm)

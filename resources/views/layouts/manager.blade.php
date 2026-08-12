@@ -21,6 +21,7 @@
         }
     </style>
     @yield('styles')
+    @stack('head')
 </head>
 <body class="h-full flex bg-slate-100 text-slate-800 antialiased">
 
@@ -190,5 +191,6 @@
 
 
     @yield('scripts')
+    @stack('scripts')
 </body>
 </html>
