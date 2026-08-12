@@ -295,27 +295,29 @@
                             <h3 class="font-headline-sm text-headline-sm">Định Dạng Chiếu <span class="text-error">*</span></h3>
                         </div>
 
-                        <!-- Giải thích bằng tiếng Việt: Đổi từ chọn nhiều (checkbox) sang chọn 1 (radio) -->
+                        <!-- Chú thích: Cơ chế Single Selection sử dụng radio và xử lý UI mượt mà bằng JS -->
                         <p class="text-xs text-on-surface-variant">Chọn 1 định dạng chiếu duy nhất cho bộ phim này.</p>
 
-                        <div class="grid grid-cols-2 gap-2">
+                        <div class="grid grid-cols-2 gap-2 format-selection-group">
                             @foreach($formats as $format)
                                 @php
                                     $fmtColors = [
-                                        '2D'   => 'peer-checked:border-blue-500 peer-checked:bg-blue-500/10 peer-checked:text-blue-700',
-                                        '3D'   => 'peer-checked:border-purple-500 peer-checked:bg-purple-500/10 peer-checked:text-purple-700',
-                                        'IMAX' => 'peer-checked:border-amber-500 peer-checked:bg-amber-500/10 peer-checked:text-amber-700',
-                                        '4DX'  => 'peer-checked:border-emerald-500 peer-checked:bg-emerald-500/10 peer-checked:text-emerald-700',
+                                        '2D'   => 'border-blue-500 bg-blue-500/10 text-blue-700',
+                                        '3D'   => 'border-purple-500 bg-purple-500/10 text-purple-700',
+                                        'IMAX' => 'border-amber-500 bg-amber-500/10 text-amber-700',
+                                        '4DX'  => 'border-emerald-500 bg-emerald-500/10 text-emerald-700',
                                     ];
-                                    $colorClass = $fmtColors[$format->name] ?? 'peer-checked:border-primary peer-checked:bg-primary/10 peer-checked:text-primary';
-                                    $isChecked  = old('format_id', $selectedFormat) == $format->id;
+                                    $activeClasses = $fmtColors[$format->name] ?? 'border-primary bg-primary/10 text-primary';
+                                    
+                                    // Kiểm tra xem ô này có đang được chọn (active) hay không (lấy theo dữ liệu cũ hoặc DB)
+                                    $isChecked = old('format_id', $selectedFormat) == $format->id;
                                 @endphp
-                                <!-- Đổi type sang radio, name thành format_id -->
-                                <input type="radio" name="format_id" id="edit_format_{{ $format->id }}"
-                                    value="{{ $format->id }}" class="hidden peer"
-                                    {{ $isChecked ? 'checked' : '' }}>
-                                <label for="edit_format_{{ $format->id }}"
-                                    class="cursor-pointer flex flex-col items-center justify-center gap-1 px-3 py-3 border border-outline-variant rounded-lg text-on-surface-variant hover:bg-surface-container-low {{ $colorClass }} transition-all duration-200 select-none">
+                                
+                                <label class="format-label cursor-pointer flex flex-col items-center justify-center gap-1 px-3 py-3 border rounded-lg transition-all duration-200 select-none {{ $isChecked ? $activeClasses . ' font-semibold' : 'border-outline-variant text-on-surface-variant hover:bg-surface-container-low' }}"
+                                       data-active-classes="{{ $activeClasses }}">
+                                    <!-- Input type radio ẩn, đảm bảo logic Single Selection -->
+                                    <input type="radio" name="format_id" value="{{ $format->id }}" class="hidden format-radio" {{ $isChecked ? 'checked' : '' }}>
+                                    
                                     <span class="font-black text-lg leading-none">{{ $format->name }}</span>
                                     @if($format->surcharge_price > 0)
                                         <span class="text-[10px] font-medium opacity-70">+{{ number_format($format->surcharge_price) }}₫</span>
@@ -451,6 +453,34 @@
         document.getElementById('actorNameInput').addEventListener('keydown', e => {
             if (e.key === 'Enter') { e.preventDefault(); confirmActor(); }
             if (e.key === 'Escape') cancelActor();
+        });
+
+        // Xử lý sự kiện click/change cho Định Dạng Chiếu (Single Selection)
+        const formatLabels = document.querySelectorAll('.format-label');
+        const formatRadios = document.querySelectorAll('.format-radio');
+
+        formatRadios.forEach(radio => {
+            radio.addEventListener('change', function() {
+                // Khi một radio được chọn, reset tất cả các label về trạng thái mặc định
+                formatLabels.forEach(label => {
+                    const activeClasses = label.getAttribute('data-active-classes').split(' ');
+                    // Gỡ bỏ highlight
+                    label.classList.remove(...activeClasses, 'font-semibold');
+                    // Thêm lại style mặc định (viền xám nhạt)
+                    label.classList.add('border-outline-variant', 'text-on-surface-variant', 'hover:bg-surface-container-low');
+                });
+
+                // Thêm highlight cho label đang được chọn
+                if (this.checked) {
+                    const parentLabel = this.closest('.format-label');
+                    const activeClasses = parentLabel.getAttribute('data-active-classes').split(' ');
+                    
+                    // Xóa style mặc định
+                    parentLabel.classList.remove('border-outline-variant', 'text-on-surface-variant', 'hover:bg-surface-container-low');
+                    // Thêm style highlight dựa theo cấu hình data-active-classes
+                    parentLabel.classList.add(...activeClasses, 'font-semibold');
+                }
+            });
         });
     });
 </script>
