@@ -9,7 +9,7 @@ use Illuminate\Support\Facades\DB;
 
 class AdminReportController extends Controller
 {
-    public function index(Request $request)
+    public function cinema(Request $request)
     {
         $cinemaId = $request->input('cinema_id');
         $day      = $request->input('day');
@@ -116,9 +116,95 @@ class AdminReportController extends Controller
             'total_revenue'  => $cinemas->sum('total_revenue'),
         ];
 
-        return view('admin.reports.index', compact(
+        return view('admin.reports.cinema', compact(
             'cinemas', 'summary', 'allCinemas',
             'cinemaId', 'day', 'month', 'year', 'from', 'to'
+        ));
+    }
+
+    public function movie(Request $request)
+    {
+        $movieId  = $request->input('movie_id');
+        $day      = $request->input('day');
+        $month    = $request->input('month');
+        $year     = $request->input('year');
+        $from     = $request->input('from');
+        $to       = $request->input('to');
+
+        $allMovies = \App\Models\Movie::orderBy('title')->get();
+
+        $applyDateFilter = function ($q) use ($movieId, $day, $month, $year, $from, $to) {
+            if ($movieId) $q->where('movies.id', $movieId);
+            if ($day)      $q->whereDay('bookings.created_at', $day);
+            if ($month)    $q->whereMonth('bookings.created_at', $month);
+            if ($year)     $q->whereYear('bookings.created_at', $year);
+            if ($from)     $q->whereDate('bookings.created_at', '>=', $from);
+            if ($to)       $q->whereDate('bookings.created_at', '<=', $to);
+            return $q;
+        };
+
+        // Query 1: Doanh thu vé
+        $ticketQ = DB::table('bookings')
+            ->join('showtimes', 'bookings.showtime_id', '=', 'showtimes.id')
+            ->join('movies', 'showtimes.movie_id', '=', 'movies.id')
+            ->where('bookings.payment_status', 'paid')
+            ->whereNull('movies.deleted_at')
+            ->whereNull('showtimes.deleted_at')
+            ->select('movies.id as movie_id', DB::raw('SUM(bookings.subtotal) as ticket_revenue'));
+        $applyDateFilter($ticketQ);
+        $ticketStats = $ticketQ->groupBy('movies.id')->get()->keyBy('movie_id');
+
+        // Query 2: Đếm vé (ghế)
+        $seatQ = DB::table('booking_details')
+            ->join('bookings', 'booking_details.booking_id', '=', 'bookings.id')
+            ->join('showtimes', 'bookings.showtime_id', '=', 'showtimes.id')
+            ->join('movies', 'showtimes.movie_id', '=', 'movies.id')
+            ->where('bookings.payment_status', 'paid')
+            ->whereNull('movies.deleted_at')
+            ->whereNull('showtimes.deleted_at')
+            ->select('movies.id as movie_id', DB::raw('COUNT(booking_details.id) as seat_count'));
+        $applyDateFilter($seatQ);
+        $seatStats = $seatQ->groupBy('movies.id')->get()->keyBy('movie_id');
+
+        // Query 3: F&B mua kèm
+        $comboQ = DB::table('booking_combos')
+            ->join('bookings', 'booking_combos.booking_id', '=', 'bookings.id')
+            ->join('showtimes', 'bookings.showtime_id', '=', 'showtimes.id')
+            ->join('movies', 'showtimes.movie_id', '=', 'movies.id')
+            ->where('bookings.payment_status', 'paid')
+            ->whereNull('movies.deleted_at')
+            ->whereNull('showtimes.deleted_at')
+            ->select('movies.id as movie_id', DB::raw('SUM(booking_combos.subtotal) as fnb_ticket'));
+        $applyDateFilter($comboQ);
+        $comboStats = $comboQ->groupBy('movies.id')->get()->keyBy('movie_id');
+
+        $moviesList = $allMovies->map(function ($m) use ($ticketStats, $seatStats, $comboStats) {
+            $ticketRevenue = (int) ($ticketStats[$m->id]->ticket_revenue ?? 0);
+            $fnbRevenue    = (int) ($comboStats[$m->id]->fnb_ticket ?? 0);
+            return [
+                'id'             => $m->id,
+                'title'          => $m->title,
+                'ticket_count'   => (int) ($seatStats[$m->id]->seat_count ?? 0),
+                'ticket_revenue' => $ticketRevenue,
+                'fnb_revenue'    => $fnbRevenue,
+                'total_revenue'  => $ticketRevenue + $fnbRevenue,
+            ];
+        });
+
+        if ($movieId) {
+            $moviesList = $moviesList->where('id', (int) $movieId)->values();
+        }
+
+        $summary = [
+            'ticket_count'   => $moviesList->sum('ticket_count'),
+            'ticket_revenue' => $moviesList->sum('ticket_revenue'),
+            'fnb_revenue'    => $moviesList->sum('fnb_revenue'),
+            'total_revenue'  => $moviesList->sum('total_revenue'),
+        ];
+
+        return view('admin.reports.movie', compact(
+            'moviesList', 'summary', 'allMovies',
+            'movieId', 'day', 'month', 'year', 'from', 'to'
         ));
     }
 }

@@ -47,7 +47,7 @@
     </div>
 
     {{-- ── Bộ lọc ── --}}
-    <form method="GET" action="{{ route('admin.reports.index') }}"
+    <form method="GET" action="{{ route('admin.reports.cinema') }}"
           class="bg-white border border-zinc-200/80 rounded-2xl shadow-sm p-4 mb-8">
         <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
 
@@ -103,7 +103,7 @@
                     Lọc
                 </button>
                 @if($hasFilter)
-                <a href="{{ route('admin.reports.index') }}"
+                <a href="{{ route('admin.reports.cinema') }}"
                    class="flex items-center justify-center px-3 py-2 bg-zinc-100 hover:bg-zinc-200 text-zinc-500 text-xs font-bold rounded-xl transition-colors">
                     <span class="material-symbols-outlined text-sm">close</span>
                 </a>
@@ -263,7 +263,7 @@
                             <span class="material-symbols-outlined text-zinc-200 text-5xl block mb-3">search_off</span>
                             <p class="text-zinc-400 font-semibold text-sm">Không có dữ liệu phù hợp với bộ lọc.</p>
                             @if($hasFilter)
-                            <a href="{{ route('admin.reports.index') }}" class="mt-3 inline-block text-xs text-red-500 hover:underline font-semibold">Xóa bộ lọc</a>
+                            <a href="{{ route('admin.reports.cinema') }}" class="mt-3 inline-block text-xs text-red-500 hover:underline font-semibold">Xóa bộ lọc</a>
                             @endif
                         </td>
                     </tr>
