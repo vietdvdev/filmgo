@@ -17,13 +17,27 @@
 
             <div>
                 <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Rạp chiếu</label>
-                <select name="cinema_id" class="w-full border border-slate-300 bg-slate-50 text-sm px-3 py-2 rounded-none focus:outline-none focus:border-blue-600">
+                <select name="cinema_id" id="cinema_id" onchange="this.form.submit()"
+                        class="w-full border border-slate-300 bg-slate-50 text-sm px-3 py-2 rounded-none focus:outline-none focus:border-blue-600">
                     <option value="">Tất cả rạp</option>
                     @foreach($allCinemas as $c)
                         <option value="{{ $c->id }}" @selected($filterCinemaId == $c->id)>{{ $c->name }}</option>
                     @endforeach
                 </select>
             </div>
+
+            @if($filterCinemaId && $cinemaMovies->count() > 0)
+            <div>
+                <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Phim</label>
+                <select name="movie_id"
+                        class="w-full border border-slate-300 bg-slate-50 text-sm px-3 py-2 rounded-none focus:outline-none focus:border-blue-600">
+                    <option value="">Tất cả phim</option>
+                    @foreach($cinemaMovies as $m)
+                        <option value="{{ $m->id }}" @selected($filterMovieId == $m->id)>{{ $m->title }}</option>
+                    @endforeach
+                </select>
+            </div>
+            @endif
 
             <div>
                 <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Lọc theo</label>
@@ -58,6 +72,19 @@
                 </select>
             </div>
 
+            @if($filterCinemaId)
+            <div>
+                <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Sắp xếp theo</label>
+                <select name="sort"
+                        class="w-full border border-slate-300 bg-slate-50 text-sm px-3 py-2 rounded-none focus:outline-none focus:border-blue-600">
+                    <option value="total_revenue"   @selected($sortBy === 'total_revenue')>Tổng doanh thu</option>
+                    <option value="ticket_revenue"  @selected($sortBy === 'ticket_revenue')>Doanh thu vé</option>
+                    <option value="ticket_count"    @selected($sortBy === 'ticket_count')>Số vé bán</option>
+                    <option value="showtime_count"  @selected($sortBy === 'showtime_count')>Số suất chiếu</option>
+                </select>
+            </div>
+            @endif
+
         </div>
 
         <div class="flex items-center gap-3">
@@ -65,7 +92,7 @@
                     class="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-bold px-5 py-2 rounded-none">
                 <span class="material-symbols-outlined text-base">filter_alt</span> Áp dụng
             </button>
-            @if($filterType !== 'all' || $filterCinemaId)
+            @if($filterType !== 'all' || $filterCinemaId || $filterMovieId)
             <a href="{{ route('manager.reports.index') }}"
                class="inline-flex items-center gap-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-sm font-bold px-5 py-2 rounded-none">
                 <span class="material-symbols-outlined text-base">close</span> Xóa bộ lọc
@@ -83,12 +110,21 @@
         $cinemaTicketRevenue  = $movieStats->sum('ticket_revenue');
         $cinemaFnbRevenue     = $movieStats->sum('fnb_revenue');
         $cinemaTotalRevenue   = $movieStats->sum('total_revenue');
+        $filterLabel = match($filterType) {
+            'day'   => 'Ngày: ' . \Carbon\Carbon::parse($filterDate)->format('d/m/Y'),
+            'month' => 'Tháng: ' . substr($filterMonth, 5, 2) . '/' . substr($filterMonth, 0, 4),
+            'year'  => 'Năm: ' . $filterYear,
+            default => 'Tất cả thời gian',
+        };
     @endphp
 
     {{-- Summary cards rạp được chọn --}}
-    <div class="border-l-4 border-blue-500 pl-4">
-        <p class="text-xs font-bold text-blue-500 uppercase tracking-wider">Chi Tiết Rạp</p>
-        <p class="text-xl font-extrabold text-slate-900">{{ $selectedCinema?->name }}</p>
+    <div class="flex items-start justify-between">
+        <div class="border-l-4 border-blue-500 pl-4">
+            <p class="text-xs font-bold text-blue-500 uppercase tracking-wider">Chi Tiết Rạp</p>
+            <p class="text-xl font-extrabold text-slate-900">{{ $selectedCinema?->name }}</p>
+            <p class="text-xs text-slate-400 mt-0.5">{{ $filterLabel }}{{ $filterMovieId ? ' · Phim: ' . $cinemaMovies->firstWhere('id', $filterMovieId)?->title : '' }}</p>
+        </div>
     </div>
 
     <div class="grid grid-cols-2 sm:grid-cols-5 gap-4">
@@ -111,14 +147,23 @@
         <div class="bg-white border border-slate-200 shadow-sm p-4 border-l-4 border-l-blue-500">
             <p class="text-xs font-bold text-blue-500 uppercase tracking-wider">Tổng Doanh Thu</p>
             <p class="text-2xl font-extrabold text-blue-700 mt-1">{{ number_format($cinemaTotalRevenue, 0, ',', '.') }}<span class="text-sm">đ</span></p>
+            <p class="text-xs text-slate-400 mt-0.5">{{ $movieStats->count() }} phim{{ $filterMovieId ? ' (lọc)' : '' }}</p>
         </div>
     </div>
 
     {{-- Bảng theo phim --}}
     <div class="bg-white border border-slate-200 shadow-sm overflow-hidden">
-        <div class="px-6 py-4 bg-slate-50 border-b border-slate-200 flex items-center gap-2">
-            <span class="material-symbols-outlined text-slate-500 text-lg">movie</span>
-            <h3 class="text-sm font-bold text-slate-800 uppercase tracking-wider">Doanh Thu Theo Phim</h3>
+        <div class="px-6 py-4 bg-slate-50 border-b border-slate-200 flex items-center justify-between">
+            <div class="flex items-center gap-2">
+                <span class="material-symbols-outlined text-slate-500 text-lg">movie</span>
+                <h3 class="text-sm font-bold text-slate-800 uppercase tracking-wider">Doanh Thu Theo Phim</h3>
+                @if($filterMovieId)
+                <span class="text-xs bg-blue-100 text-blue-700 font-semibold px-2 py-0.5">
+                    {{ $cinemaMovies->firstWhere('id', $filterMovieId)?->title }}
+                </span>
+                @endif
+            </div>
+            <span class="text-xs text-slate-400">Sắp xếp: <span class="font-semibold text-slate-600">{{ ['total_revenue'=>'Tổng DT','ticket_revenue'=>'DT Vé','ticket_count'=>'Số Vé','showtime_count'=>'Suất Chiếu'][$sortBy] }}</span></span>
         </div>
 
         @if($movieStats->count() > 0)
@@ -195,7 +240,20 @@
         <div class="bg-white border border-slate-200 shadow-sm p-5 border-l-4 border-l-blue-500">
             <p class="text-xs font-bold text-blue-500 uppercase tracking-wider">Tổng Doanh Thu</p>
             <p class="text-3xl font-extrabold text-blue-700 mt-1">{{ number_format($summary['total_revenue'], 0, ',', '.') }}đ</p>
-            <p class="text-xs text-slate-400 mt-0.5">{{ $cinemas->count() }} rạp</p>
+            <p class="text-xs text-slate-400 mt-0.5">
+                {{ $cinemas->count() }} rạp
+                @if($filterType !== 'all')
+                ·
+                @php
+                    echo match($filterType) {
+                        'day'   => 'Ngày ' . \Carbon\Carbon::parse($filterDate)->format('d/m/Y'),
+                        'month' => 'Tháng ' . substr($filterMonth, 5, 2) . '/' . substr($filterMonth, 0, 4),
+                        'year'  => 'Năm ' . $filterYear,
+                        default => '',
+                    };
+                @endphp
+                @endif
+            </p>
         </div>
     </div>
 
