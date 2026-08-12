@@ -29,6 +29,7 @@ class Movie extends Model
         'age_limit',
         'description',
         'status',
+        'format_id', // Thêm format_id vào để cho phép lưu 1 định dạng chiếu
     ];
 
     /**
@@ -63,9 +64,10 @@ class Movie extends Model
         return $this->hasMany(Review::class, 'movie_id');
     }
 
-    public function formats(): BelongsToMany
+    // Quan hệ: Một bộ phim chỉ có 1 định dạng chiếu duy nhất
+    public function format()
     {
-        return $this->belongsToMany(Format::class, 'movie_formats', 'movie_id', 'format_id');
+        return $this->belongsTo(Format::class, 'format_id');
     }
 
     // Showtime is defined in Showtime cluster

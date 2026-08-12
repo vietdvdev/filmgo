@@ -17,9 +17,10 @@ class MovieController extends Controller
         $tabFilter = $request->input('tab', 'active');
 
         if ($tabFilter === 'trash') {
-            $query = Movie::onlyTrashed()->with(['genres', 'formats']);
+            // Eager load format thay vì formats
+            $query = Movie::onlyTrashed()->with(['genres', 'format']);
         } else {
-            $query = Movie::query()->with(['genres', 'formats']);
+            $query = Movie::query()->with(['genres', 'format']);
         }
 
         if ($request->filled('search')) {
@@ -67,8 +68,8 @@ class MovieController extends Controller
             'genres.*'      => 'exists:genres,id',
             'actor_names'   => 'nullable|array',
             'actor_names.*' => 'nullable|string|max:255',
-            'formats'       => 'required|array|min:1',
-            'formats.*'     => 'exists:formats,id',
+            // Định dạng chiếu: bắt buộc, là số nguyên và phải tồn tại trong bảng formats
+            'format_id'     => 'required|integer|exists:formats,id',
         ], [
             'title.required'        => 'Tên phim không được để trống.',
             'duration.required'     => 'Thời lượng không được để trống.',
@@ -79,8 +80,9 @@ class MovieController extends Controller
             'poster.image'          => 'File poster phải là hình ảnh.',
             'poster.mimes'          => 'Poster chỉ chấp nhận định dạng jpg, jpeg, png, webp.',
             'poster.max'            => 'Poster không được vượt quá 2MB.',
-            'formats.required'      => 'Vui lòng chọn ít nhất một định dạng chiếu.',
-            'formats.min'           => 'Vui lòng chọn ít nhất một định dạng chiếu.',
+            'format_id.required'    => 'Vui lòng chọn một định dạng chiếu.',
+            'format_id.integer'     => 'Định dạng chiếu không hợp lệ.',
+            'format_id.exists'      => 'Định dạng chiếu không tồn tại.',
         ]);
 
         $posterPath = null;
@@ -100,16 +102,16 @@ class MovieController extends Controller
             'director'     => $request->director,
             'country'      => $request->country,
             'description'  => $request->description,
+            // Lưu trực tiếp format_id vào bảng movies
+            'format_id'    => $request->format_id,
         ]);
 
         if ($request->genres) {
             $movie->genres()->attach($request->genres);
         }
 
-        // Gắn định dạng chiếu vào bảng pivot (dùng attach vì phim mới chưa có format nào)
-        if (!empty($request->formats)) {
-            $movie->formats()->attach($request->formats);
-        }
+        // Bỏ qua việc đính kèm vào bảng pivot vì đã lưu format_id ở trên
+
 
         $this->syncActorsByName($movie, $request->actor_names ?? []);
 
@@ -118,14 +120,16 @@ class MovieController extends Controller
 
     public function edit(Movie $movie)
     {
-        // Eager load relations để tránh N+1 query khi view render
-        $movie->loadMissing(['genres', 'formats', 'actors']);
+        // Eager load relations để tránh N+1 query khi view render (dùng format thay vì formats)
+        $movie->loadMissing(['genres', 'format', 'actors']);
 
         $genres          = Genre::orderBy('name')->get();
         $formats         = Format::orderBy('id')->get();
         $selectedGenres  = $movie->genres->pluck('id')->toArray();
-        $selectedFormats = $movie->formats->pluck('id')->toArray();
-        return view('admin.movies.edit', compact('movie', 'genres', 'selectedGenres', 'formats', 'selectedFormats'));
+        // Lấy format_id hiện tại để hiển thị trên giao diện (chỉ 1 giá trị)
+        $selectedFormat  = $movie->format_id;
+        
+        return view('admin.movies.edit', compact('movie', 'genres', 'selectedGenres', 'formats', 'selectedFormat'));
     }
 
     public function update(Request $request, Movie $movie)
@@ -145,8 +149,8 @@ class MovieController extends Controller
             'genres.*'      => 'exists:genres,id',
             'actor_names'   => 'nullable|array',
             'actor_names.*' => 'nullable|string|max:255',
-            'formats'       => 'required|array|min:1',
-            'formats.*'     => 'exists:formats,id',
+            // Định dạng chiếu: bắt buộc, là số nguyên và phải tồn tại trong bảng formats
+            'format_id'     => 'required|integer|exists:formats,id',
         ], [
             'title.required'        => 'Tên phim không được để trống.',
             'duration.required'     => 'Thời lượng không được để trống.',
@@ -156,8 +160,9 @@ class MovieController extends Controller
             'poster.image'          => 'File poster phải là hình ảnh.',
             'poster.mimes'          => 'Poster chỉ chấp nhận định dạng jpg, jpeg, png, webp.',
             'poster.max'            => 'Poster không được vượt quá 2MB.',
-            'formats.required'      => 'Vui lòng chọn ít nhất một định dạng chiếu.',
-            'formats.min'           => 'Vui lòng chọn ít nhất một định dạng chiếu.',
+            'format_id.required'    => 'Vui lòng chọn một định dạng chiếu.',
+            'format_id.integer'     => 'Định dạng chiếu không hợp lệ.',
+            'format_id.exists'      => 'Định dạng chiếu không tồn tại.',
         ]);
 
         $posterPath = $movie->poster;
@@ -195,11 +200,14 @@ class MovieController extends Controller
             'director'     => $request->director,
             'country'      => $request->country,
             'description'  => $request->description,
+            // Cập nhật format_id
+            'format_id'    => $request->format_id,
         ]);
 
         $movie->genres()->sync($request->genres ?? []);
 
-        $movie->formats()->sync($request->formats ?? []);
+        // Bỏ qua việc sync với bảng pivot vì đã cập nhật format_id ở trên
+
 
         $this->syncActorsByName($movie, $request->actor_names ?? []);
 
