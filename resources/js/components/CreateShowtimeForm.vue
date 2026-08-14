@@ -370,13 +370,19 @@ const onRoomChange = async () => {
 
   if (!form.room_id || !form.movie_id) return;
 
+  // Lấy room_type của phòng đã chọn
+  const selectedRoom = rooms.value.find(r => r.id == form.room_id);
+  const roomType = selectedRoom ? selectedRoom.room_type.toUpperCase() : '';
+
   loadingFormats.value = true;
   try {
     const res = await axios.get(`/api/rooms/${form.room_id}/movies/${form.movie_id}/formats`);
     formats.value = res.data.data || res.data || [];
     if (formats.value.length > 0) {
-      autoFormat.value = formats.value[0];
-      form.format_id   = formats.value[0].id;
+      // Ưu tiên chọn format khớp với room_type, fallback về format đầu tiên
+      const matched = formats.value.find(f => f.name.toUpperCase() === roomType);
+      autoFormat.value = matched || formats.value[0];
+      form.format_id   = autoFormat.value.id;
     }
   } catch (e) {
     addToast('Không thể tải định dạng chiếu.', 'error');
@@ -424,7 +430,11 @@ const triggerPriceSuggestion = () => {
   priceTimer = setTimeout(async () => {
     try {
       const res = await axios.get(urls.suggestPrice, {
-        params: { show_date: form.show_date, start_time: form.start_time }
+        params: {
+          show_date:  form.show_date,
+          start_time: form.start_time,
+          format_id:  form.format_id || '',
+        }
       });
       surchargeAmt.value = Number(res.data.suggested_price || BASE_PRICE) - BASE_PRICE;
       priceReason.value  = res.data.reason || '';
