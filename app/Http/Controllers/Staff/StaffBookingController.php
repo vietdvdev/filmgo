@@ -133,16 +133,14 @@ class StaffBookingController extends Controller
             abort(Response::HTTP_FORBIDDEN, 'Bạn chưa được phân công làm việc tại rạp nào.');
         }
 
-        // 1. Truy vấn Eager Loading đầy đủ quan hệ & Bảo mật đúng rạp
         $booking = $this->staffBookingService->getBookingForStaff($bookingId, $cinema->id);
 
-        // 2. Cập nhật thời gian in vé (lần đầu hoặc in lại)
         $booking->update(['printed_at' => now()]);
 
-        // 3. Sinh dữ liệu QR Code từng chiếc vé
-        $ticketsData = $this->staffBookingService->generateTicketsQrData($booking);
+        $detailIds   = request()->query('detail_ids');
+        $includeFnb  = request()->boolean('include_fnb', !$detailIds); // in lần đầu thì luôn kèm F&B
+        $ticketsData = $this->staffBookingService->generateTicketsQrData($booking, $detailIds ?: null);
 
-        // 4. Trả về Blade View chuyên dùng cho máy in nhiệt (có sẵn window.print())
-        return view('staff.bookings.print', compact('booking', 'cinema', 'ticketsData'));
+        return view('staff.bookings.print', compact('booking', 'cinema', 'ticketsData', 'includeFnb'));
     }
 }
