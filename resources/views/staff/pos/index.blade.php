@@ -718,6 +718,16 @@
                     <span id="fnb-confirm-total" class="text-xl font-black text-orange-600">0đ</span>
                 </div>
             </div>
+            <div id="fnb-cash-given-wrap">
+                <label class="text-xs font-bold text-gray-500 block mb-1">Khách đưa <span class="text-red-500">*</span></label>
+                <input id="fnb-cash-given" type="number" placeholder="Nhập số tiền khách đưa..."
+                       oninput="_FNB.calcFnbChange()"
+                       class="w-full border-2 border-gray-200 bg-gray-50 rounded-xl px-4 py-3 text-lg font-black text-gray-900 focus:bg-white focus:border-orange-500 outline-none transition-colors">
+                <div class="bg-emerald-50 border border-emerald-200 rounded-xl px-4 py-2 flex justify-between items-center mt-2">
+                    <span class="text-xs font-bold text-emerald-800 uppercase">Thối lại</span>
+                    <span id="fnb-change-amount" class="text-lg font-black text-emerald-700">0đ</span>
+                </div>
+            </div>
             <p class="text-xs text-gray-400 text-center">Hành động này không thể hoàn tác sau khi xác nhận.</p>
         </div>
         {{-- Buttons --}}
@@ -1452,6 +1462,20 @@ const POS = (() => {
     async function confirmCheckout() {
         if (!state.selectedSeats.length || !state.currentShowtime) return;
 
+        // Validate tiền mặt bắt buộc nhập số tiền khách đưa
+        if (state.paymentMethod === 'cash') {
+            const given = parseFloat(document.getElementById('cash-given')?.value) || 0;
+            const totals = calcTotals();
+            if (given < totals.grand) {
+                const cashInput = document.getElementById('cash-given');
+                cashInput?.focus();
+                cashInput?.classList.add('border-red-500', 'ring-2', 'ring-red-400/30');
+                setTimeout(() => cashInput?.classList.remove('border-red-500', 'ring-2', 'ring-red-400/30'), 3000);
+                toast('Vui lòng nhập số tiền khách đưa (phải ≥ tổng tiền)!', 'error');
+                return;
+            }
+        }
+
         const btn = document.getElementById('btn-confirm-payment');
         btn.disabled = true;
         btn.innerHTML = '<span class="material-symbols-outlined animate-spin" style="font-size:20px">progress_activity</span> Đang xử lý...';
@@ -1543,6 +1567,11 @@ const POS = (() => {
 
         document.getElementById('pt-total').textContent  = formatMoney(b.final_total);
         document.getElementById('pt-method').textContent = b.payment_method === 'cash' ? 'Tiền mặt' : 'Chuyển khoản';
+
+        // Đánh dấu đã in vé trong hệ thống
+        if (b.booking_id) {
+            apiFetch(`/staff/bookings/${b.booking_id}/mark-printed`, { method: 'POST' }).catch(() => {});
+        }
 
         window.print();
     }
@@ -1782,20 +1811,22 @@ const _FNB = (() => {
         }
     }
 
+    function calcFnbChange() {
+        const given = parseFloat(document.getElementById('fnb-cash-given')?.value) || 0;
+        let total = 0;
+        Object.entries(fnbState.combos).forEach(([id, qty]) => { total += (fnbState.comboInfo[id]?.price||0) * qty; });
+        Object.entries(fnbState.items).forEach(([id, qty])  => { total += (fnbState.itemInfo[id]?.price||0) * qty; });
+        const el = document.getElementById('fnb-change-amount');
+        if (el) el.textContent = fmt(Math.max(0, given - total));
+    }
+
     async function checkoutFnb() {
         const hasItems = Object.values(fnbState.combos).some(q=>q>0) || Object.values(fnbState.items).some(q=>q>0);
         if (!hasItems) { toast('Vui lòng chọn ít nhất một sản phẩm!', 'error'); return; }
 
-        // 1. Validate SĐT khách hàng (bắt buộc)
+        // 1. Lấy SĐT khách hàng (không bắt buộc)
         const phoneEl = document.getElementById('fnb-customer-phone');
-        const phone   = phoneEl?.value.trim();
-        if (!phone) {
-            phoneEl?.focus();
-            phoneEl?.classList.add('border-red-500', 'ring-2', 'ring-red-400/30');
-            toast('Vui lòng nhập số điện thoại khách hàng trước khi thanh toán!', 'error');
-            setTimeout(() => phoneEl?.classList.remove('border-red-500', 'ring-2', 'ring-red-400/30'), 3000);
-            return;
-        }
+        const phone   = phoneEl?.value.trim() || null;
 
         // 2. Detect phương thức thanh toán
         const cashBtn = document.getElementById('btn-fnb-cash');
@@ -1807,21 +1838,33 @@ const _FNB = (() => {
         Object.entries(fnbState.combos).forEach(([id, qty]) => { total += (fnbState.comboInfo[id]?.price||0) * qty; });
         Object.entries(fnbState.items).forEach(([id, qty])  => { total += (fnbState.itemInfo[id]?.price||0) * qty; });
 
-        // 3. Với tiền mặt → hiển thị modal xác nhận
+        // 3. Với tiền mặt → hiển thị modal xác nhận (có nhập tiền khách đưa)
         if (pm === 'cash') {
-            document.getElementById('fnb-confirm-phone').textContent  = phone;
+            document.getElementById('fnb-confirm-phone').textContent  = phone || 'Khách vãng lai';
             document.getElementById('fnb-confirm-method').textContent = 'Tiền mặt 💵';
             document.getElementById('fnb-confirm-total').textContent  = fmt(total);
-            // Lưu tạm để dùng sau khi user xác nhận
+            document.getElementById('fnb-cash-given-wrap').style.display = '';
+            const givenEl = document.getElementById('fnb-cash-given');
+            if (givenEl) { givenEl.value = ''; }
+            document.getElementById('fnb-change-amount').textContent = '0đ';
+            fnbState._pendingTotal   = total;
             fnbState._pendingPhone   = phone;
             fnbState._pendingVoucher = voucher;
             fnbState._pendingPm      = pm;
             document.getElementById('fnb-confirm-modal').classList.remove('hidden');
+            setTimeout(() => givenEl?.focus(), 100);
             return;
         }
 
-        // 4. Với chuyển khoản → tiến hành luôn
-        await _doCheckoutFnb(pm, phone, voucher);
+        // 4. Với chuyển khoản → hiển thị modal xác nhận (không cần tiền mặt)
+        document.getElementById('fnb-confirm-phone').textContent  = phone || 'Khách vãng lai';
+        document.getElementById('fnb-confirm-method').textContent = 'Chuyển khoản 📱';
+        document.getElementById('fnb-confirm-total').textContent  = fmt(total);
+        document.getElementById('fnb-cash-given-wrap').style.display = 'none';
+        fnbState._pendingPhone   = phone;
+        fnbState._pendingVoucher = voucher;
+        fnbState._pendingPm      = pm;
+        document.getElementById('fnb-confirm-modal').classList.remove('hidden');
     }
 
     function closeFnbConfirm() {
@@ -1829,6 +1872,18 @@ const _FNB = (() => {
     }
 
     async function proceedCheckoutFnb() {
+        // Validate tiền mặt
+        if (fnbState._pendingPm === 'cash') {
+            const given = parseFloat(document.getElementById('fnb-cash-given')?.value) || 0;
+            const total = fnbState._pendingTotal || 0;
+            if (given < total) {
+                const givenEl = document.getElementById('fnb-cash-given');
+                givenEl?.classList.add('border-red-500', 'ring-2', 'ring-red-400/30');
+                setTimeout(() => givenEl?.classList.remove('border-red-500', 'ring-2', 'ring-red-400/30'), 3000);
+                toast('Vui lòng nhập số tiền khách đưa (phải ≥ tổng tiền)!', 'error');
+                return;
+            }
+        }
         document.getElementById('fnb-confirm-modal').classList.add('hidden');
         await _doCheckoutFnb(fnbState._pendingPm, fnbState._pendingPhone, fnbState._pendingVoucher);
     }
@@ -1907,10 +1962,21 @@ const _FNB = (() => {
         document.getElementById('pf-total').textContent   = fmt(currentFnbBooking.final_total);
         document.getElementById('pf-payment').textContent = currentFnbBooking.payment_method === 'cash' ? 'Tiền mặt' : 'Chuyển khoản';
 
+        window.onafterprint = function () {
+            window.onafterprint = null;
+            if (currentFnbBooking?.booking_id) {
+                fetch(`/staff/combo-bookings/${currentFnbBooking.booking_id}/mark-printed`, {
+                    method: 'POST',
+                    headers: { 'X-CSRF-TOKEN': csrf(), 'Accept': 'application/json', 'Content-Type': 'application/json' },
+                    body: JSON.stringify({})
+                }).catch(() => {});
+            }
+        };
+
         window.print();
     }
 
-    return { switchMode, changeFnbCombo, changeFnbItem, checkoutFnb, closeFnbConfirm, proceedCheckoutFnb, selectPayment, openFnbSuccessModal, resetFnb, handlePrintFnb };
+    return { switchMode, changeFnbCombo, changeFnbItem, checkoutFnb, calcFnbChange, closeFnbConfirm, proceedCheckoutFnb, selectPayment, openFnbSuccessModal, resetFnb, handlePrintFnb };
 })();
 
 document.addEventListener('DOMContentLoaded', POS.init);

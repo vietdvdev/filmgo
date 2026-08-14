@@ -321,6 +321,7 @@ Route::prefix('staff')->group(function () {
 
         // In vé và phiếu bắp nước qua máy in nhiệt tại quầy
         Route::get('/bookings/{bookingId}/print-tickets', [App\Http\Controllers\Staff\StaffBookingController::class, 'printTickets'])->name('staff.bookings.print-tickets');
+        Route::post('/bookings/{bookingId}/mark-printed', [App\Http\Controllers\Staff\StaffBookingController::class, 'markPrinted'])->name('staff.bookings.mark-printed');
 
         // ── Phân hệ POS — Bán vé tại quầy ─────────────────────────────────
         // Trang giao diện POS chính (One-page SPA)

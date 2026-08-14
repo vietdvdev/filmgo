@@ -63,6 +63,11 @@ class CounterBookingService
                 throw new Exception('Suất chiếu này đã bị hủy hoặc kết thúc.');
             }
 
+            $showtimeStart = Carbon::parse($showtime->show_date->format('Y-m-d') . ' ' . $showtime->start_time);
+            if (now()->gt($showtimeStart->addMinutes(30))) {
+                throw new Exception('Suất chiếu đã chiếu được 30 phút. Không thể bán vé tại quầy.');
+            }
+
             $showtimeEnd = Carbon::parse($showtime->show_date->format('Y-m-d') . ' ' . $showtime->end_time);
             if (now()->gt($showtimeEnd)) {
                 throw new Exception('Suất chiếu đã kết thúc lúc ' . $showtimeEnd->format('H:i d/m/Y') . '. Không thể bán vé.');

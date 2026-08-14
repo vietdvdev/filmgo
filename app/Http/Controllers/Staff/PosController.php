@@ -341,6 +341,7 @@ class PosController extends Controller
     private function formatBookingForReceipt(Booking $booking): array
     {
         return [
+            'booking_id'      => $booking->id,
             'booking_code'    => $booking->booking_code,
             'total_amount'    => $booking->total_amount,    // Giá gốc (trước giảm)
             'discount_amount' => $booking->discount_amount,
@@ -373,6 +374,7 @@ class PosController extends Controller
     private function formatFnbReceiptData(Booking $booking): array
     {
         return [
+            'booking_id'      => $booking->id,
             'booking_code'    => $booking->booking_code,
             'total_amount'    => $booking->total_amount,
             'discount_amount' => $booking->discount_amount,

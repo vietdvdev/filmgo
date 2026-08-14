@@ -83,26 +83,10 @@
         }
 
         window.onafterprint = function () {
-            if (!printStartTime) {
-                return;
-            }
-
-            const printDuration = Date.now() - printStartTime;
-            const cancelThreshold = 200; // Nếu dialog đóng cực nhanh, coi như đã hủy
-
-            if (printDuration < cancelThreshold) {
-                redirectToIndex();
-                return;
-            }
-
+            if (!printStartTime) return;
             markPrinted()
-                .then(response => response.ok ? response.json() : Promise.reject(new Error('Không thể cập nhật trạng thái in.')))
-                .catch(error => {
-                    console.error(error);
-                })
-                .finally(() => {
-                    redirectToIndex();
-                });
+                .catch(error => console.error(error))
+                .finally(() => redirectToIndex());
         };
 
         if (printButton) {
