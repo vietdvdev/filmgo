@@ -17,14 +17,13 @@ class FormatService
      */
     public function getFormatsByMovie(int $movieId): Collection
     {
-        // Lấy 1 định dạng duy nhất của phim
-        $movie = Movie::with('format')->find($movieId);
+        $movie = Movie::with('formats')->find($movieId);
 
-        if (!$movie || !$movie->format) {
+        if (!$movie || $movie->formats->isEmpty()) {
             return collect();
         }
 
-        return collect([$movie->format]);
+        return $movie->formats;
     }
 
     /**
@@ -90,9 +89,9 @@ class FormatService
     {
         $errors = [];
 
-        // 1. Kiểm tra Định dạng có khớp với format_id của bộ Phim hay không
+        // Kiểm tra Định dạng có khớp với formats của bộ Phim hay không
         $movieSupportFormat = Movie::where('id', $movieId)
-            ->where('format_id', $formatId)
+            ->whereHas('formats', fn($q) => $q->where('formats.id', $formatId))
             ->exists();
 
         if (!$movieSupportFormat) {

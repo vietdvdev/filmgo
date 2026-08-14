@@ -138,10 +138,10 @@ class ManagerShowtimeApiController extends Controller
      */
     public function getRoomsByMovie($movieId)
     {
-        $movie = Movie::findOrFail($movieId);
+        $movie = Movie::with('formats:id,name')->findOrFail($movieId);
         $cinemaIds = $this->getCinemaIds();
 
-        $movieFormatNames = $movie->format ? [$movie->format->name] : [];
+        $movieFormatNames = $movie->formats->pluck('name')->toArray();
 
         if (empty($movieFormatNames)) {
             return response()->json([
@@ -189,7 +189,7 @@ class ManagerShowtimeApiController extends Controller
         $supportedFormats = $this->getSupportedFormatsByRoomType($room->room_type);
 
         $movies = Movie::where('status', '!=', 'stopped')
-            ->whereHas('format', function ($q) use ($supportedFormats) {
+            ->whereHas('formats', function ($q) use ($supportedFormats) {
                 $q->whereIn('name', $supportedFormats);
             })
             ->orderBy('title')
@@ -224,8 +224,9 @@ class ManagerShowtimeApiController extends Controller
 
         $roomFormats = $this->getSupportedFormatsByRoomType($room->room_type);
 
-        // Cập nhật lấy format của phim (chỉ có 1 format_id)
-        $formats = Format::where('id', $movie->format_id)
+        $formats = Format::whereHas('movies', function ($q) use ($movie) {
+                $q->where('movies.id', $movie->id);
+            })
             ->whereIn('name', $roomFormats)
             ->orderBy('id')
             ->get(['id', 'name', 'surcharge_price']);
@@ -335,16 +336,7 @@ class ManagerShowtimeApiController extends Controller
         $basePrice = 80000; // Giá mặc định
         $reason = [];
 
-        // 1. Phụ thu định dạng phim (3D, IMAX...)
-        if ($request->filled('format_id')) {
-            $format = Format::find($request->integer('format_id'));
-            if ($format && $format->surcharge_price > 0) {
-                $basePrice += $format->surcharge_price;
-                $reason[] = "Định dạng " . $format->name . " (+" . number_format($format->surcharge_price) . "đ)";
-            }
-        }
-
-        // 2. Kiểm tra ngày lễ
+        // 1. Kiểm tra ngày lễ
         $isHoliday = Holiday::whereDate('holiday_date', $showDate->toDateString())->first();
         if ($isHoliday) {
             $basePrice += 20000;

@@ -60,6 +60,16 @@
             &nbsp;•&nbsp;
             Giới hạn tuổi: <strong>{{ selectedMovie.age_limit || 'T18' }}</strong>
           </p>
+          <div v-if="selectedMovie && selectedMovie.formats && selectedMovie.formats.length" class="mt-2 flex flex-wrap gap-1.5">
+            <span
+              v-for="fmt in selectedMovie.formats"
+              :key="fmt.id"
+              class="inline-flex items-center gap-1 px-2.5 py-1 rounded text-[11px] font-bold border"
+              :class="formatBadgeClass(fmt.name)">
+              {{ fmt.name }}
+              <span v-if="fmt.surcharge_price > 0" class="font-normal opacity-75">+{{ Number(fmt.surcharge_price).toLocaleString() }}₫</span>
+            </span>
+          </div>
           <p v-if="fieldErrors.movie_id" class="mt-1 text-xs text-red-600 font-semibold">{{ fieldErrors.movie_id }}</p>
         </div>
 
@@ -267,6 +277,16 @@ let priceTimer   = null;
 
 const selectedMovie = computed(() => movies.find(m => m.id == form.movie_id) || null);
 
+const formatBadgeClass = (name) => {
+  const map = {
+    '2D':   'bg-blue-50 text-blue-700 border-blue-300',
+    '3D':   'bg-purple-50 text-purple-700 border-purple-300',
+    'IMAX': 'bg-amber-50 text-amber-700 border-amber-300',
+    '4DX':  'bg-emerald-50 text-emerald-700 border-emerald-300',
+  };
+  return map[name] || 'bg-slate-100 text-slate-700 border-slate-300';
+};
+
 const computedEndTime = computed(() => {
   if (!selectedMovie.value || !form.start_time) return '';
   const [h, m] = form.start_time.split(':').map(Number);
@@ -350,13 +370,19 @@ const onRoomChange = async () => {
 
   if (!form.room_id || !form.movie_id) return;
 
+  // Lấy room_type của phòng đã chọn
+  const selectedRoom = rooms.value.find(r => r.id == form.room_id);
+  const roomType = selectedRoom ? selectedRoom.room_type.toUpperCase() : '';
+
   loadingFormats.value = true;
   try {
     const res = await axios.get(`/api/rooms/${form.room_id}/movies/${form.movie_id}/formats`);
     formats.value = res.data.data || res.data || [];
     if (formats.value.length > 0) {
-      autoFormat.value = formats.value[0];
-      form.format_id   = formats.value[0].id;
+      // Ưu tiên chọn format khớp với room_type, fallback về format đầu tiên
+      const matched = formats.value.find(f => f.name.toUpperCase() === roomType);
+      autoFormat.value = matched || formats.value[0];
+      form.format_id   = autoFormat.value.id;
     }
   } catch (e) {
     addToast('Không thể tải định dạng chiếu.', 'error');
@@ -404,7 +430,11 @@ const triggerPriceSuggestion = () => {
   priceTimer = setTimeout(async () => {
     try {
       const res = await axios.get(urls.suggestPrice, {
-        params: { show_date: form.show_date, start_time: form.start_time }
+        params: {
+          show_date:  form.show_date,
+          start_time: form.start_time,
+          format_id:  form.format_id || '',
+        }
       });
       surchargeAmt.value = Number(res.data.suggested_price || BASE_PRICE) - BASE_PRICE;
       priceReason.value  = res.data.reason || '';
