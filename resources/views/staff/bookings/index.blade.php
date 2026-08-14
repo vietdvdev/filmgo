@@ -221,8 +221,18 @@
 
                             {{-- Thao tác nút in vé/bắp nước --}}
                             <td class="py-4 px-5 text-right whitespace-nowrap">
+                                @php
+                                    $showtime = $booking->showtime;
+                                    $showtimeStarted30 = $showtime?->show_date && $showtime?->start_time
+                                        && \Carbon\Carbon::parse($showtime->show_date->format('Y-m-d') . ' ' . $showtime->start_time)
+                                            ->addMinutes(30)->isPast();
+                                @endphp
                                 <div class="flex items-center justify-end gap-2">
-                                    @if(is_null($booking->printed_at))
+                                    @if($showtimeStarted30)
+                                        <span class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400 text-xs font-bold rounded-lg border border-gray-200 dark:border-gray-600">
+                                            <span>🚫 Đã chiếu</span>
+                                        </span>
+                                    @elseif(is_null($booking->printed_at))
                                         <a 
                                             href="{{ route('staff.bookings.print-tickets', $booking->id) }}" 
                                             target="_blank"
@@ -232,9 +242,14 @@
                                             <span>🍿 In Vé & Bắp Nước</span>
                                         </a>
                                     @else
-                                        <span class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 text-xs font-bold rounded-lg border border-emerald-200 dark:border-emerald-800">
-                                            <span>✅ Đã in vé</span>
-                                        </span>
+                                        <a 
+                                            href="{{ route('staff.bookings.print-tickets', $booking->id) }}" 
+                                            target="_blank"
+                                            class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-sky-50 hover:bg-sky-100 dark:bg-sky-950/60 dark:hover:bg-sky-900/80 text-sky-700 dark:text-sky-300 text-xs font-bold rounded-lg border border-sky-200 dark:border-sky-800 transition-colors shadow-sm"
+                                            title="In lại vé cho khách"
+                                        >
+                                            <span>🔁 In lại vé</span>
+                                        </a>
                                     @endif
                                 </div>
                             </td>

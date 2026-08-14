@@ -104,6 +104,21 @@ class StaffBookingController extends Controller
     }
 
     /**
+     * API: Đánh dấu đã in vé (gọi từ POS sau khi in).
+     */
+    public function markPrinted(int $bookingId): \Illuminate\Http\JsonResponse
+    {
+        $user   = Auth::user();
+        $cinema = $user?->cinemas()->first();
+        if (!$cinema) abort(Response::HTTP_FORBIDDEN);
+
+        $booking = $this->staffBookingService->getBookingForStaff($bookingId, $cinema->id);
+        $booking->update(['printed_at' => now()]);
+
+        return response()->json(['success' => true]);
+    }
+
+    /**
      * In vé xem phim và Phiếu nhận Bắp nước trực tiếp tại quầy (Thermal Printer 80mm & Auto Print).
      *
      * @param int $bookingId
@@ -121,10 +136,8 @@ class StaffBookingController extends Controller
         // 1. Truy vấn Eager Loading đầy đủ quan hệ & Bảo mật đúng rạp
         $booking = $this->staffBookingService->getBookingForStaff($bookingId, $cinema->id);
 
-        // 2. Đánh dấu đơn đã in vé lần đầu nếu chưa có
-        if (is_null($booking->printed_at)) {
-            $booking->update(['printed_at' => now()]);
-        }
+        // 2. Cập nhật thời gian in vé (lần đầu hoặc in lại)
+        $booking->update(['printed_at' => now()]);
 
         // 3. Sinh dữ liệu QR Code từng chiếc vé
         $ticketsData = $this->staffBookingService->generateTicketsQrData($booking);
