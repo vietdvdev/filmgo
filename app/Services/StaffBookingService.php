@@ -83,7 +83,7 @@ class StaffBookingService
             'user',
             'showtime.movie',
             'showtime.room.cinema',
-            'bookingDetails.showtimeSeat.seat',
+            'bookingDetails.showtimeSeat.seat.seatType',
             'bookingDetails.ticket',
             'combos',
             'promotion',
@@ -170,31 +170,29 @@ class StaffBookingService
      * @param Booking $booking
      * @return array
      */
-    public function generateTicketsQrData(Booking $booking): array
+    public function generateTicketsQrData(Booking $booking, ?array $detailIds = null): array
     {
         $ticketsData = [];
 
-        foreach ($booking->bookingDetails as $detail) {
+        $details = $detailIds
+            ? $booking->bookingDetails->whereIn('id', $detailIds)->values()
+            : $booking->bookingDetails;
+
+        foreach ($details as $detail) {
             $seat = $detail->showtimeSeat?->seat;
-            
-            // Format vị trí ghế chuẩn: Kết hợp Hàng ghế (seat_row) + Số ghế (seat_number) -> Ví dụ: A5, H1
+
             $seatName = 'N/A';
             if ($seat) {
                 $row = trim($seat->seat_row ?? '');
                 $num = trim((string) ($seat->seat_number ?? ''));
-
-                if (!empty($row) && !str_starts_with(strtoupper($num), strtoupper($row))) {
-                    $seatName = strtoupper($row) . $num;
-                } else {
-                    $seatName = strtoupper($num);
-                }
+                $seatName = (!empty($row) && !str_starts_with(strtoupper($num), strtoupper($row)))
+                    ? strtoupper($row) . $num
+                    : strtoupper($num);
             }
 
-            $ticket = $detail->ticket;
-
+            $ticket    = $detail->ticket;
             $qrContent = null;
             if ($ticket && !empty($ticket->qr_code)) {
-                // Sinh mã QR (SVG/Base64) kích thước 200px từ cột qr_code của vé
                 if (class_exists(QrCode::class)) {
                     $qrContent = (string) QrCode::size(200)->generate($ticket->qr_code);
                 } else {
@@ -205,6 +203,8 @@ class StaffBookingService
             $ticketsData[] = [
                 'ticket_id' => $ticket?->id,
                 'seat_name' => $seatName,
+                'seat_type' => $seat?->seatType?->name ?? null,
+                'price'     => $detail->price ?? 0,
                 'qr_code'   => $ticket?->qr_code,
                 'qr_image'  => $qrContent,
             ];

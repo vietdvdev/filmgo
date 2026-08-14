@@ -77,19 +77,7 @@
 
     /* ── Print styles ─── */
     @media print {
-        html, body { margin: 0 !important; padding: 0 !important; width: 80mm !important; max-width: 80mm !important; min-height: auto !important; }
-        * { box-sizing: border-box !important; }
-        #pos-root, #checkout-modal, #success-modal, #fnb-success-modal, #pos-toast, aside, header { display: none !important; }
-        /* Control print visibility by JS */
-        body.printing-ticket #print-ticket-area { display: block !important; }
-        body.printing-fnb #print-fnb-area { display: block !important; }
-        @page { size: 80mm auto; margin: 0; }
-        #print-ticket-area, #print-fnb-area {
-            width: 80mm; max-width: 80mm; margin: 0; padding: 1mm 1.5mm 0.5mm;
-            font-family: 'Courier New', Courier, monospace; font-size: 10pt; line-height: 1.1; color: #000;
-        }
-        #print-ticket-area div, #print-ticket-area table, #print-ticket-area td, #print-ticket-area th,
-        #print-fnb-area div, #print-fnb-area table, #print-fnb-area td, #print-fnb-area th { margin: 0 !important; padding: 0 !important; }
+        .no-print { display: none !important; }
     }
     #print-ticket-area, #print-fnb-area { display: none; }
 </style>
@@ -433,67 +421,79 @@
 
 
 {{-- ════════════════════════════════════════════════════════════
-     PHẦN 2: KHU VỰC IN VÉ NHIỆT 80mm (ẩn trong giao diện, hiện khi print)
+     PHẦN 2: KHU VỰC IN VÉ NHIỆT 80mm
 ════════════════════════════════════════════════════════════ --}}
 <div id="print-ticket-area">
-    {{-- Header rạp --}}
-    <div style="text-align:center; border-bottom:2px solid #000; padding-bottom:6px; margin-bottom:8px;">
-        <div style="font-size:20pt; font-weight:900; letter-spacing:2px;">★ FilmGo ★</div>
-        <div id="pt-cinema" style="font-size:10pt; margin-top:2px;"></div>
-        <div style="font-size:9pt; color:#444;">Hotline: 1900 xxxx</div>
+    <div style="font-size:20pt;font-weight:900;letter-spacing:3px;text-align:center;padding:6px 0 2px;">★ FilmGo ★</div>
+    <div style="font-size:8pt;text-align:center;letter-spacing:2px;text-transform:uppercase;color:#444;">Cinema &amp; Entertainment</div>
+    <div style="font-size:10pt;font-weight:900;text-align:center;text-transform:uppercase;letter-spacing:1px;border-top:2px solid #000;border-bottom:2px solid #000;padding:3px 0;margin:5px 0 4px;">THẺ VÀO PHÒNG CHIẾU PHIM</div>
+
+    <div style="font-size:12pt;font-weight:900;" id="pt-cinema"></div>
+    <div style="font-size:9pt;color:#333;" id="pt-cinema-addr"></div>
+    <div style="font-size:9pt;color:#333;" id="pt-cinema-phone"></div>
+
+    <div style="border-top:1px dashed #000;margin:5px 0;"></div>
+
+    <table style="width:100%;font-size:10pt;border-collapse:collapse;">
+        <tr><td style="color:#555;width:40%;">POS:</td>         <td id="pt-code"  style="font-weight:900;"></td></tr>
+        <tr><td style="color:#555;">Studio:</td>                <td id="pt-room"  style="font-weight:700;"></td></tr>
+        <tr><td style="color:#555;">Loại phòng:</td>            <td id="pt-room-type"></td></tr>
+    </table>
+
+    <div style="border-top:2px solid #000;margin:6px 0;"></div>
+
+    <div id="pt-movie" style="font-size:13pt;font-weight:900;text-align:center;text-transform:uppercase;margin:4px 0;"></div>
+
+    <div style="border-top:1px dashed #000;margin:5px 0;"></div>
+
+    <table style="width:100%;font-size:10pt;border-collapse:collapse;">
+        <tr><td style="color:#555;width:40%;">Ngày chiếu:</td>  <td id="pt-date"  style="font-weight:700;"></td></tr>
+        <tr><td style="color:#555;">Giờ chiếu:</td>             <td id="pt-time"  style="font-weight:700;"></td></tr>
+        <tr><td style="color:#555;">Phòng:</td>                 <td id="pt-room2"></td></tr>
+    </table>
+
+    <div id="pt-seats-wrap"></div>
+
+    <div style="border-top:1px dashed #000;margin:5px 0;"></div>
+
+    <table style="width:100%;font-size:10pt;border-collapse:collapse;">
+        <tr><td style="color:#555;">Ticket Type</td>            <td id="pt-seat-type" style="text-align:right;font-weight:700;"></td></tr>
+        <tr><td style="color:#555;">Ticket Price</td>           <td id="pt-seat-price" style="text-align:right;font-weight:700;"></td></tr>
+        <tr><td style="color:#555;">Service Charge</td>         <td style="text-align:right;font-weight:700;">0đ</td></tr>
+        <tr id="pt-discount-row" style="display:none;color:#c00;">
+            <td>Discount</td><td id="pt-discount" style="text-align:right;"></td>
+        </tr>
+        <tr style="font-size:12pt;font-weight:900;border-top:1px solid #000;">
+            <td>TOTAL</td><td id="pt-total" style="text-align:right;"></td>
+        </tr>
+        <tr style="font-size:9pt;color:#555;">
+            <td>Thanh toán:</td><td id="pt-method" style="text-align:right;"></td>
+        </tr>
+    </table>
+
+    <div style="border-top:1px dashed #000;margin:5px 0;"></div>
+
+    <div style="text-align:center;margin:5px 0 3px;">
+        <div style="font-size:8pt;text-transform:uppercase;letter-spacing:1px;color:#555;">Booking Code / Mã đặt chỗ</div>
+        <div id="pt-booking-code" style="font-size:14pt;font-weight:900;letter-spacing:2px;font-family:monospace;"></div>
+        <div id="pt-ticket-index" style="font-size:8pt;color:#777;"></div>
     </div>
 
-    {{-- Thông tin vé --}}
-    <div style="margin-bottom:8px;">
-        <div style="font-size:9pt; text-align:center; letter-spacing:1px; color:#555; margin-bottom:4px;">── VÉ XEM PHIM ──</div>
-        <table style="width:100%; font-size:10pt; border-collapse:collapse;">
-            <tr><td style="width:35%; color:#555;">Mã vé:</td>   <td id="pt-code"  style="font-weight:900;"></td></tr>
-            <tr><td style="color:#555;">Phim:</td>               <td id="pt-movie" style="font-weight:700;"></td></tr>
-            <tr><td style="color:#555;">Ngày:</td>               <td id="pt-date"></td></tr>
-            <tr><td style="color:#555;">Giờ:</td>                <td id="pt-time"  style="font-weight:700;"></td></tr>
-            <tr><td style="color:#555;">Phòng:</td>              <td id="pt-room"></td></tr>
-        </table>
-    </div>
-
-    {{-- Ghế --}}
-    <div style="border-top:1px dashed #000; border-bottom:1px dashed #000; padding:6px 0; margin-bottom:8px;">
-        <div style="font-size:9pt; font-weight:700; margin-bottom:4px;">GHẾ NGỒI</div>
-        <div id="pt-seats" style="font-size:10pt;"></div>
-    </div>
-
-    {{-- Combo F&B --}}
-    <div id="pt-combo-wrap" style="border-bottom:1px dashed #000; padding-bottom:6px; margin-bottom:8px; display:none;">
-        <div style="font-size:9pt; font-weight:700; margin-bottom:4px;">BẮP NƯỚC (F&B)</div>
+    <div id="pt-combo-wrap" style="display:none;border-top:1px dashed #000;padding-top:5px;margin-top:5px;">
+        <div style="font-size:9pt;font-weight:700;margin-bottom:3px;">BẮP NƯỚC (F&amp;B)</div>
         <div id="pt-combos" style="font-size:10pt;"></div>
     </div>
 
-    {{-- Tổng tiền --}}
-    <div style="margin-bottom:8px;">
-        <table style="width:100%; font-size:10pt;">
-            <tr id="pt-discount-row" style="display:none; color:#e53e3e;">
-                <td>Giảm giá:</td><td id="pt-discount" style="text-align:right;"></td>
-            </tr>
-            <tr style="font-size:13pt; font-weight:900; border-top:1px solid #000;">
-                <td>TỔNG CỘNG:</td><td id="pt-total" style="text-align:right;"></td>
-            </tr>
-            <tr style="font-size:9pt; color:#555;">
-                <td>Thanh toán:</td><td id="pt-method" style="text-align:right;"></td>
-            </tr>
-        </table>
-    </div>
-
-    {{-- Mã QR vé điện tử --}}
-    <div style="text-align:center; border-top:1px dashed #000; padding-top:8px;">
-        <div style="font-size:9pt; color:#555; margin-bottom:4px;">Quét mã để nhận vé điện tử</div>
+    <div style="text-align:center;margin:6px 0 2px;">
         <div id="pt-qr-print" style="display:inline-block;"></div>
-        <div id="pt-qr-text" style="font-size:8pt; color:#555; margin-top:4px; word-break:break-all;"></div>
     </div>
+    <div style="font-size:8pt;text-align:center;color:#555;">Quét mã QR tại cửa kiểm soát vé</div>
+    <div id="pt-qr-text" style="font-size:7pt;text-align:center;color:#666;margin-top:2px;word-break:break-all;font-family:monospace;"></div>
 
-    {{-- Footer --}}
-    <div style="text-align:center; border-top:2px solid #000; margin-top:10px; padding-top:6px; font-size:9pt; color:#555;">
-        <p style="margin:2px 0;">Cảm ơn quý khách đã đến FilmGo!</p>
-        <p style="margin:2px 0;">Vui lòng giữ vé khi vào rạp.</p>
-        <p style="margin:4px 0; font-size:8pt;">★ Chúc quý khách xem phim vui vẻ ★</p>
+    <div style="border-top:2px solid #000;margin-top:8px;padding-top:6px;text-align:center;font-size:9pt;color:#555;">
+        Cảm ơn quý khách đã chọn FilmGo!<br>
+        Vui lòng giữ vé khi vào rạp.<br>
+        ★ Chúc quý khách xem phim vui vẻ ★
     </div>
 </div>
 
@@ -501,41 +501,49 @@
 {{-- ════════════════════════════════════════════════════════════
      PHẦN 2B: KHU VỰC IN BILL F&B 80mm
 ════════════════════════════════════════════════════════════ --}}
-<div id="print-fnb-area" class="print-fnb-area-wrapper">
-    {{-- Header rạp --}}
-    <div style="text-align:center; border-bottom:2px solid #000; padding-bottom:6px; margin-bottom:8px;">
-        <div style="font-size:20pt; font-weight:900; letter-spacing:2px;">★ FilmGo ★</div>
-        <div id="pf-cinema" style="font-size:10pt; margin-top:2px;">{{ Auth::user()->cinemas()->first()?->name }}</div>
-        <div style="font-size:9pt; color:#444;">Đơn hàng F&B</div>
-    </div>
+<div id="print-fnb-area">
+    <div style="font-size:20pt;font-weight:900;letter-spacing:3px;text-align:center;padding:6px 0 2px;">★ FilmGo ★</div>
+    <div style="font-size:8pt;text-align:center;letter-spacing:2px;text-transform:uppercase;color:#444;">Cinema &amp; Entertainment</div>
+    <div style="font-size:10pt;font-weight:900;text-align:center;text-transform:uppercase;letter-spacing:1px;border-top:2px solid #000;border-bottom:2px solid #000;padding:3px 0;margin:5px 0 4px;">BIÊN LAI MUA HÀNG F&amp;B</div>
 
-    {{-- Thông tin vé --}}
-    <div style="margin-bottom:8px;">
-        <div style="font-size:9pt; text-align:center; letter-spacing:1px; color:#555; margin-bottom:4px;">── HOÁ ĐƠN BẮP NƯỚC ──</div>
-        <table style="width:100%; font-size:10pt; border-collapse:collapse;">
-            <tr><td style="width:35%; color:#555;">Mã ĐH:</td>   <td id="pf-code"  style="font-weight:900;"></td></tr>
-            <tr><td style="color:#555;">Ngày:</td>               <td id="pf-date"></td></tr>
-        </table>
-    </div>
+    <div style="font-size:12pt;font-weight:900;">{{ Auth::user()->cinemas()->first()?->name }}</div>
+    <div style="font-size:9pt;color:#333;">{{ Auth::user()->cinemas()->first()?->address }}</div>
 
-    {{-- Items --}}
-    <div style="border-top:1px dashed #000; border-bottom:1px dashed #000; padding:6px 0; margin-bottom:8px;">
-        <table style="width:100%; font-size:10pt; border-collapse:collapse;" id="pf-items">
-            <!-- Items rendered here -->
-        </table>
-    </div>
+    <div style="border-top:1px dashed #000;margin:5px 0;"></div>
 
-    {{-- Totals --}}
-    <table style="width:100%; font-size:10pt; font-weight:bold;">
-        <tr><td style="color:#444;">Giảm giá:</td> <td style="text-align:right; color:#d9534f;" id="pf-discount">0đ</td></tr>
-        <tr style="font-size:12pt;"><td style="padding-top:4px;">TỔNG TIỀN:</td> <td style="text-align:right; padding-top:4px;" id="pf-total">0đ</td></tr>
-        <tr><td style="color:#444; font-size:9pt;">Thanh toán:</td> <td style="text-align:right; font-size:9pt;" id="pf-payment"></td></tr>
+    <table style="width:100%;font-size:10pt;border-collapse:collapse;">
+        <tr><td style="color:#555;width:40%;">POS:</td>         <td id="pf-code"  style="font-weight:900;"></td></tr>
+        <tr><td style="color:#555;">Thời gian:</td>             <td id="pf-date"></td></tr>
     </table>
 
-    {{-- Footer --}}
-    <div style="text-align:center; border-top:2px solid #000; margin-top:10px; padding-top:6px; font-size:9pt; color:#555;">
-        <p style="margin:2px 0;">Cảm ơn quý khách đã sử dụng dịch vụ!</p>
-        <p style="margin:4px 0; font-size:8pt;">★ Chúc quý khách ngon miệng ★</p>
+    <div style="border-top:2px solid #000;margin:6px 0;"></div>
+
+    <table style="width:100%;font-size:11pt;border-collapse:collapse;" id="pf-items"></table>
+
+    <div style="border-top:1px dashed #000;margin:5px 0;"></div>
+
+    <table style="width:100%;font-size:10pt;border-collapse:collapse;">
+        <tr><td style="color:#555;">Ticket Price</td>           <td id="pf-subtotal" style="text-align:right;font-weight:700;"></td></tr>
+        <tr><td style="color:#555;">Service Charge</td>         <td style="text-align:right;font-weight:700;">0đ</td></tr>
+        <tr><td style="color:#555;">Discount</td>               <td id="pf-discount" style="text-align:right;color:#c00;font-weight:700;">0đ</td></tr>
+        <tr style="font-size:12pt;font-weight:900;border-top:1px solid #000;">
+            <td>TOTAL</td><td id="pf-total" style="text-align:right;"></td>
+        </tr>
+        <tr style="font-size:9pt;color:#555;">
+            <td>Thanh toán:</td><td id="pf-payment" style="text-align:right;"></td>
+        </tr>
+    </table>
+
+    <div style="border-top:1px dashed #000;margin:5px 0;"></div>
+
+    <div style="text-align:center;margin:5px 0 3px;">
+        <div style="font-size:8pt;text-transform:uppercase;letter-spacing:1px;color:#555;">Booking Code / Mã đơn hàng</div>
+        <div id="pf-booking-code" style="font-size:14pt;font-weight:900;letter-spacing:2px;font-family:monospace;"></div>
+    </div>
+
+    <div style="border-top:2px solid #000;margin-top:8px;padding-top:6px;text-align:center;font-size:9pt;color:#555;">
+        Cảm ơn quý khách đã sử dụng dịch vụ!<br>
+        ★ Chúc quý khách ngon miệng ★
     </div>
 </div>
 
@@ -1535,45 +1543,11 @@ const POS = (() => {
     // ── In vé nhiệt ──────────────────────────────────────────────────────
     function handlePrintTicket() {
         const b = state.currentBooking;
-        if (!b) return;
-        document.body.classList.remove('printing-fnb');
-        document.body.classList.add('printing-ticket');
+        if (!b || !b.booking_id) return;
 
-        document.getElementById('pt-code').textContent  = b.booking_code;
-        document.getElementById('pt-movie').textContent = b.showtime?.movie || '';
-        document.getElementById('pt-date').textContent  = b.showtime?.show_date || '';
-        document.getElementById('pt-time').textContent  = b.showtime?.start_time ? String(b.showtime.start_time).substring(0,5) : '';
-        document.getElementById('pt-room').textContent  = b.showtime?.room || '';
-        document.getElementById('pt-cinema').textContent = b.showtime?.cinema || '';
-
-        const seatsHtml = (b.seats||[]).map(s =>
-            `<div style="display:flex;justify-content:space-between;padding:2px 0;"><span>${s.label} (${s.type})</span><span>${formatMoney(s.price)}</span></div>`
-        ).join('');
-        document.getElementById('pt-seats').innerHTML = seatsHtml;
-
-        const comboWrap = document.getElementById('pt-combo-wrap');
-        if (b.combos && b.combos.length) {
-            comboWrap.style.display = '';
-            document.getElementById('pt-combos').innerHTML = b.combos.map(c =>
-                `<div style="display:flex;justify-content:space-between;padding:2px 0;"><span>${c.quantity}x ${c.name}</span><span>${formatMoney(c.subtotal)}</span></div>`
-            ).join('');
-        } else { comboWrap.style.display = 'none'; }
-
-        const discRow = document.getElementById('pt-discount-row');
-        if (b.discount_amount > 0) {
-            discRow.style.display = '';
-            document.getElementById('pt-discount').textContent = '-' + formatMoney(b.discount_amount);
-        } else { discRow.style.display = 'none'; }
-
-        document.getElementById('pt-total').textContent  = formatMoney(b.final_total);
-        document.getElementById('pt-method').textContent = b.payment_method === 'cash' ? 'Tiền mặt' : 'Chuyển khoản';
-
-        // Đánh dấu đã in vé trong hệ thống
-        if (b.booking_id) {
-            apiFetch(`/staff/bookings/${b.booking_id}/mark-printed`, { method: 'POST' }).catch(() => {});
-        }
-
-        window.print();
+        // Mở trang in riêng — mỗi ghế 1 tờ vé chuẩn 80mm
+        const url = `/staff/bookings/${b.booking_id}/print-tickets`;
+        window.open(url, '_blank');
     }
 
     // ── Hiển thị QR vé điện tử ───────────────────────────────────────────
@@ -1952,15 +1926,24 @@ const _FNB = (() => {
         document.body.classList.remove('printing-ticket');
         document.body.classList.add('printing-fnb');
 
-        document.getElementById('pf-code').textContent = currentFnbBooking.booking_code;
-        document.getElementById('pf-date').textContent = new Date().toLocaleString('vi-VN');
-        let html = '';
-        (currentFnbBooking.combos||[]).forEach(c => { html += `<tr><td style="padding:4px 0;">${c.quantity}x ${c.name}</td><td style="text-align:right;">${fmt(c.subtotal)}</td></tr>`; });
-        (currentFnbBooking.combo_items||[]).forEach(i => { html += `<tr><td style="padding:4px 0;">${i.quantity}x ${i.name}</td><td style="text-align:right;">${fmt(i.subtotal)}</td></tr>`; });
+        document.getElementById('pf-code').textContent         = currentFnbBooking.booking_code;
+        document.getElementById('pf-booking-code').textContent = currentFnbBooking.booking_code;
+        document.getElementById('pf-date').textContent         = new Date().toLocaleString('vi-VN');
+
+        let html = '', subtotal = 0;
+        (currentFnbBooking.combos||[]).forEach(c => {
+            subtotal += c.subtotal || 0;
+            html += `<tr><td style="padding:3px 0;font-weight:700;">${c.quantity}x ${c.name}</td><td style="text-align:right;font-weight:700;">${fmt(c.subtotal)}</td></tr>`;
+        });
+        (currentFnbBooking.combo_items||[]).forEach(i => {
+            subtotal += i.subtotal || 0;
+            html += `<tr><td style="padding:3px 0;">${i.quantity}x ${i.name}</td><td style="text-align:right;font-weight:700;">${fmt(i.subtotal)}</td></tr>`;
+        });
         document.getElementById('pf-items').innerHTML = html;
-        document.getElementById('pf-discount').textContent = (currentFnbBooking.discount_amount > 0) ? ('-' + fmt(currentFnbBooking.discount_amount)) : '0đ';
-        document.getElementById('pf-total').textContent   = fmt(currentFnbBooking.final_total);
-        document.getElementById('pf-payment').textContent = currentFnbBooking.payment_method === 'cash' ? 'Tiền mặt' : 'Chuyển khoản';
+        document.getElementById('pf-subtotal').textContent  = fmt(subtotal);
+        document.getElementById('pf-discount').textContent  = (currentFnbBooking.discount_amount > 0) ? ('-' + fmt(currentFnbBooking.discount_amount)) : '0đ';
+        document.getElementById('pf-total').textContent     = fmt(currentFnbBooking.final_total);
+        document.getElementById('pf-payment').textContent   = currentFnbBooking.payment_method === 'cash' ? 'Tiền mặt' : 'Chuyển khoản';
 
         window.onafterprint = function () {
             window.onafterprint = null;
