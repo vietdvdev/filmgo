@@ -145,12 +145,11 @@
                                     </td>
                                     <td class="py-4 px-4">
                                         <div class="flex flex-wrap gap-1 max-w-[180px]">
-                                            <!-- Hiển thị 1 định dạng chiếu duy nhất -->
-                                            @if($movie->format)
+                                            @foreach($movie->formats as $fmt)
                                                 <span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-semibold bg-slate-50 text-slate-700 border border-slate-200/50">
-                                                    {{ $movie->format->name }}
+                                                    {{ $fmt->name }}
                                                 </span>
-                                            @endif
+                                            @endforeach
                                         </div>
                                     </td>
                                     <td class="py-4 px-4 whitespace-nowrap font-medium text-on-surface-variant">

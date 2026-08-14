@@ -295,10 +295,9 @@
                             <h3 class="font-headline-sm text-headline-sm">Định Dạng Chiếu <span class="text-error">*</span></h3>
                         </div>
 
-                        <!-- Chú thích: Cơ chế Single Selection sử dụng radio và xử lý UI mượt mà bằng JS -->
-                        <p class="text-xs text-on-surface-variant">Chọn 1 định dạng chiếu duy nhất cho bộ phim này.</p>
+                        <p class="text-xs text-on-surface-variant">Chọn một hoặc nhiều định dạng chiếu cho bộ phim này.</p>
 
-                        <div class="grid grid-cols-2 gap-2 format-selection-group">
+                        <div class="grid grid-cols-2 gap-2">
                             @foreach($formats as $format)
                                 @php
                                     $fmtColors = [
@@ -308,16 +307,12 @@
                                         '4DX'  => 'border-emerald-500 bg-emerald-500/10 text-emerald-700',
                                     ];
                                     $activeClasses = $fmtColors[$format->name] ?? 'border-primary bg-primary/10 text-primary';
-                                    
-                                    // Kiểm tra xem ô này có đang được chọn (active) hay không (lấy theo dữ liệu cũ hoặc DB)
-                                    $isChecked = old('format_id', $selectedFormat) == $format->id;
+                                    $isChecked = in_array($format->id, old('format_ids', $selectedFormats));
                                 @endphp
                                 
                                 <label class="format-label cursor-pointer flex flex-col items-center justify-center gap-1 px-3 py-3 border rounded-lg transition-all duration-200 select-none {{ $isChecked ? $activeClasses . ' font-semibold' : 'border-outline-variant text-on-surface-variant hover:bg-surface-container-low' }}"
                                        data-active-classes="{{ $activeClasses }}">
-                                    <!-- Input type radio ẩn, đảm bảo logic Single Selection -->
-                                    <input type="radio" name="format_id" value="{{ $format->id }}" class="hidden format-radio" {{ $isChecked ? 'checked' : '' }}>
-                                    
+                                    <input type="checkbox" name="format_ids[]" value="{{ $format->id }}" class="hidden format-checkbox" {{ $isChecked ? 'checked' : '' }}>
                                     <span class="font-black text-lg leading-none">{{ $format->name }}</span>
                                     @if($format->surcharge_price > 0)
                                         <span class="text-[10px] font-medium opacity-70">+{{ number_format($format->surcharge_price) }}₫</span>
@@ -327,7 +322,7 @@
                                 </label>
                             @endforeach
                         </div>
-                        @error('format_id')
+                        @error('format_ids')
                             <p class="text-error font-body-md text-xs mt-1">{{ $message }}</p>
                         @enderror
                     </div>
@@ -455,30 +450,17 @@
             if (e.key === 'Escape') cancelActor();
         });
 
-        // Xử lý sự kiện click/change cho Định Dạng Chiếu (Single Selection)
-        const formatLabels = document.querySelectorAll('.format-label');
-        const formatRadios = document.querySelectorAll('.format-radio');
-
-        formatRadios.forEach(radio => {
-            radio.addEventListener('change', function() {
-                // Khi một radio được chọn, reset tất cả các label về trạng thái mặc định
-                formatLabels.forEach(label => {
-                    const activeClasses = label.getAttribute('data-active-classes').split(' ');
-                    // Gỡ bỏ highlight
-                    label.classList.remove(...activeClasses, 'font-semibold');
-                    // Thêm lại style mặc định (viền xám nhạt)
-                    label.classList.add('border-outline-variant', 'text-on-surface-variant', 'hover:bg-surface-container-low');
-                });
-
-                // Thêm highlight cho label đang được chọn
+        // Xử lý click cho Định Dạng Chiếu (Multi Selection - checkbox)
+        document.querySelectorAll('.format-checkbox').forEach(checkbox => {
+            checkbox.addEventListener('change', function() {
+                const label = this.closest('.format-label');
+                const activeClasses = label.getAttribute('data-active-classes').split(' ');
                 if (this.checked) {
-                    const parentLabel = this.closest('.format-label');
-                    const activeClasses = parentLabel.getAttribute('data-active-classes').split(' ');
-                    
-                    // Xóa style mặc định
-                    parentLabel.classList.remove('border-outline-variant', 'text-on-surface-variant', 'hover:bg-surface-container-low');
-                    // Thêm style highlight dựa theo cấu hình data-active-classes
-                    parentLabel.classList.add(...activeClasses, 'font-semibold');
+                    label.classList.remove('border-outline-variant', 'text-on-surface-variant', 'hover:bg-surface-container-low');
+                    label.classList.add(...activeClasses, 'font-semibold');
+                } else {
+                    label.classList.remove(...activeClasses, 'font-semibold');
+                    label.classList.add('border-outline-variant', 'text-on-surface-variant', 'hover:bg-surface-container-low');
                 }
             });
         });
