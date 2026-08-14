@@ -48,17 +48,13 @@ class StaffShowtimeController extends Controller
         $includeEnded = $request->boolean('include_ended');
         $currentTime  = now()->toTimeString();
         $todayDate    = today()->toDateString();
+        $selectedDate = $request->input('date', $todayDate);
 
-        // PART 1: QUERY OPTIMIZATION
-        // Eager load 'movie' và 'room' để phòng tránh lỗi N+1 queries.
-        // Filter theo cinema_id trực thuộc rạp của nhân viên đang đăng nhập.
         $query = Showtime::with(['movie', 'room'])
             ->whereHas('room', fn($q) => $q->where('cinema_id', $cinemaId))
-            ->whereDate('show_date', '>=', $todayDate);
+            ->whereDate('show_date', $selectedDate);
 
-        // Logic lọc thời gian: Mặc định ẩn các suất chiếu đã xong hôm nay.
-        // Suất chiếu hợp lệ nếu: (show_date > today) HOẶC (show_date == today VÀ end_time > current_time)
-        if (!$includeEnded) {
+        if (!$includeEnded && $selectedDate === $todayDate) {
             $query->where(function ($q) use ($todayDate, $currentTime) {
                 $q->whereDate('show_date', '>', $todayDate)
                   ->orWhere(function ($q2) use ($todayDate, $currentTime) {
@@ -100,6 +96,6 @@ class StaffShowtimeController extends Controller
             }
         });
 
-        return view('admin.staff.showtimes', compact('showtimes', 'rooms', 'includeEnded'));
+        return view('admin.staff.showtimes', compact('showtimes', 'rooms', 'includeEnded', 'selectedDate', 'todayDate'));
     }
 }
