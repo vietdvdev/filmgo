@@ -60,6 +60,16 @@
             &nbsp;•&nbsp;
             Giới hạn tuổi: <strong>{{ selectedMovie.age_limit || 'T18' }}</strong>
           </p>
+          <div v-if="selectedMovie && selectedMovie.formats && selectedMovie.formats.length" class="mt-2 flex flex-wrap gap-1.5">
+            <span
+              v-for="fmt in selectedMovie.formats"
+              :key="fmt.id"
+              class="inline-flex items-center gap-1 px-2.5 py-1 rounded text-[11px] font-bold border"
+              :class="formatBadgeClass(fmt.name)">
+              {{ fmt.name }}
+              <span v-if="fmt.surcharge_price > 0" class="font-normal opacity-75">+{{ Number(fmt.surcharge_price).toLocaleString() }}₫</span>
+            </span>
+          </div>
           <p v-if="fieldErrors.movie_id" class="mt-1 text-xs text-red-600 font-semibold">{{ fieldErrors.movie_id }}</p>
         </div>
 
@@ -266,6 +276,16 @@ let overlapTimer = null;
 let priceTimer   = null;
 
 const selectedMovie = computed(() => movies.find(m => m.id == form.movie_id) || null);
+
+const formatBadgeClass = (name) => {
+  const map = {
+    '2D':   'bg-blue-50 text-blue-700 border-blue-300',
+    '3D':   'bg-purple-50 text-purple-700 border-purple-300',
+    'IMAX': 'bg-amber-50 text-amber-700 border-amber-300',
+    '4DX':  'bg-emerald-50 text-emerald-700 border-emerald-300',
+  };
+  return map[name] || 'bg-slate-100 text-slate-700 border-slate-300';
+};
 
 const computedEndTime = computed(() => {
   if (!selectedMovie.value || !form.start_time) return '';

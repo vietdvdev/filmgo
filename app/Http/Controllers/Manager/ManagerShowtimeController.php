@@ -218,6 +218,7 @@ class ManagerShowtimeController extends Controller
     public function create()
     {
         $movies = Movie::whereIn('status', ['showing', 'upcoming'])
+            ->with('formats:id,name,surcharge_price')
             ->orderBy('title')
             ->get(['id', 'title', 'duration', 'age_limit']);
 
