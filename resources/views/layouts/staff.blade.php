@@ -95,7 +95,7 @@
                       {{ request()->routeIs('staff.showtimes.*') ? 'bg-surface-container-low text-primary font-bold' : 'text-on-surface-variant hover:bg-surface-container-low' }}">
                 <span class="material-symbols-outlined"
                       style="font-variation-settings: 'FILL' {{ request()->routeIs('staff.showtimes.*') ? 1 : 0 }}">today</span>
-                <span class="text-label-md">Lịch Chiếu Hôm Nay</span>
+                <span class="text-label-md">Lịch Chiếu</span>
             </a>
 
             {{-- Quản lý vé khách đặt --}}

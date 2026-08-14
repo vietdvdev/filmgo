@@ -1,6 +1,6 @@
 @extends('layouts.staff')
 
-@section('title', 'Lịch Chiếu Hôm Nay - FilmGo')
+@section('title', 'Lịch Chiếu - FilmGo')
 
 @section('content')
 <div class="p-8 space-y-6">
@@ -11,10 +11,10 @@
             <p class="text-label-md text-on-surface-variant uppercase tracking-widest">Nhân Viên</p>
             <h1 class="text-headline-md font-bold text-on-surface flex items-center gap-2 mt-0.5">
                 <span class="material-symbols-outlined text-primary text-3xl">today</span>
-                Lịch Chiếu Hôm Nay
+                Lịch Chiếu
             </h1>
             <p class="text-body-md text-on-surface-variant mt-1">
-                {{ now()->isoFormat('dddd, DD/MM/YYYY') }}
+                {{ \Carbon\Carbon::parse($selectedDate)->isoFormat('dddd, DD/MM/YYYY') }}
             </p>
         </div>
 
@@ -32,6 +32,16 @@
     <form method="GET" action="{{ route('staff.showtimes.index') }}"
           class="bg-white border border-outline-variant rounded-xl p-5 shadow-ambient-sm">
         <div class="flex flex-col sm:flex-row gap-3 items-center">
+            {{-- Bộ lọc ngày chiếu --}}
+            <div class="flex items-center gap-2 px-3.5 py-2.5 border border-outline-variant rounded-lg bg-surface flex-shrink-0">
+                <span class="material-symbols-outlined text-on-surface-variant text-xl">calendar_month</span>
+                <input
+                    type="date"
+                    name="date"
+                    value="{{ $selectedDate }}"
+                    class="text-body-md bg-transparent focus:outline-none text-on-surface"
+                >
+            </div>
             {{-- Tìm kiếm tên phim --}}
             <div class="relative flex-1 w-full">
                 <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant text-xl pointer-events-none">search</span>
@@ -79,7 +89,7 @@
                 Lọc
             </button>
 
-            @if(request('search') || request('room_id') || request('include_ended'))
+            @if(request('search') || request('room_id') || request('include_ended') || $selectedDate !== $todayDate)
             <a href="{{ route('staff.showtimes.index') }}"
                class="px-5 py-2.5 border border-outline-variant text-on-surface-variant font-bold text-label-md rounded-lg hover:bg-surface-container-low transition-colors flex items-center gap-2 whitespace-nowrap">
                 <span class="material-symbols-outlined text-lg">close</span>
@@ -108,6 +118,7 @@
                 <table class="w-full text-left border-collapse">
                     <thead>
                         <tr class="bg-surface-container-low border-b border-outline-variant">
+                        <th class="px-5 py-3.5 text-label-md text-on-surface-variant uppercase tracking-wider font-bold">Ngày Chiếu</th>
                             <th class="px-5 py-3.5 text-label-md text-on-surface-variant uppercase tracking-wider font-bold">Giờ Chiếu</th>
                             <th class="px-5 py-3.5 text-label-md text-on-surface-variant uppercase tracking-wider font-bold">Tên Phim</th>
                             <th class="px-5 py-3.5 text-label-md text-on-surface-variant uppercase tracking-wider font-bold">Phòng Chiếu</th>
@@ -137,6 +148,14 @@
                         {{-- PART 2: DISABLED STATE RENDERING WITH TAILWIND CSS --}}
                         {{-- Khi include_ended=true hiển thị lại suất chiếu đã kết thúc, áp dụng class mờ và khóa tương tác --}}
                         <tr class="hover:bg-surface-container-lowest transition-colors {{ $isEnded ? 'opacity-50 grayscale bg-gray-100 pointer-events-none cursor-not-allowed' : '' }}">
+                            {{-- Ngày chiếu --}}
+                            <td class="px-5 py-4 whitespace-nowrap">
+                                <span class="inline-flex items-center gap-1.5 px-2.5 py-1 bg-violet-50 text-violet-700 border border-violet-200 rounded-lg text-[11px] font-bold">
+                                    <span class="material-symbols-outlined text-sm">calendar_month</span>
+                                    {{ \Carbon\Carbon::parse($showtime->show_date)->format('d/m/Y') }}
+                                </span>
+                            </td>
+
                             {{-- Giờ chiếu --}}
                             <td class="px-5 py-4 whitespace-nowrap">
                                 <div class="flex items-center gap-2">
