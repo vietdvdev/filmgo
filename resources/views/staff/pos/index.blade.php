@@ -1465,7 +1465,7 @@ const POS = (() => {
                 method: 'POST',
                 body: JSON.stringify({
                     showtime_id:     state.currentShowtime.id,
-                    seats:           state.selectedSeats.map(s => s.showtime_seat_id),
+                    seat_ids:        state.selectedSeats.map(s => s.showtime_seat_id),
                     combos:          combosPayload,
                     payment_method:  state.paymentMethod,
                     customer_phone:  document.getElementById('customer-phone')?.value.trim() || null,
@@ -1473,7 +1473,15 @@ const POS = (() => {
                 }),
             });
 
-            if (!res.success) { toast(res.message || 'Đặt vé thất bại!', 'error'); return; }
+            if (!res.success) {
+                let errorMsg = res.message || 'Đặt vé thất bại!';
+                if (res.errors) {
+                    const firstErrorKey = Object.keys(res.errors)[0];
+                    errorMsg = res.errors[firstErrorKey][0];
+                }
+                toast(errorMsg, 'error');
+                return;
+            }
 
             state.currentBooking = res.booking;
             document.getElementById('checkout-modal').classList.add('hidden');
@@ -1835,7 +1843,15 @@ const _FNB = (() => {
                 method: 'POST',
                 body: JSON.stringify({ combos: fnbState.combos, combo_items: fnbState.items, payment_method: pm, customer_phone: phone||null, voucher_code: voucher||null }),
             });
-            if (!res.success) { toast('Lỗi: ' + res.message, 'error'); return; }
+            if (!res.success) {
+                let errorMsg = res.message || 'Lỗi hệ thống';
+                if (res.errors) {
+                    const firstErrorKey = Object.keys(res.errors)[0];
+                    errorMsg = res.errors[firstErrorKey][0];
+                }
+                toast('Lỗi: ' + errorMsg, 'error');
+                return;
+            }
 
             openFnbSuccessModal(res.booking);
 
