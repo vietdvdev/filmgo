@@ -9,7 +9,7 @@
             {{-- ── Countdown Timer ── --}}
             <div id="countdown-wrapper" class="fixed top-4 right-4 bg-white text-slate-800 px-4 py-2 rounded-full font-bold shadow-md z-50 flex items-center gap-2 border border-slate-200">
                 <span class="text-xs text-slate-500 font-bold uppercase tracking-wider">⏳ Giữ ghế:</span>
-                <span id="seat-countdown" class="text-base font-black text-brand-primary">10:00</span>
+                <span id="seat-countdown" class="text-base font-black text-brand-primary">05:00</span>
             </div>
 
             {{-- ── Progress Steps ── --}}
@@ -209,20 +209,18 @@
                         <!-- Action buttons -->
                         <div class="flex flex-col sm:flex-row gap-3">
                             {{-- Nút Quay Lại Chọn Ghế:
-                                 Dùng thẻ <a> điều hướng về trang chọn ghế mà KHÔNG nhả ghế.
-                                 Ghế vẫn còn trong session → hiển thị đỏ để user có thể xem lại / hủy.
-                                 Nếu user muốn đổi ghế hoàn toàn, họ có thể click bỏ chọn trên trang ghế rồi submit lại. --}}
-                            <a href="{{ route('booking.select-seats', $showtime->id) }}"
-                               id="btnBackToSeats"
-                               class="w-full sm:w-1/2 bg-white border-2 border-slate-300 hover:border-brand-primary hover:text-brand-primary text-slate-500 font-bold py-3.5 rounded-xl flex items-center justify-center gap-2 transition-all duration-200 shadow-sm text-sm uppercase tracking-wide">
+                                 Dùng JS fetch gọi API nhả ghế rồi redirect (không dùng form lồng nhau) --}}
+                            <button type="button"
+                                    id="btnBackToSeats"
+                                    class="w-full sm:w-1/2 bg-white border-2 border-slate-300 hover:border-brand-primary hover:text-brand-primary text-slate-500 font-bold py-3.5 rounded-xl flex items-center justify-center gap-2 transition-all duration-200 shadow-sm text-sm uppercase tracking-wide cursor-pointer">
                                 <span class="material-symbols-outlined text-base">arrow_back</span>
                                 Quay Lại Chọn Ghế
-                            </a>
+                            </button>
 
                             {{-- Nút Tiếp Tục: submit form combo sang trang Thanh Toán --}}
                             <button type="submit"
                                     id="btnContinue"
-                                    class="w-full sm:w-1/2 bg-brand-primary hover:bg-red-700 text-white font-bold py-3.5 rounded-xl shadow-lg shadow-brand-primary/25 transition-all duration-200 flex items-center justify-center gap-2 uppercase tracking-wide text-sm">
+                                    class="w-full sm:w-1/2 bg-brand-primary hover:bg-red-700 text-white font-bold py-3.5 rounded-xl shadow-lg shadow-brand-primary/25 transition-all duration-200 flex items-center justify-center gap-2 uppercase tracking-wide text-sm cursor-pointer">
                                 Tiếp Tục
                                 <span class="material-symbols-outlined text-sm">arrow_forward</span>
                             </button>
@@ -235,42 +233,68 @@
         </div>
     </div>
 
-    <!-- JavaScript to Dynamic Handle Combo quantity -->
+    <!-- JavaScript to Dynamic Handle Combo quantity and strict Back / Timer Rules -->
     <script>
         document.addEventListener('DOMContentLoaded', function () {
-            // ── CHẶN NÚT BACK TRÌNH DUYỆT (chỉ khi back về trang Thanh Toán) ──
-            // Đẩy 1 state giả vào history để tạo điểm chặn khi người dùng nhấn nút back.
-            // Khi popstate kích hoạt (back bị nhấn), ta tự redirect về trang chọn ghế.
-            // Cờ "navigatingIntentionally" ngăn popstate chạy khi user đã click nút UI.
+            const RELEASE_URL = "{{ route('booking.release-seats', $showtime->id) }}";
+            const CSRF = "{{ csrf_token() }}";
             let navigatingIntentionally = false;
 
+            // ── CHẶN NÚT BACK TRÌNH DUYỆT (Nhả ghế ngay lập tức và về lại trang Chọn Ghế) ──
             history.pushState({ page: 'combos', showtimeId: {{ $showtime->id }} }, '', window.location.href);
 
-            window.addEventListener('popstate', function (event) {
-                if (navigatingIntentionally) return; // click nút UI → bỏ qua
-                // Nhấn nút back trình duyệt → về trang chọn ghế, ghế vẫn còn trong session
+            window.addEventListener('popstate', async function (event) {
+                if (navigatingIntentionally) return;
+                
+                // Gọi API nhả ghế ngay lập tức khi người dùng bấm nút back trình duyệt
+                try {
+                    await fetch(RELEASE_URL, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRF-TOKEN': CSRF,
+                            'Accept': 'application/json'
+                        },
+                        body: JSON.stringify({ redirect_to: 'seats' })
+                    });
+                } catch (e) {
+                    console.error('Lỗi nhả ghế:', e);
+                }
                 window.location.replace("{{ route('booking.select-seats', $showtime->id) }}");
             });
 
-            // Khi click nút "Quay Lại Chọn Ghế" → đánh dấu để popstate không can thiệp
+            // ── NÚT "QUAY LẠI CHỌN GHẾ" — Gọi API nhả ghế rồi redirect ──
             const btnBack = document.getElementById('btnBackToSeats');
             if (btnBack) {
-                btnBack.addEventListener('click', function () {
+                btnBack.addEventListener('click', async function () {
                     navigatingIntentionally = true;
-                    // Điều hướng về seats — ghế vẫn giữ trong session, hiển thị đỏ
-                    // (không cần làm gì thêm, href đã xử lý)
+                    btnBack.disabled = true;
+                    btnBack.innerHTML = '<span class="material-symbols-outlined text-base animate-spin">progress_activity</span> Đang nhả ghế...';
+
+                    try {
+                        await fetch(RELEASE_URL, {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'X-CSRF-TOKEN': CSRF,
+                                'Accept': 'application/json'
+                            },
+                            body: JSON.stringify({ redirect_to: 'seats' })
+                        });
+                    } catch (e) {
+                        console.error('Lỗi nhả ghế:', e);
+                    }
+
+                    window.location.href = "{{ route('booking.select-seats', $showtime->id) }}";
                 });
             }
 
-            // Khi submit form (Tiếp Tục) → cũng đánh dấu intentional
             const comboForm = document.getElementById('comboForm');
             if (comboForm) {
                 comboForm.addEventListener('submit', function () {
                     navigatingIntentionally = true;
                 });
             }
-
-
 
             const decButtons = document.querySelectorAll('.btn-qty-dec');
             const incButtons = document.querySelectorAll('.btn-qty-inc');
@@ -324,8 +348,7 @@
                 grandTotalPrice.textContent = new Intl.NumberFormat('vi-VN').format(grandTotal) + 'đ';
             }
 
-            // ================= COUNTDOWN TIMER LOGIC =================
-            // Load SweetAlert2 dynamically if not already loaded
+            // ================= COUNTDOWN TIMER LOGIC (5 PHÚT LIÊN TỤC) =================
             if (typeof Swal === 'undefined') {
                 const script = document.createElement('script');
                 script.src = 'https://cdn.jsdelivr.net/npm/sweetalert2@11';
@@ -334,9 +357,9 @@
 
             const timerWrapper = document.getElementById('countdown-wrapper');
             const timerDisplay = document.getElementById('seat-countdown');
-            const expireTimestamp = {{ $holdExpiresAt ?? (time() + 600) }} * 1000; 
+            const expireTimestamp = {{ $holdExpiresAt ?? (time() + 300) }} * 1000; 
 
-            const countdownInterval = setInterval(function() {
+            const countdownInterval = setInterval(async function() {
                 const now = new Date().getTime();
                 const distance = expireTimestamp - now;
 
@@ -344,18 +367,31 @@
                     clearInterval(countdownInterval);
                     if (timerDisplay) timerDisplay.textContent = "00:00";
                     
-                    // Show Swal warning
+                    // Tự động gọi API nhả ghế khi hết giờ
+                    try {
+                        await fetch(RELEASE_URL, {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'X-CSRF-TOKEN': CSRF,
+                                'Accept': 'application/json'
+                            },
+                            body: JSON.stringify({ redirect_to: 'home' })
+                        });
+                    } catch (e) {
+                        console.error('Lỗi nhả ghế:', e);
+                    }
+
+                    // Hiển thị cảnh báo và điều hướng về Trang Chủ
                     Swal.fire({
-                        title: 'Hết thời gian giữ ghế!',
-                        text: 'Vui lòng đặt lại từ đầu.',
+                        title: 'Thời gian giữ ghế đã hết!',
+                        text: 'Phiên đặt vé đã kết thúc. Vui lòng thực hiện lại từ đầu.',
                         icon: 'warning',
                         allowOutsideClick: false,
-                        confirmButtonText: 'Đồng ý',
+                        confirmButtonText: 'Về Trang Chủ',
                         confirmButtonColor: '#EF4444'
                     }).then((result) => {
-                        if (result.isConfirmed) {
-                            window.location.href = "{{ route('booking.select-seats', $showtime->id ?? 0) }}";
-                        }
+                        window.location.href = "{{ route('home') }}";
                     });
                     return;
                 }
@@ -369,14 +405,11 @@
                         (seconds < 10 ? "0" + seconds : seconds);
                 }
 
-                // Cảnh báo (Warning state): Khi thời gian còn <= 120 giây (2 phút)
-                if (distance <= 120000) {
+                // Cảnh báo khi thời gian còn <= 60 giây (1 phút)
+                if (distance <= 60000) {
                     if (timerWrapper) {
-                        timerWrapper.classList.remove('bg-zinc-900', 'border-zinc-700');
-                        timerWrapper.classList.add('bg-red-600', 'border-red-500', 'animate-pulse');
-                    }
-                    if (timerDisplay) {
-                        timerDisplay.classList.add('text-white'); // keep text white or turn red as requested: "thêm class Tailwind text-red-500 và animate-pulse"
+                        timerWrapper.classList.remove('bg-white', 'border-slate-200');
+                        timerWrapper.classList.add('bg-red-600', 'border-red-500', 'text-white', 'animate-pulse');
                     }
                 }
             }, 1000);

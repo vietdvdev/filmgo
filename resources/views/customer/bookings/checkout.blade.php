@@ -9,7 +9,7 @@
         {{-- ── Countdown Timer ── --}}
         <div id="countdown-wrapper" class="fixed top-4 right-4 bg-white text-slate-800 px-4 py-2 rounded-full font-bold shadow-md z-50 flex items-center gap-2 border border-slate-200">
             <span class="text-xs text-slate-500 font-bold uppercase tracking-wider">⏳ Giữ ghế:</span>
-            <span id="seat-countdown" class="text-base font-black text-brand-primary">10:00</span>
+            <span id="seat-countdown" class="text-base font-black text-brand-primary">05:00</span>
         </div>
 
         {{-- ── Progress Steps ── --}}
@@ -283,28 +283,101 @@
                     </p>
                 </form>
 
-                {{-- Back --}}
-                <a href="{{ route('booking.select-combos', $showtime->id) }}"
-                   class="flex items-center justify-center gap-1 text-xs text-slate-500 hover:text-brand-primary transition-colors py-2 font-bold uppercase tracking-wider">
-                    <span class="material-symbols-outlined text-sm">arrow_back</span>
-                    Quay lại chọn bắp nước
-                </a>
+                {{-- Hủy đặt vé & Quay lại Trang Chủ --}}
+                <form action="{{ route('booking.release-seats', $showtime->id) }}" method="POST" id="cancelBookingForm">
+                    @csrf
+                    <input type="hidden" name="redirect_to" value="home">
+                    <button type="submit"
+                            id="btnCancelToHome"
+                            class="w-full flex items-center justify-center gap-1 text-xs text-slate-500 hover:text-brand-primary transition-colors py-2 font-bold uppercase tracking-wider cursor-pointer bg-transparent border-0">
+                        <span class="material-symbols-outlined text-sm">close</span>
+                        Hủy Đơn Hàng & Về Trang Chủ
+                    </button>
+                </form>
             </div>
 
         </div>
     </div>
 </div>
 
+@endsection
+
 @section('scripts')
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 <script>
 document.addEventListener('DOMContentLoaded', function () {
 
     const SHOWTIME_ID  = {{ $showtime->id }};
     const APPLY_URL    = "{{ route('booking.voucher.apply', $showtime->id) }}";
     const REMOVE_URL   = "{{ route('booking.voucher.remove', $showtime->id) }}";
+    const RELEASE_URL  = "{{ route('booking.release-seats', $showtime->id) }}";
     const CSRF         = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
     const bankSelect   = document.getElementById('bankCodeSelect');
     const bankInput    = document.getElementById('bankCodeInput');
+    let navigatingIntentionally = false;
+
+    // ── THÔNG BÁO HỦY THANH TOÁN (từ cổng thanh toán VNPAY / MoMo trả về) ──
+    @if(session('payment_cancelled'))
+        Swal.fire({
+            title: 'Hủy thanh toán',
+            text: "{{ session('payment_cancelled') }}",
+            icon: 'warning',
+            confirmButtonText: 'Đã hiểu',
+            confirmButtonColor: '#EF4444'
+        });
+    @elseif(session('error'))
+        Swal.fire({
+            title: 'Thông báo',
+            text: "{{ session('error') }}",
+            icon: 'error',
+            confirmButtonText: 'Đóng',
+            confirmButtonColor: '#EF4444'
+        });
+    @endif
+
+    // ── CHẶN NÚT BACK TRÌNH DUYỆT TRÊN TRANG THANH TOÁN (Nhả ghế và văng ra Trang Chủ) ──
+    history.pushState({ page: 'checkout', showtimeId: SHOWTIME_ID }, '', window.location.href);
+
+    window.addEventListener('popstate', async function (event) {
+        if (navigatingIntentionally) return;
+        
+        try {
+            await fetch(RELEASE_URL, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': CSRF,
+                    'Accept': 'application/json'
+                },
+                body: JSON.stringify({ redirect_to: 'home' })
+            });
+        } catch (e) {
+            console.error('Lỗi nhả ghế:', e);
+        }
+        window.location.replace("{{ route('home') }}");
+    });
+
+    const cancelBookingForm = document.getElementById('cancelBookingForm');
+    if (cancelBookingForm) {
+        cancelBookingForm.addEventListener('submit', function (e) {
+            e.preventDefault();
+            Swal.fire({
+                title: 'Xác nhận hủy đặt vé?',
+                text: 'Ghế đã chọn sẽ được nhả và bạn sẽ quay về Trang Chủ. Hành động này không thể hoàn tác.',
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#EF4444',
+                cancelButtonColor: '#64748b',
+                confirmButtonText: 'Hủy đặt vé',
+                cancelButtonText: 'Tiếp tục thanh toán'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    navigatingIntentionally = true;
+                    cancelBookingForm.submit();
+                }
+            });
+        });
+    }
 
     if (bankSelect && bankInput) {
         bankSelect.addEventListener('change', function () {
@@ -320,6 +393,7 @@ document.addEventListener('DOMContentLoaded', function () {
     const confirmForm = document.getElementById('confirmForm');
     if (confirmForm) {
         confirmForm.addEventListener('submit', function (e) {
+            navigatingIntentionally = true;
             if (paymentMethodInput) {
                 paymentMethodInput.value = 'vnpay';
             }
@@ -461,17 +535,13 @@ document.addEventListener('DOMContentLoaded', function () {
     }
     syncHiddenCombos();
 
-    if (typeof Swal === 'undefined') {
-        const script = document.createElement('script');
-        script.src = 'https://cdn.jsdelivr.net/npm/sweetalert2@11';
-        document.head.appendChild(script);
-    }
+    // ================= COUNTDOWN TIMER LOGIC (5 PHÚT LIÊN TỤC TỪ BƯỚC 2) =================
 
     const timerWrapper = document.getElementById('countdown-wrapper');
     const timerDisplay = document.getElementById('seat-countdown');
-    const expireTimestamp = {{ $holdExpiresAt ?? (time() + 600) }} * 1000; 
+    const expireTimestamp = {{ $holdExpiresAt ?? (time() + 300) }} * 1000; 
 
-    const countdownInterval = setInterval(function() {
+    const countdownInterval = setInterval(async function() {
         const now = new Date().getTime();
         const distance = expireTimestamp - now;
 
@@ -479,17 +549,31 @@ document.addEventListener('DOMContentLoaded', function () {
             clearInterval(countdownInterval);
             if (timerDisplay) timerDisplay.textContent = "00:00";
             
+            // Tự động gọi API nhả ghế khi hết giờ
+            try {
+                await fetch(RELEASE_URL, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': CSRF,
+                        'Accept': 'application/json'
+                    },
+                    body: JSON.stringify({ redirect_to: 'home' })
+                });
+            } catch (e) {
+                console.error('Lỗi nhả ghế:', e);
+            }
+
+            // Cảnh báo và đưa khách về Trang Chủ
             Swal.fire({
-                title: 'Hết thời gian giữ ghế!',
-                text: 'Vui lòng đặt lại từ đầu.',
+                title: 'Thời gian giữ ghế đã hết!',
+                text: 'Phiên đặt vé đã kết thúc. Vui lòng thực hiện lại từ đầu.',
                 icon: 'warning',
                 allowOutsideClick: false,
-                confirmButtonText: 'Đồng ý',
+                confirmButtonText: 'Về Trang Chủ',
                 confirmButtonColor: '#EF4444'
             }).then((result) => {
-                if (result.isConfirmed) {
-                    window.location.href = "{{ route('booking.select-seats', $showtime->id ?? 0) }}";
-                }
+                window.location.href = "{{ route('home') }}";
             });
             return;
         }
@@ -503,7 +587,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 (seconds < 10 ? "0" + seconds : seconds);
         }
 
-        if (distance <= 120000) {
+        if (distance <= 60000) {
             if (timerWrapper) {
                 timerWrapper.classList.remove('bg-white', 'border-slate-200');
                 timerWrapper.classList.add('bg-red-600', 'border-red-500', 'text-white', 'animate-pulse');
@@ -513,5 +597,4 @@ document.addEventListener('DOMContentLoaded', function () {
 
 });
 </script>
-@endsection
 @endsection

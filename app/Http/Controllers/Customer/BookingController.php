@@ -161,7 +161,7 @@ class BookingController extends Controller
                     }
                 }
 
-                $expireTime = now()->addMinutes(10); // Hết hạn holding = 10 phút
+                $expireTime = now()->addMinutes(5); // Hết hạn holding = 5 phút
 
                 ShowtimeSeat::where('showtime_id', $showtimeId)
                     ->whereIn('id', $seatIds)
@@ -223,7 +223,7 @@ class BookingController extends Controller
         }
 
         // Lấy thời gian hết hạn giữ ghế
-        $holdExpiresAt = session()->get("booking.{$showtimeId}.expires_at", time() + 600);
+        $holdExpiresAt = session()->get("booking.{$showtimeId}.expires_at", time() + 300);
 
         return view('customer.bookings.select-combos', compact(
             'showtime',
@@ -296,8 +296,21 @@ class BookingController extends Controller
         // Xóa dữ liệu booking trong session để khách chọn lại từ đầu
         session()->forget("booking.{$showtimeId}");
 
-        return redirect()->route('booking.select-seats', $showtimeId)
-            ->with('info', 'Ghế đã được giải phóng. Bạn có thể chọn lại ghế khác.');
+        if ($request->expectsJson() || $request->is('api/*')) {
+            return response()->json([
+                'success' => true,
+                'message' => 'Ghế đã được giải phóng thành công.'
+            ]);
+        }
+
+        $redirectTo = $request->input('redirect_to', 'home');
+        if ($redirectTo === 'seats') {
+            return redirect()->route('booking.select-seats', $showtimeId)
+                ->with('info', 'Tiến trình đặt vé đã được hủy.');
+        }
+
+        return redirect()->route('home')
+            ->with('info', 'Bạn đã hủy giao dịch thanh toán.');
     }
 
     /**
@@ -397,6 +410,9 @@ class BookingController extends Controller
         // Lấy tất cả combo đang hoạt động để làm sản phẩm upsell
         $allCombos = Combo::where('status', 'active')->latest()->get();
 
+        // Lấy thời gian hết hạn giữ ghế từ session (đồng bộ 5 phút với bước 2)
+        $holdExpiresAt = session()->get("booking.{$showtimeId}.expires_at", time() + 300);
+
         return view('customer.bookings.checkout', compact(
             'showtime',
             'selectedSeats',
@@ -407,7 +423,8 @@ class BookingController extends Controller
             'discountAmount',
             'finalTotal',
             'appliedVoucher',
-            'allCombos'
+            'allCombos',
+            'holdExpiresAt'
         ));
     }
 
@@ -889,8 +906,17 @@ class BookingController extends Controller
             Ticket::whereIn('id', $ticketIds)->update(['ticket_status' => 'cancelled']);
 
             $showtimeSeatIds = $booking->bookingDetails()->pluck('showtime_seat_id');
-            ShowtimeSeat::whereIn('id', $showtimeSeatIds)->update(['status' => 'available']);
+            ShowtimeSeat::whereIn('id', $showtimeSeatIds)->update([
+                'status'     => 'available',
+                'user_id'    => null,
+                'locked_at'  => null,
+                'expires_at' => null,
+            ]);
         });
+
+        if ($booking->showtime_id) {
+            session()->forget("booking.{$booking->showtime_id}");
+        }
 
         $ipnLog->update([
             'signature_status' => 'valid',
@@ -915,7 +941,10 @@ class BookingController extends Controller
         $booking = $bookingCode ? Booking::where('booking_code', $bookingCode)->first() : null;
 
         if ($booking) {
-            $isSuccess = ($request->get('vnp_ResponseCode') === '00') || ((int) $request->get('resultCode') === 0);
+            $vnpCode  = (string) $request->get('vnp_ResponseCode');
+            $momoCode = (string) $request->get('resultCode');
+
+            $isSuccess = ($vnpCode === '00') || ($momoCode !== '' && (int) $momoCode === 0);
             if ($isSuccess) {
                 if ($booking->booking_type === 'combo_only' || !$booking->showtime_id) {
                     return redirect()->route('combo-shop.success', $booking->id);
@@ -923,13 +952,26 @@ class BookingController extends Controller
                 return redirect()->route('booking.success', $booking->id);
             }
 
-            if ($booking->booking_type === 'combo_only' || !$booking->showtime_id) {
-                return redirect()->route('combo-shop.checkout')
-                    ->with('error', 'Thanh toán không thành công. Vui lòng thử lại.');
+            // Đảm bảo ghế được nhả hoàn toàn và session bị xóa
+            if ($booking->showtime_id) {
+                ShowtimeSeat::whereIn('id', $booking->bookingDetails()->pluck('showtime_seat_id'))
+                    ->where('user_id', Auth::id())
+                    ->update([
+                        'status'     => 'available',
+                        'user_id'    => null,
+                        'locked_at'  => null,
+                        'expires_at' => null,
+                    ]);
+                session()->forget("booking.{$booking->showtime_id}");
             }
 
-            return redirect()->route('booking.checkout', $booking->showtime_id)
-                ->with('error', 'Thanh toán không thành công. Vui lòng thử lại.');
+            // Phân loại thông báo dựa vào mã lỗi trả về
+            $isCancelled = in_array($vnpCode, ['24', '11']) || in_array($momoCode, ['1006', '49', '1005']);
+            $msg = $isCancelled
+                ? 'Bạn đã hủy giao dịch thanh toán.'
+                : 'Thanh toán không thành công. Vui lòng thử lại.';
+
+            return redirect()->route('home')->with('info', $msg);
         }
 
         return redirect()->route('home')->with('error', 'Không tìm thấy đơn hàng.');

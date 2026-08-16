@@ -65,10 +65,14 @@
                         <div class="text-sm text-slate-500 font-medium">Không có liên kết thanh toán lúc này. Vui lòng thử lại sau.</div>
                     @endif
 
-                    <a href="{{ route('booking.checkout', $booking->showtime_id) }}"
-                       class="text-xs text-slate-500 hover:text-brand-primary transition-colors font-bold uppercase tracking-wider mt-2">
-                        Quay lại trang checkout
-                    </a>
+                    <form action="{{ route('booking.release-seats', $booking->showtime_id) }}" method="POST" class="mt-2">
+                        @csrf
+                        <input type="hidden" name="redirect_to" value="home">
+                        <button type="submit" class="text-xs text-red-500 hover:text-red-700 transition-colors font-bold uppercase tracking-wider bg-transparent border-0 cursor-pointer flex items-center gap-1">
+                            <span class="material-symbols-outlined text-sm">cancel</span>
+                            Hủy thanh toán & Về Trang Chủ
+                        </button>
+                    </form>
                 </div>
             </div>
         </div>

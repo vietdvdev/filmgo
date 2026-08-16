@@ -74,3 +74,14 @@ Route::middleware(['web', 'auth', 'admin'])
         Route::get('/stats/movie-revenue', [App\Http\Controllers\Admin\DashboardController::class, 'movieRevenueStats'])->name('api.admin.dashboard.stats.movie-revenue');
     });
 
+// ── Customer Booking API ──────────────────────────────────────────────────────
+Route::middleware(['web', 'auth'])
+    ->prefix('booking')
+    ->group(function () {
+        // POST /api/booking/showtime/{showtime_id}/release-seats
+        Route::post(
+            '/showtime/{showtime_id}/release-seats',
+            [App\Http\Controllers\Customer\BookingController::class, 'releaseSeats']
+        )->name('api.booking.release-seats');
+    });
+

@@ -74,6 +74,26 @@
         </div>
         @endif
 
+        {{-- Flash Notification Banners --}}
+        @if(session('info'))
+        <div class="bg-blue-900/90 border-b border-blue-700 px-6 py-3 flex items-center gap-3">
+            <span class="material-symbols-outlined text-blue-400 text-xl shrink-0">info</span>
+            <p class="text-sm text-blue-100 font-medium">{{ session('info') }}</p>
+        </div>
+        @endif
+        @if(session('error'))
+        <div class="bg-red-900/90 border-b border-red-700 px-6 py-3 flex items-center gap-3">
+            <span class="material-symbols-outlined text-red-400 text-xl shrink-0">error</span>
+            <p class="text-sm text-red-100 font-medium">{{ session('error') }}</p>
+        </div>
+        @endif
+        @if(session('success'))
+        <div class="bg-emerald-900/90 border-b border-emerald-700 px-6 py-3 flex items-center gap-3">
+            <span class="material-symbols-outlined text-emerald-400 text-xl shrink-0">check_circle</span>
+            <p class="text-sm text-emerald-100 font-medium">{{ session('success') }}</p>
+        </div>
+        @endif
+
         @yield('content')
     </main>
 
