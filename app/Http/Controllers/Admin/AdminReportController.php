@@ -195,6 +195,8 @@ class AdminReportController extends Controller
             $moviesList = $moviesList->where('id', (int) $movieId)->values();
         }
 
+        $moviesList = $moviesList->sortByDesc('total_revenue')->values();
+
         $summary = [
             'ticket_count'   => $moviesList->sum('ticket_count'),
             'ticket_revenue' => $moviesList->sum('ticket_revenue'),
