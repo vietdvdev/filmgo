@@ -293,6 +293,28 @@ class BookingController extends Controller
                 ]);
         }
 
+        // Nếu đã khởi tạo đơn pending cho suất chiếu này, cập nhật trạng thái hủy và hoàn voucher
+        if ($userId) {
+            $pendingBooking = Booking::where('user_id', $userId)
+                ->where('showtime_id', $showtimeId)
+                ->where('booking_status', 'pending')
+                ->latest()
+                ->first();
+
+            if ($pendingBooking) {
+                $pendingBooking->update([
+                    'booking_status' => 'cancelled',
+                    'payment_status' => 'failed',
+                ]);
+
+                if ($pendingBooking->promotion_id) {
+                    \App\Models\Promotion::where('id', $pendingBooking->promotion_id)
+                        ->where('used_count', '>', 0)
+                        ->decrement('used_count');
+                }
+            }
+        }
+
         // Xóa dữ liệu booking trong session để khách chọn lại từ đầu
         session()->forget("booking.{$showtimeId}");
 
@@ -344,6 +366,26 @@ class BookingController extends Controller
                     'locked_at'  => null,
                     'expires_at' => null,
                 ]);
+        }
+
+        // Nếu đã khởi tạo đơn pending cho suất chiếu này, cập nhật trạng thái hủy và hoàn voucher
+        $pendingBooking = Booking::where('user_id', $userId)
+            ->where('showtime_id', $showtimeId)
+            ->where('booking_status', 'pending')
+            ->latest()
+            ->first();
+
+        if ($pendingBooking) {
+            $pendingBooking->update([
+                'booking_status' => 'cancelled',
+                'payment_status' => 'failed',
+            ]);
+
+            if ($pendingBooking->promotion_id) {
+                \App\Models\Promotion::where('id', $pendingBooking->promotion_id)
+                    ->where('used_count', '>', 0)
+                    ->decrement('used_count');
+            }
         }
 
         session()->forget("booking.{$showtimeId}");
@@ -894,6 +936,12 @@ class BookingController extends Controller
                 'booking_status' => 'cancelled',
             ]);
 
+            if ($booking->promotion_id) {
+                \App\Models\Promotion::where('id', $booking->promotion_id)
+                    ->where('used_count', '>', 0)
+                    ->decrement('used_count');
+            }
+
             $booking->payments()->create([
                 'transaction_code' => $transactionCode,
                 'amount' => $booking->total_amount,
@@ -963,6 +1011,18 @@ class BookingController extends Controller
                         'expires_at' => null,
                     ]);
                 session()->forget("booking.{$booking->showtime_id}");
+            }
+
+            if ($booking->booking_status === 'pending') {
+                $booking->update([
+                    'payment_status' => 'failed',
+                    'booking_status' => 'cancelled',
+                ]);
+                if ($booking->promotion_id) {
+                    \App\Models\Promotion::where('id', $booking->promotion_id)
+                        ->where('used_count', '>', 0)
+                        ->decrement('used_count');
+                }
             }
 
             // Phân loại thông báo dựa vào mã lỗi trả về

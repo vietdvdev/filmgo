@@ -107,25 +107,39 @@ class Booking extends Model
     }
 
     /**
-     * Loại trừ các đơn hàng đã hết thời gian giữ ghế chờ thanh toán.
+     * Lọc lịch sử đặt vé hợp lệ của khách hàng.
+     * Chỉ hiển thị các đơn đã thanh toán thành công.
+     * Loại trừ toàn bộ các đơn đã bị hủy, thất bại hoặc chờ thanh toán bị bỏ dở.
      *
-     * Giữ lại đơn nếu THỎA MỘT TRONG:
-     *   - expired_at IS NULL       → đơn không có hạn (ví dụ: đặt tại quầy)
-     *   - expired_at > now()       → vẫn còn trong thời gian giữ ghế
-     *   - payment_status = 'paid'  → đã thanh toán thành công
+     * Dùng: Booking::customerHistory()->get()
+     */
+    public function scopeCustomerHistory(Builder $query): Builder
+    {
+        return $query->where('payment_status', 'paid')
+            ->where('booking_status', '!=', 'cancelled');
+    }
+
+    /**
+     * Loại trừ các đơn hàng đã hết thời gian giữ ghế chờ thanh toán hoặc đã bị hủy/thất bại.
      *
-     * → Ẩn tất cả đơn hết hạn chưa thanh toán (cả đơn pending chưa kịp xử lý
-     *   lẫn đơn đã bị command hủy thành cancelled/failed).
+     * Giữ lại đơn nếu:
+     *   - Không bị hủy / thất bại
+     *   - VÀ THỎA MỘT TRONG:
+     *       - expired_at IS NULL       → đơn không có hạn (ví dụ: đặt tại quầy)
+     *       - expired_at > now()       → vẫn còn trong thời gian giữ ghế
+     *       - payment_status = 'paid'  → đã thanh toán thành công
      *
      * Dùng: Booking::excludeExpired()->get()
      */
     public function scopeExcludeExpired(Builder $query): Builder
     {
-        return $query->where(function (Builder $q) {
-            $q->whereNull('expired_at')
-              ->orWhere('expired_at', '>', now())
-              ->orWhere('payment_status', 'paid');
-        });
+        return $query->where('booking_status', '!=', 'cancelled')
+            ->where('payment_status', '!=', 'failed')
+            ->where(function (Builder $q) {
+                $q->whereNull('expired_at')
+                  ->orWhere('expired_at', '>', now())
+                  ->orWhere('payment_status', 'paid');
+            });
     }
 
     /**

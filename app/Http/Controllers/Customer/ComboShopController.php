@@ -389,6 +389,17 @@ class ComboShopController extends Controller
                 ->with('success', 'Thanh toán VNPay thành công!');
         }
 
+        $booking->update([
+            'payment_status' => 'failed',
+            'booking_status' => 'cancelled',
+        ]);
+
+        if ($booking->promotion_id) {
+            \App\Models\Promotion::where('id', $booking->promotion_id)
+                ->where('used_count', '>', 0)
+                ->decrement('used_count');
+        }
+
         return redirect()->route('combo-shop.checkout')
             ->with('error', 'Thanh toán thất bại hoặc bị hủy. Mã lỗi: ' . $responseCode);
     }
@@ -432,6 +443,17 @@ class ComboShopController extends Controller
 
             return redirect()->route('combo-shop.success', $booking->id)
                 ->with('success', 'Thanh toán MoMo thành công!');
+        }
+
+        $booking->update([
+            'payment_status' => 'failed',
+            'booking_status' => 'cancelled',
+        ]);
+
+        if ($booking->promotion_id) {
+            \App\Models\Promotion::where('id', $booking->promotion_id)
+                ->where('used_count', '>', 0)
+                ->decrement('used_count');
         }
 
         return redirect()->route('combo-shop.checkout')

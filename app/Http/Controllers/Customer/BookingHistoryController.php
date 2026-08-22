@@ -27,7 +27,7 @@ class BookingHistoryController extends Controller
                 'payments:id,booking_id,payment_method,payment_status',
             ])
             ->where('user_id', Auth::id())
-            ->excludeExpired()             // Ẩn các đơn đã bị hủy do hết hạn giữ ghế
+            ->customerHistory()             // Chỉ lấy các đơn đã thanh toán thành công, ẩn triệt để đơn hủy/thất bại
             ->latest()
             ->paginate(8)
             ->withQueryString();    // Giữ nguyên query params khi phân trang
@@ -53,6 +53,12 @@ class BookingHistoryController extends Controller
             ])
             ->where('user_id', Auth::id())
             ->findOrFail($id);
+
+        // Chặn hiển thị chi tiết đơn hàng đã bị hủy hoặc thanh toán thất bại
+        if ($booking->booking_status === 'cancelled' || $booking->payment_status === 'failed') {
+            return redirect()->route('customer.bookings.history')
+                ->with('error', 'Đơn hàng này đã bị hủy hoặc chưa hoàn tất thanh toán.');
+        }
 
         return view('customer.bookings.detail', compact('booking'));
     }

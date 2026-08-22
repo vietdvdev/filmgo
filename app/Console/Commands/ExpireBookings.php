@@ -62,7 +62,20 @@ class ExpireBookings extends Command
          * Giúp giảm overhead kết nối DB và đảm bảo atomic cho toàn bộ lô hết hạn.
          */
         DB::transaction(function () use ($expiredBookingIds) {
-            // ── 1. Batch UPDATE booking sang cancelled ──────────────────────
+            // ── 1. Hoàn trả lượt dùng voucher (nếu có) ──────────────────────
+            $promotionIds = Booking::whereIn('id', $expiredBookingIds)
+                ->whereNotNull('promotion_id')
+                ->pluck('promotion_id')
+                ->filter()
+                ->toArray();
+
+            if (!empty($promotionIds)) {
+                \App\Models\Promotion::whereIn('id', $promotionIds)
+                    ->where('used_count', '>', 0)
+                    ->decrement('used_count');
+            }
+
+            // ── 2. Batch UPDATE booking sang cancelled ──────────────────────
             Booking::whereIn('id', $expiredBookingIds)
                 ->update([
                     'payment_status' => 'failed',
