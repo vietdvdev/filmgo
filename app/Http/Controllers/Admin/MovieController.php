@@ -157,6 +157,22 @@ class MovieController extends Controller
             'format_ids.min'        => 'Vui lòng chọn ít nhất một định dạng chiếu.',
         ]);
 
+        if ($request->status === 'stopped' && $movie->status !== 'stopped') {
+            $hasFutureShowtimes = $movie->showtimes()
+                ->where('status', '!=', 'cancelled')
+                ->where(function ($query) {
+                    $query->where('show_date', '>', now()->toDateString())
+                          ->orWhere(function ($q) {
+                              $q->where('show_date', '=', now()->toDateString())
+                                ->where('start_time', '>', now()->toTimeString());
+                          });
+                })->exists();
+
+            if ($hasFutureShowtimes) {
+                return back()->with('error', 'Không thể chuyển trạng thái Ngừng chiếu khi phim đang có suất chiếu trong tương lai!')->withInput();
+            }
+        }
+
         $posterPath = $movie->poster;
         if ($request->hasFile('poster')) {
             if ($movie->poster && str_starts_with($movie->poster, 'storage/')) {
