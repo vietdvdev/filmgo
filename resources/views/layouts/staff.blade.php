@@ -139,7 +139,7 @@
         <div class="px-2 mt-auto pt-4 border-t border-outline-variant/30">
             <a href="{{ route('staff.profile.edit') }}" class="flex items-center gap-3 px-4 py-3 mb-1 rounded-xl hover:bg-surface-container-low transition-colors group">
                 @if(Auth::user()->avatar)
-                    <img src="{{ asset(Auth::user()->avatar) }}" class="w-9 h-9 rounded-full object-cover border border-primary/20 flex-shrink-0" alt="{{ Auth::user()->full_name }}">
+                    <img src="{{ Auth::user()->avatar_url }}" class="w-9 h-9 rounded-full object-cover border border-primary/20 flex-shrink-0" alt="{{ Auth::user()->full_name }}">
                 @else
                     <div class="w-9 h-9 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
                         <span class="material-symbols-outlined text-primary text-lg">person</span>

@@ -98,7 +98,7 @@
             {{-- Thông tin user --}}
             <a href="{{ route('manager.profile.edit') }}" class="flex items-center gap-3 px-4 py-3 border-b border-slate-800 hover:bg-slate-900 transition-colors group">
                 @if(auth()->user()->avatar)
-                    <img src="{{ asset(auth()->user()->avatar) }}" class="w-8 h-8 rounded-full object-cover border border-blue-500 flex-shrink-0" alt="{{ auth()->user()->full_name }}">
+                    <img src="{{ auth()->user()->avatar_url }}" class="w-8 h-8 rounded-full object-cover border border-blue-500 flex-shrink-0" alt="{{ auth()->user()->full_name }}">
                 @else
                     <div class="w-8 h-8 rounded-full bg-blue-600 flex items-center justify-center flex-shrink-0">
                         <span class="material-symbols-outlined text-white text-base">person</span>

@@ -46,7 +46,7 @@
                     <div class="relative group">
                         <button class="flex items-center gap-2 focus:outline-none py-2">
                             @if (Auth::guard('web')->user()->avatar)
-                                <img src="{{ asset(Auth::guard('web')->user()->avatar) }}" alt="Avatar"
+                                <img src="{{ Auth::guard('web')->user()->avatar_url }}" alt="Avatar"
                                     class="w-8 h-8 rounded-full object-cover border border-brand-primary/40">
                             @else
                                 <div

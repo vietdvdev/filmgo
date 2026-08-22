@@ -94,4 +94,21 @@ class User extends Authenticatable
     {
         return $this->hasMany(ShowtimeSeat::class, 'user_id');
     }
+
+    public function getAvatarUrlAttribute(): ?string
+    {
+        if (!$this->avatar) {
+            return asset('images/avatar-default.png');
+        }
+
+        if (str_starts_with($this->avatar, 'http://') || str_starts_with($this->avatar, 'https://')) {
+            return $this->avatar;
+        }
+
+        if (str_starts_with($this->avatar, 'storage/')) {
+            return asset($this->avatar);
+        }
+
+        return asset('storage/' . ltrim($this->avatar, '/'));
+    }
 }

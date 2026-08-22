@@ -137,7 +137,7 @@
                                                 <div
                                                     class="w-10 h-10 rounded-full bg-surface-container-highest overflow-hidden border border-outline-variant shrink-0">
                                                     @if ($user->avatar)
-                                                        <img src="{{ asset('storage/' . $user->avatar) }}"
+                                                        <img src="{{ $user->avatar_url }}"
                                                             alt="{{ $user->full_name }}"
                                                             class="w-full h-full object-cover">
                                                     @else

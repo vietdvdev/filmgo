@@ -85,7 +85,7 @@
                                             <div class="flex items-center gap-3">
                                                 <div class="w-10 h-10 rounded-full bg-surface-container-highest overflow-hidden border border-outline-variant shrink-0">
                                                     @if ($user->avatar)
-                                                        <img src="{{ asset('storage/' . $user->avatar) }}" alt="{{ $user->full_name }}" class="w-full h-full object-cover">
+                                                        <img src="{{ $user->avatar_url }}" alt="{{ $user->full_name }}" class="w-full h-full object-cover">
                                                     @else
                                                         <div class="w-full h-full flex items-center justify-center text-on-surface-variant font-bold">
                                                             {{ strtoupper(substr($user->full_name, 0, 1)) }}

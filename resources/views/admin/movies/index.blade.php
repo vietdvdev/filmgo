@@ -114,7 +114,7 @@
                                     <td class="py-4 px-4">
                                         <div class="w-12 h-18 rounded overflow-hidden shadow-sm border border-outline-variant/30 bg-surface-container-high flex-shrink-0">
                                             @if($movie->poster)
-                                                <img src="{{ asset($movie->poster) }}" alt="{{ $movie->title }}" class="w-full h-full object-cover transition-transform duration-200 hover:scale-110">
+                                                <img src="{{ $movie->poster_url }}" alt="{{ $movie->title }}" class="w-full h-full object-cover transition-transform duration-200 hover:scale-110">
                                             @else
                                                 <div class="w-full h-full flex items-center justify-center text-on-surface-variant">
                                                     <span class="material-symbols-outlined" style="font-size: 20px;">image</span>

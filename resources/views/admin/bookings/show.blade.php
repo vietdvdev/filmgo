@@ -88,7 +88,7 @@
                 <div class="flex gap-4">
                     @if($movie && $movie->poster)
                         <div class="w-16 h-24 rounded-lg overflow-hidden border border-outline-variant flex-shrink-0">
-                            <img src="{{ asset('storage/' . $movie->poster) }}" alt="{{ $movie->title }}" class="w-full h-full object-cover">
+                            <img src="{{ $movie->poster_url }}" alt="{{ $movie->title }}" class="w-full h-full object-cover">
                         </div>
                     @endif
                     <dl class="space-y-2 flex-1">
