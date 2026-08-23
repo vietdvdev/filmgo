@@ -60,9 +60,9 @@
             &nbsp;•&nbsp;
             Giới hạn tuổi: <strong>{{ selectedMovie.age_limit || 'T18' }}</strong>
           </p>
-          <div v-if="selectedMovie && selectedMovie.formats && selectedMovie.formats.length" class="mt-2 flex flex-wrap gap-1.5">
+          <div v-if="formats.length" class="mt-2 flex flex-wrap gap-1.5">
             <span
-              v-for="fmt in selectedMovie.formats"
+              v-for="fmt in formats"
               :key="fmt.id"
               class="inline-flex items-center gap-1 px-2.5 py-1 rounded text-[11px] font-bold border"
               :class="formatBadgeClass(fmt.name)">
@@ -274,6 +274,7 @@ const toasts          = ref([]);
 
 let overlapTimer = null;
 let priceTimer   = null;
+let movieChangeRequest = 0;
 
 const selectedMovie = computed(() => movies.find(m => m.id == form.movie_id) || null);
 
@@ -339,6 +340,7 @@ const onCinemaChange = () => {
 };
 
 const onMovieChange = async () => {
+  const requestId = ++movieChangeRequest;
   form.room_id       = '';
   form.format_id     = '';
   autoFormat.value   = null;
@@ -349,15 +351,32 @@ const onMovieChange = async () => {
 
   if (!form.movie_id || !form.cinema_id) return;
 
-  loadingRooms.value = true;
+  loadingRooms.value   = true;
+  loadingFormats.value = true;
   try {
-    const url = urls.roomsByMovie.replace(':movie_id', form.movie_id);
-    const res = await axios.get(url);
-    rooms.value = (res.data.data || []).filter(r => r.cinema_id == form.cinema_id);
+    const movieId = form.movie_id;
+    const roomsUrl = urls.roomsByMovie.replace(':movie_id', movieId);
+    const formatsUrl = urls.formatsByMovie.replace(':movie_id', movieId);
+    const [roomsResponse, formatsResponse] = await Promise.all([
+      axios.get(roomsUrl),
+      axios.get(formatsUrl),
+    ]);
+
+    // Ignore a slower response belonging to the movie selected before this one.
+    if (requestId !== movieChangeRequest || movieId !== form.movie_id) return;
+
+    rooms.value = (roomsResponse.data.data || []).filter(r => r.cinema_id == form.cinema_id);
+    formats.value = formatsResponse.data.data || formatsResponse.data || [];
   } catch (e) {
-    addToast('Không thể tải danh sách phòng chiếu phù hợp.', 'error');
+    if (requestId === movieChangeRequest) {
+      formats.value = [];
+      addToast('Không thể tải dữ liệu định dạng hoặc phòng chiếu của phim.', 'error');
+    }
   } finally {
-    loadingRooms.value = false;
+    if (requestId === movieChangeRequest) {
+      loadingRooms.value = false;
+      loadingFormats.value = false;
+    }
   }
 };
 
