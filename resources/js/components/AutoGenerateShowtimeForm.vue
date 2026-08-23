@@ -237,6 +237,10 @@
               class="text-xs px-2.5 py-1 bg-slate-100 text-slate-600 hover:bg-purple-100 hover:text-purple-700 transition-colors rounded-none border border-slate-200">150.000đ</button>
           </div>
           <p class="mt-1 text-[10px] text-slate-400">Hệ thống sẽ tự động cộng thêm phụ thu ngày lễ và quy tắc giờ cao điểm.</p>
+          <p v-if="roomSurcharge > 0" class="mt-1 text-xs font-semibold text-purple-700">
+            Phụ thu phòng {{ selectedRoom?.room_type }}: +{{ roomSurcharge.toLocaleString() }}đ
+            <span class="font-normal text-slate-400">• Giá dự kiến tối thiểu: {{ estimatedPrice.toLocaleString() }}đ</span>
+          </p>
           <p v-if="errors.standard_price" class="mt-1 text-xs text-rose-600 font-semibold">{{ errors.standard_price }}</p>
         </div>
 
@@ -401,6 +405,9 @@ let movieChangeRequest = 0;
 let roomChangeRequest = 0;
 
 const selectedMovie = computed(() => movies.find(movie => movie.id == payload.movie_id) || null);
+const selectedRoom = computed(() => roomsList.value.find(room => room.id == payload.room_id) || null);
+const roomSurcharge = computed(() => Number(selectedRoom.value?.room_surcharge || 0));
+const estimatedPrice = computed(() => Number(payload.standard_price || 0) + roomSurcharge.value);
 
 onMounted(async () => {
   await fetchCinemas();
@@ -467,7 +474,13 @@ const onAutoRoomChange = async () => {
 
     compatibleFormats.value = res.data.data || res.data || [];
     if (compatibleFormats.value.length > 0) {
-      payload.format_id = compatibleFormats.value[0].id;
+      // Ưu tiên format trùng loại phòng, giống luồng tạo suất thủ công.
+      const selectedRoom = roomsList.value.find(room => room.id == payload.room_id);
+      const roomType = selectedRoom?.room_type?.toUpperCase() || '';
+      const matchedFormat = compatibleFormats.value.find(
+        format => format.name?.toUpperCase() === roomType
+      );
+      payload.format_id = (matchedFormat || compatibleFormats.value[0]).id;
     }
   } catch (e) {
     if (requestId === roomChangeRequest) {

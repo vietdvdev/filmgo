@@ -113,9 +113,19 @@ class AutoGenerateController extends Controller
                 }
             }
 
-            // Lấy thông tin phụ thu của Định dạng chiếu (VD: 3D +30,000đ, IMAX +50,000đ)
+            // Phụ thu lấy theo định dạng đã cấu hình cho phòng.
+            // Format của suất vẫn là format phim, nhưng phòng 3D/4DX vẫn có phụ thu riêng.
+            $room->load('format');
+            $roomFormat = $room->format;
+            if (!$roomFormat) {
+                $roomFormatName = strtoupper(trim((string) $room->room_type));
+                $roomFormatName = $roomFormatName === '4D' ? '4DX' : $roomFormatName;
+                $roomFormat = Format::whereRaw('UPPER(name) = ?', [$roomFormatName])->first();
+            }
             $format = Format::find($formatId);
-            $formatSurcharge = $format ? (int) $format->surcharge_price : 0;
+            $formatSurcharge = $roomFormat
+                ? (int) $roomFormat->surcharge_price
+                : ($format ? (int) $format->surcharge_price : 0);
 
             // Truy vấn toàn bộ các suất chiếu hiện có của phòng trong ngày chỉ định, xếp tăng dần theo giờ bắt đầu
             $existingShowtimes = Showtime::where('room_id', $roomId)
