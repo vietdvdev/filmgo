@@ -20,6 +20,9 @@
     <auto-generate-showtime-form
         my-cinemas-url="{{ route('manager.api.my-cinemas') }}"
         rooms-url-pattern="{{ str_replace('PLACEHOLDER', ':cinema_id', route('manager.api.rooms-by-cinema', ['cinema_id' => 'PLACEHOLDER'])) }}"
+        rooms-by-movie-url-pattern="{{ route('manager.showtimes.api.rooms-by-movie', ['movieId' => ':movie_id']) }}"
+        formats-by-movie-url-pattern="{{ route('manager.showtimes.api.formats-by-movie', ['movieId' => ':movie_id']) }}"
+        intersection-formats-url-pattern="{{ url('/api/rooms/:room_id/movies/:movie_id/formats') }}"
         auto-generate-url="{{ route('manager.showtimes.api.auto-generate') }}"
         cancel-url="{{ route('manager.showtimes.index') }}"
     ></auto-generate-showtime-form>

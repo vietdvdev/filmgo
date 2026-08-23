@@ -71,67 +71,72 @@
 
         <!-- Block 2 (Base Info — Grid 4 cols) -->
         <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
-          <!-- 1. Chọn Phòng Chiếu -->
-          <div>
-            <label for="room_id" class="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1">
-              1. Phòng Chiếu
-            </label>
-            <div class="relative">
-              <select
-                id="room_id"
-                v-model="payload.room_id"
-                @change="onAutoRoomChange"
-                :disabled="isLoadingRooms || roomsList.length === 0"
-                class="block w-full px-3 py-2.5 border text-sm focus:outline-none focus:border-purple-600 focus:ring-1 focus:ring-purple-600 bg-white rounded-none disabled:bg-slate-100 disabled:text-slate-400"
-                :class="errors.room_id ? 'border-rose-400' : 'border-slate-300'"
-              >
-                <option value="">{{ isLoadingRooms ? 'Đang tải phòng...' : (roomsList.length === 0 ? 'Không có phòng hoạt động' : '-- Chọn phòng --') }}</option>
-                <option v-for="room in roomsList" :key="room.id" :value="room.id">
-                  {{ room.room_name }} ({{ room.room_type }} – {{ room.capacity }} ghế)
-                </option>
-              </select>
-            </div>
-            <p v-if="errors.room_id" class="mt-1 text-xs text-rose-600 font-semibold">{{ errors.room_id }}</p>
-          </div>
-
-          <!-- 2. Chọn Phim -->
+          <!-- 1. Chọn Phim -->
           <div>
             <label for="movie_id" class="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1">
-              2. Chọn Phim
+              1. Chọn Phim
             </label>
             <select
               id="movie_id"
               v-model="payload.movie_id"
               @change="onAutoMovieChange"
-              :disabled="!payload.room_id || isLoadingAutoMovies"
+              :disabled="isLoadingAutoMovies"
               class="block w-full px-3 py-2.5 border text-sm focus:outline-none focus:border-purple-600 focus:ring-1 focus:ring-purple-600 bg-white rounded-none disabled:bg-slate-100 disabled:text-slate-400"
               :class="errors.movie_id ? 'border-rose-400' : 'border-slate-300'"
             >
-              <option value="">{{ !payload.room_id ? 'Chọn phòng trước' : isLoadingAutoMovies ? 'Đang tải phim...' : '-- Chọn phim --' }}</option>
-              <option v-for="movie in roomMoviesList" :key="movie.id" :value="movie.id">
+              <option value="">{{ isLoadingAutoMovies ? 'Đang tải...' : '-- Chọn phim --' }}</option>
+              <option v-for="movie in movies" :key="movie.id" :value="movie.id">
                 {{ movie.title }} ({{ movie.duration }} phút)
               </option>
             </select>
+            <p v-if="selectedMovie" class="mt-1.5 text-xs text-slate-500">
+              Thời lượng: <strong>{{ selectedMovie.duration }} phút</strong>
+              &nbsp;•&nbsp; Giới hạn tuổi: <strong>{{ selectedMovie.age_limit || 'T18' }}</strong>
+            </p>
             <p v-if="errors.movie_id" class="mt-1 text-xs text-rose-600 font-semibold">{{ errors.movie_id }}</p>
           </div>
 
-          <!-- 3. Định dạng chiếu -->
+          <!-- 2. Chọn Phòng Chiếu -->
           <div>
-            <label for="format_id" class="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1">
-              3. Định Dạng
+            <label for="room_id" class="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1">
+              2. Phòng Chiếu
             </label>
             <select
-              id="format_id"
-              v-model="payload.format_id"
-              :disabled="!payload.movie_id || isLoadingAutoFormats"
+              id="room_id"
+              v-model="payload.room_id"
+              @change="onAutoRoomChange"
+              :disabled="!payload.movie_id || isLoadingRooms || roomsList.length === 0"
               class="block w-full px-3 py-2.5 border text-sm focus:outline-none focus:border-purple-600 focus:ring-1 focus:ring-purple-600 bg-white rounded-none disabled:bg-slate-100 disabled:text-slate-400"
-              :class="errors.format_id ? 'border-rose-400' : 'border-slate-300'"
+              :class="errors.room_id ? 'border-rose-400' : 'border-slate-300'"
             >
-              <option value="">{{ !payload.movie_id ? 'Chọn phim trước' : isLoadingAutoFormats ? 'Đang tải...' : '-- Chọn định dạng --' }}</option>
-              <option v-for="fmt in formatsList" :key="fmt.id" :value="fmt.id">
-                {{ fmt.name }} {{ fmt.surcharge_price > 0 ? '(+' + fmt.surcharge_price.toLocaleString() + 'đ)' : '' }}
+              <option value="">{{ !payload.movie_id ? 'Chọn phim trước' : isLoadingRooms ? 'Đang tải phòng...' : (roomsList.length === 0 ? 'Không có phòng phù hợp' : '-- Chọn phòng --') }}</option>
+              <option v-for="room in roomsList" :key="room.id" :value="room.id">
+                {{ room.room_name }} ({{ room.room_type }} – {{ room.capacity }} ghế)
               </option>
             </select>
+            <p v-if="errors.room_id" class="mt-1 text-xs text-rose-600 font-semibold">{{ errors.room_id }}</p>
+          </div>
+
+          <!-- 3. Định dạng tự xác định theo Phim và Phòng -->
+          <div>
+            <label class="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1">
+              3. Định Dạng
+            </label>
+            <div class="min-h-[42px] flex items-center flex-wrap gap-1.5 px-3 py-2.5 border border-slate-300 bg-slate-50 text-sm">
+              <span v-if="isLoadingAutoFormats" class="text-slate-400">Đang xác định định dạng...</span>
+              <template v-else-if="movieFormats.length">
+                <span
+                  v-for="format in movieFormats"
+                  :key="format.id"
+                  class="inline-flex items-center gap-1 px-2.5 py-1 rounded text-[11px] font-bold border"
+                  :class="format.id == payload.format_id ? 'bg-purple-100 text-purple-800 border-purple-300' : 'bg-white text-slate-500 border-slate-200'"
+                >
+                  {{ format.name }}
+                  <span v-if="format.surcharge_price > 0" class="font-normal">+{{ Number(format.surcharge_price).toLocaleString() }}đ</span>
+                </span>
+              </template>
+              <span v-else class="text-slate-400">Chọn phim trước</span>
+            </div>
             <p v-if="errors.format_id" class="mt-1 text-xs text-rose-600 font-semibold">{{ errors.format_id }}</p>
           </div>
 
@@ -299,7 +304,7 @@
 </template>
 
 <script setup>
-import { ref, reactive, onMounted, watch } from 'vue';
+import { ref, reactive, computed, onMounted, watch } from 'vue';
 import axios from 'axios';
 
 const props = defineProps({
@@ -310,6 +315,18 @@ const props = defineProps({
   roomsUrlPattern: {
     type: String,
     default: '/manager/api/admin/cinemas/:cinema_id/rooms'
+  },
+  roomsByMovieUrlPattern: {
+    type: String,
+    default: '/manager/showtimes/api/rooms-by-movie/:movie_id'
+  },
+  formatsByMovieUrlPattern: {
+    type: String,
+    default: '/manager/showtimes/api/formats-by-movie/:movie_id'
+  },
+  intersectionFormatsUrlPattern: {
+    type: String,
+    default: '/api/rooms/:room_id/movies/:movie_id/formats'
   },
   autoGenerateUrl: {
     type: String,
@@ -376,10 +393,14 @@ const globalErrorMessage  = ref('');
 
 const cinemasList    = ref([]);
 const roomsList      = ref([]);
-const roomMoviesList = ref([]);
-const formatsList    = ref([]);
+const movieFormats    = ref([]);
+const compatibleFormats = ref([]);
 
 const selectedCinemaId = ref('');
+let movieChangeRequest = 0;
+let roomChangeRequest = 0;
+
+const selectedMovie = computed(() => movies.find(movie => movie.id == payload.movie_id) || null);
 
 onMounted(async () => {
   await fetchCinemas();
@@ -402,6 +423,8 @@ const fetchCinemas = async () => {
 };
 
 const fetchRoomsByCinema = async (cinemaId) => {
+  movieChangeRequest++;
+  roomChangeRequest++;
   if (!cinemaId) {
     roomsList.value = [];
     payload.room_id = '';
@@ -414,6 +437,8 @@ const fetchRoomsByCinema = async (cinemaId) => {
   payload.room_id = '';
   payload.movie_id = '';
   payload.format_id = '';
+  movieFormats.value = [];
+  compatibleFormats.value = [];
   try {
     const url = props.roomsUrlPattern.replace(':cinema_id', cinemaId);
     const res = await axios.get(url);
@@ -426,41 +451,66 @@ const fetchRoomsByCinema = async (cinemaId) => {
 };
 
 const onAutoRoomChange = async () => {
-  payload.movie_id  = '';
+  const requestId = ++roomChangeRequest;
   payload.format_id = '';
-  roomMoviesList.value = [];
-  formatsList.value    = [];
+  compatibleFormats.value = [];
 
   if (!payload.room_id) return;
 
-  isLoadingAutoMovies.value = true;
+  isLoadingAutoFormats.value = true;
   try {
-    const res = await axios.get(`/api/rooms/${payload.room_id}/movies`);
-    roomMoviesList.value = res.data.data || res.data || [];
+    const url = props.intersectionFormatsUrlPattern
+      .replace(':room_id', payload.room_id)
+      .replace(':movie_id', payload.movie_id);
+    const res = await axios.get(url);
+    if (requestId !== roomChangeRequest) return;
+
+    compatibleFormats.value = res.data.data || res.data || [];
+    if (compatibleFormats.value.length > 0) {
+      payload.format_id = compatibleFormats.value[0].id;
+    }
   } catch (e) {
-    globalErrorMessage.value = 'Không thể tải danh sách phim phù hợp cho phòng chiếu này.';
+    if (requestId === roomChangeRequest) {
+      globalErrorMessage.value = 'Không thể xác định định dạng chiếu của phòng và phim.';
+    }
   } finally {
-    isLoadingAutoMovies.value = false;
+    if (requestId === roomChangeRequest) isLoadingAutoFormats.value = false;
   }
 };
 
 const onAutoMovieChange = async () => {
+  const requestId = ++movieChangeRequest;
+  roomChangeRequest++;
+  payload.room_id = '';
   payload.format_id = '';
-  formatsList.value = [];
+  roomsList.value = [];
+  movieFormats.value = [];
+  compatibleFormats.value = [];
 
-  if (!payload.room_id || !payload.movie_id) return;
+  if (!payload.movie_id || !selectedCinemaId.value) return;
 
+  isLoadingRooms.value = true;
   isLoadingAutoFormats.value = true;
   try {
-    const res = await axios.get(`/api/rooms/${payload.room_id}/movies/${payload.movie_id}/formats`);
-    formatsList.value = res.data.data || res.data || [];
-    if (formatsList.value.length === 1) {
-      payload.format_id = formatsList.value[0].id;
-    }
+    const roomsUrl = props.roomsByMovieUrlPattern.replace(':movie_id', payload.movie_id);
+    const formatsUrl = props.formatsByMovieUrlPattern.replace(':movie_id', payload.movie_id);
+    const [roomsResponse, formatsResponse] = await Promise.all([
+      axios.get(roomsUrl),
+      axios.get(formatsUrl),
+    ]);
+    if (requestId !== movieChangeRequest || payload.movie_id === '') return;
+
+    roomsList.value = (roomsResponse.data.data || []).filter(room => room.cinema_id == selectedCinemaId.value);
+    movieFormats.value = formatsResponse.data.data || formatsResponse.data || [];
   } catch (e) {
-    globalErrorMessage.value = 'Không thể tải danh sách định dạng chiếu giao điểm.';
+    if (requestId === movieChangeRequest) {
+      globalErrorMessage.value = 'Không thể tải phòng hoặc định dạng của phim.';
+    }
   } finally {
-    isLoadingAutoFormats.value = false;
+    if (requestId === movieChangeRequest) {
+      isLoadingRooms.value = false;
+      isLoadingAutoFormats.value = false;
+    }
   }
 };
 
