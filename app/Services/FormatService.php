@@ -17,10 +17,16 @@ class FormatService
      */
     public function getFormatsByMovie(int $movieId): Collection
     {
-        $movie = Movie::with('formats')->find($movieId);
+        $movie = Movie::query()
+            ->whereKey($movieId)
+            ->with(['formats' => fn ($query) => $query
+                ->select('formats.id', 'formats.name', 'formats.surcharge_price')
+                ->orderBy('formats.id')
+            ])
+            ->first();
 
         if (!$movie || $movie->formats->isEmpty()) {
-            return collect();
+            return new Collection();
         }
 
         return $movie->formats;
@@ -65,7 +71,7 @@ class FormatService
         $format = Format::find($formatId);
 
         if (!$format) {
-            return collect();
+            return new Collection();
         }
 
         $compatibleTypes = $this->getCompatibleRoomTypes($format->name);

@@ -60,9 +60,9 @@
             &nbsp;•&nbsp;
             Giới hạn tuổi: <strong>{{ selectedMovie.age_limit || 'T18' }}</strong>
           </p>
-          <div v-if="selectedMovie && selectedMovie.formats && selectedMovie.formats.length" class="mt-2 flex flex-wrap gap-1.5">
+          <div v-if="movieFormats.length" class="mt-2 flex flex-wrap gap-1.5">
             <span
-              v-for="fmt in selectedMovie.formats"
+              v-for="fmt in movieFormats"
               :key="fmt.id"
               class="inline-flex items-center gap-1 px-2.5 py-1 rounded text-[11px] font-bold border"
               :class="formatBadgeClass(fmt.name)">
@@ -258,7 +258,8 @@ const form = reactive({
 });
 
 const cinemas         = ref([]);
-const formats         = ref([]);
+const movieFormats    = ref([]);
+const compatibleFormats = ref([]);
 const autoFormat      = ref(null);
 const rooms           = ref([]);
 const fieldErrors     = reactive({});
@@ -274,6 +275,8 @@ const toasts          = ref([]);
 
 let overlapTimer = null;
 let priceTimer   = null;
+let movieChangeRequest = 0;
+let roomChangeRequest = 0;
 
 const selectedMovie = computed(() => movies.find(m => m.id == form.movie_id) || null);
 
@@ -333,38 +336,59 @@ const onCinemaChange = () => {
   form.format_id     = '';
   autoFormat.value   = null;
   rooms.value        = [];
-  formats.value      = [];
+  movieFormats.value = [];
+  compatibleFormats.value = [];
   overlapError.value = '';
   overlapOk.value    = false;
 };
 
 const onMovieChange = async () => {
+  const requestId = ++movieChangeRequest;
   form.room_id       = '';
   form.format_id     = '';
   autoFormat.value   = null;
   rooms.value        = [];
-  formats.value      = [];
+  movieFormats.value = [];
+  compatibleFormats.value = [];
   overlapError.value = '';
   overlapOk.value    = false;
 
   if (!form.movie_id || !form.cinema_id) return;
 
-  loadingRooms.value = true;
+  loadingRooms.value   = true;
+  loadingFormats.value = true;
   try {
-    const url = urls.roomsByMovie.replace(':movie_id', form.movie_id);
-    const res = await axios.get(url);
-    rooms.value = (res.data.data || []).filter(r => r.cinema_id == form.cinema_id);
+    const movieId = form.movie_id;
+    const roomsUrl = urls.roomsByMovie.replace(':movie_id', movieId);
+    const formatsUrl = urls.formatsByMovie.replace(':movie_id', movieId);
+    const [roomsResponse, formatsResponse] = await Promise.all([
+      axios.get(roomsUrl),
+      axios.get(formatsUrl),
+    ]);
+
+    // Ignore a slower response belonging to the movie selected before this one.
+    if (requestId !== movieChangeRequest || movieId !== form.movie_id) return;
+
+    rooms.value = (roomsResponse.data.data || []).filter(r => r.cinema_id == form.cinema_id);
+    movieFormats.value = formatsResponse.data.data || formatsResponse.data || [];
   } catch (e) {
-    addToast('Không thể tải danh sách phòng chiếu phù hợp.', 'error');
+    if (requestId === movieChangeRequest) {
+      movieFormats.value = [];
+      addToast('Không thể tải dữ liệu định dạng hoặc phòng chiếu của phim.', 'error');
+    }
   } finally {
-    loadingRooms.value = false;
+    if (requestId === movieChangeRequest) {
+      loadingRooms.value = false;
+      loadingFormats.value = false;
+    }
   }
 };
 
 const onRoomChange = async () => {
+  const requestId = ++roomChangeRequest;
   autoFormat.value   = null;
   form.format_id     = '';
-  formats.value      = [];
+  compatibleFormats.value = [];
   overlapError.value = '';
   overlapOk.value    = false;
 
@@ -377,17 +401,21 @@ const onRoomChange = async () => {
   loadingFormats.value = true;
   try {
     const res = await axios.get(`/api/rooms/${form.room_id}/movies/${form.movie_id}/formats`);
-    formats.value = res.data.data || res.data || [];
-    if (formats.value.length > 0) {
+    if (requestId !== roomChangeRequest) return;
+
+    compatibleFormats.value = res.data.data || res.data || [];
+    if (compatibleFormats.value.length > 0) {
       // Ưu tiên chọn format khớp với room_type, fallback về format đầu tiên
-      const matched = formats.value.find(f => f.name.toUpperCase() === roomType);
-      autoFormat.value = matched || formats.value[0];
+      const matched = compatibleFormats.value.find(f => f.name.toUpperCase() === roomType);
+      autoFormat.value = matched || compatibleFormats.value[0];
       form.format_id   = autoFormat.value.id;
     }
   } catch (e) {
-    addToast('Không thể tải định dạng chiếu.', 'error');
+    if (requestId === roomChangeRequest) {
+      addToast('Không thể tải định dạng chiếu.', 'error');
+    }
   } finally {
-    loadingFormats.value = false;
+    if (requestId === roomChangeRequest) loadingFormats.value = false;
   }
 
   triggerOverlapCheck();
