@@ -159,6 +159,30 @@ class MovieFormatShowtimeTest extends TestCase
         $this->assertArrayHasKey('room_id', $response->json()['errors']);
     }
 
+    public function test_store_showtime_fails_when_format_is_not_configured_for_movie(): void
+    {
+        $payload = [
+            'movie_id'   => $this->movie->id,
+            'format_id'  => $this->formatImax->id,
+            'cinema_id'  => $this->cinema->id,
+            'room_id'    => $this->roomImax->id,
+            'show_date'  => now()->addDays(2)->format('Y-m-d'),
+            'start_time' => '16:00',
+            'base_price' => 140000,
+        ];
+
+        $response = $this->actingAs($this->admin)
+            ->postJson('/manager/showtimes/api/store', $payload);
+
+        $response->assertStatus(422)
+            ->assertJsonValidationErrors(['format_id']);
+
+        $this->assertDatabaseMissing('showtimes', [
+            'movie_id'  => $this->movie->id,
+            'format_id' => $this->formatImax->id,
+        ]);
+    }
+
     /**
      * PHẦN 3 - BƯỚC 3: Tạo suất chiếu thành công với Định dạng và Phòng chiếu hợp lệ
      */
