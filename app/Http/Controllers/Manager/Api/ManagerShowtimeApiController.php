@@ -153,14 +153,21 @@ class ManagerShowtimeApiController extends Controller
 
         $rooms = Room::whereIn('cinema_id', $cinemaIds)
             ->where('status', 'active')
-            ->with('cinema:id,name')
-            ->get(['id', 'room_name', 'room_type', 'capacity', 'cinema_id'])
+            ->with(['cinema:id,name', 'format:id,name,surcharge_price'])
+            ->get(['id', 'room_name', 'room_type', 'capacity', 'cinema_id', 'format_id'])
             ->filter(function ($room) use ($movieFormatNames) {
                 $supported = $this->getSupportedFormatsByRoomType($room->room_type);
                 return count(array_intersect($movieFormatNames, $supported)) > 0;
             })
             ->map(function ($room) {
                 $room->cinema_name = $room->cinema?->name;
+                $roomFormat = $room->format;
+                if (!$roomFormat) {
+                    $roomFormatName = strtoupper(trim((string) $room->room_type));
+                    $roomFormatName = $roomFormatName === '4D' ? '4DX' : $roomFormatName;
+                    $roomFormat = Format::whereRaw('UPPER(name) = ?', [$roomFormatName])->first();
+                }
+                $room->room_surcharge = (int) ($roomFormat?->surcharge_price ?? 0);
                 return $room;
             })
             ->values();

@@ -279,6 +279,7 @@ let movieChangeRequest = 0;
 let roomChangeRequest = 0;
 
 const selectedMovie = computed(() => movies.find(m => m.id == form.movie_id) || null);
+const selectedRoom = computed(() => rooms.value.find(room => room.id == form.room_id) || null);
 
 const formatBadgeClass = (name) => {
   const map = {
@@ -310,9 +311,10 @@ const BASE_PRICE    = 80000;
 const standardPrice = ref(BASE_PRICE);
 const surchargeAmt  = ref(0);
 
-const formatSurcharge = computed(() =>
-  autoFormat.value ? Number(autoFormat.value.surcharge_price || 0) : 0
-);
+const formatSurcharge = computed(() => {
+  if (selectedRoom.value) return Number(selectedRoom.value.room_surcharge || 0);
+  return autoFormat.value ? Number(autoFormat.value.surcharge_price || 0) : 0;
+});
 
 const computedActualPrice = computed(() =>
   Number(standardPrice.value || 0) + Number(surchargeAmt.value || 0) + formatSurcharge.value

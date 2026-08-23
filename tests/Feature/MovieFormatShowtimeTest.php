@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Models\Cinema;
 use App\Models\Format;
 use App\Models\Movie;
+use App\Models\PriceRule;
 use App\Models\Room;
 use App\Models\Seat;
 use App\Models\User;
@@ -22,6 +23,7 @@ class MovieFormatShowtimeTest extends TestCase
     protected Format $format2D;
     protected Format $format3D;
     protected Format $formatImax;
+    protected Format $format4dx;
     protected Movie $movie;
     protected Room $room2D;
     protected Room $room3D;
@@ -49,6 +51,7 @@ class MovieFormatShowtimeTest extends TestCase
         $this->format2D   = Format::firstOrCreate(['name' => '2D'], ['surcharge_price' => 0]);
         $this->format3D   = Format::firstOrCreate(['name' => '3D'], ['surcharge_price' => 30000]);
         $this->formatImax = Format::firstOrCreate(['name' => 'IMAX'], ['surcharge_price' => 60000]);
+        $this->format4dx  = Format::firstOrCreate(['name' => '4DX'], ['surcharge_price' => 70000]);
 
         // 4. Tạo phòng chiếu với các loại khác nhau & loại ghế
         $seatType = \App\Models\SeatType::firstOrCreate(['name' => 'Ghế Thường'], ['price_multiplier' => 1.0, 'surcharge' => 0]);
@@ -208,6 +211,131 @@ class MovieFormatShowtimeTest extends TestCase
             'movie_id'  => $this->movie->id,
             'format_id' => $this->format3D->id,
             'room_id'   => $this->room3D->id,
+        ]);
+    }
+
+    public function test_auto_generate_creates_showtimes_with_movie_room_format_and_surcharge(): void
+    {
+        $showDate = now()->addDays(5)->format('Y-m-d');
+        $this->room3D->update(['format_id' => $this->format3D->id]);
+
+        $response = $this->actingAs($this->admin)
+            ->postJson('/manager/showtimes/api/auto-generate', [
+                'movie_id'       => $this->movie->id,
+                'format_id'      => $this->format3D->id,
+                'room_id'        => $this->room3D->id,
+                'show_date'      => $showDate,
+                'shift_start'    => '14:00',
+                'shift_end'      => '17:00',
+                'cleaning_time'  => 20,
+                'standard_price' => 80000,
+                'publish_at'     => null,
+            ]);
+
+        $response->assertStatus(201)
+            ->assertJson(['success' => true, 'total_generated' => 1]);
+        $priceRule = PriceRule::where('is_active', 1)
+            ->where('day_of_week', now()->addDays(5)->dayOfWeek)
+            ->where('start_time', '<=', '14:00:00')
+            ->where('end_time', '>=', '14:00:00')
+            ->first();
+
+        $this->assertDatabaseHas('showtimes', [
+            'movie_id'   => $this->movie->id,
+            'room_id'    => $this->room3D->id,
+            'format_id'  => $this->format3D->id,
+            'show_date'  => $showDate,
+            'base_price' => 80000
+                + $this->format3D->surcharge_price
+                + ($priceRule?->adjustment_amount ?? 0),
+        ]);
+    }
+
+    public function test_auto_generate_applies_room_surcharge_to_a_2d_movie(): void
+    {
+        $this->room3D->update(['format_id' => $this->format3D->id]);
+        $movie2D = Movie::create([
+            'title'        => '2D Movie in 3D Room',
+            'slug'         => '2d-movie-in-3d-room',
+            'duration'     => 120,
+            'release_date' => now()->toDateString(),
+            'status'       => 'showing',
+        ]);
+        $movie2D->formats()->attach($this->format2D->id);
+        $showDate = now()->addDays(6)->format('Y-m-d');
+
+        $response = $this->actingAs($this->admin)
+            ->postJson('/manager/showtimes/api/auto-generate', [
+                'movie_id'       => $movie2D->id,
+                'format_id'      => $this->format2D->id,
+                'room_id'        => $this->room3D->id,
+                'show_date'      => $showDate,
+                'shift_start'    => '14:00',
+                'shift_end'      => '16:00',
+                'cleaning_time'  => 20,
+                'standard_price' => 80000,
+                'publish_at'     => null,
+            ]);
+
+        $response->assertStatus(201);
+        $priceRule = PriceRule::where('is_active', 1)
+            ->where('day_of_week', now()->addDays(6)->dayOfWeek)
+            ->where('start_time', '<=', '14:00:00')
+            ->where('end_time', '>=', '14:00:00')
+            ->first();
+        $expectedPrice = 80000
+            + $this->format3D->surcharge_price
+            + ($priceRule?->adjustment_amount ?? 0);
+
+        $this->assertDatabaseHas('showtimes', [
+            'movie_id'   => $movie2D->id,
+            'room_id'    => $this->room3D->id,
+            'format_id'  => $this->format2D->id,
+            'base_price' => $expectedPrice,
+        ]);
+    }
+
+    public function test_auto_generate_resolves_room_type_surcharge_when_room_format_link_is_missing(): void
+    {
+        $this->room3D->update(['room_type' => '4DX', 'format_id' => null]);
+        $movie2D = Movie::create([
+            'title'        => '2D Movie in 4DX Room',
+            'slug'         => '2d-movie-in-4dx-room',
+            'duration'     => 120,
+            'release_date' => now()->toDateString(),
+            'status'       => 'showing',
+        ]);
+        $movie2D->formats()->attach($this->format2D->id);
+        $showDate = now()->addDays(7)->format('Y-m-d');
+
+        $response = $this->actingAs($this->admin)
+            ->postJson('/manager/showtimes/api/auto-generate', [
+                'movie_id'       => $movie2D->id,
+                'format_id'      => $this->format2D->id,
+                'room_id'        => $this->room3D->id,
+                'show_date'      => $showDate,
+                'shift_start'    => '14:00',
+                'shift_end'      => '16:00',
+                'cleaning_time'  => 20,
+                'standard_price' => 80000,
+                'publish_at'     => null,
+            ]);
+
+        $response->assertStatus(201);
+        $priceRule = PriceRule::where('is_active', 1)
+            ->where('day_of_week', now()->addDays(7)->dayOfWeek)
+            ->where('start_time', '<=', '14:00:00')
+            ->where('end_time', '>=', '14:00:00')
+            ->first();
+        $expectedPrice = 80000
+            + $this->format4dx->surcharge_price
+            + ($priceRule?->adjustment_amount ?? 0);
+
+        $this->assertDatabaseHas('showtimes', [
+            'movie_id'   => $movie2D->id,
+            'room_id'    => $this->room3D->id,
+            'format_id'  => $this->format2D->id,
+            'base_price' => $expectedPrice,
         ]);
     }
 }
