@@ -2,16 +2,12 @@
 
 namespace App\Services;
 
-use chillerlan\phpqrcode\QRCode;
-use chillerlan\phpqrcode\QROptions;
 use Illuminate\Support\Str;
-use RuntimeException;
 
 class TicketQrCodeService
 {
     /**
-     * Khóa bí mật dùng để ký và giải mã dữ liệu vé.
-     * Nên được đặt trong biến môi trường và không commit vào mã nguồn.
+     * Khóa bí mật dùng để mã hóa/giải mã payload vé nếu cần.
      */
     private string $secretKey;
 
@@ -21,85 +17,57 @@ class TicketQrCodeService
     }
 
     /**
-     * Mã hóa payload vé thành chuỗi an toàn để nhúng vào QR.
-     * Dữ liệu được mã hóa bằng AES-256-CBC rồi base64 để có thể lưu/truyền dễ dàng.
+     * Lấy URL hiển thị mã QR trực tiếp từ chuỗi mã vé.
+     * Hoạt động tức thì 0ms, hiển thị sắc nét và không phụ thuộc Queue Job.
      */
-    public function encryptPayload(array $payload): string
+    public function getQrImageUrl(?string $qrCodeText): string
     {
-        $payloadJson = json_encode($payload, JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR);
-        $iv = random_bytes(16);
-        $cipherText = openssl_encrypt(
-            $payloadJson,
-            'AES-256-CBC',
-            hash('sha256', $this->secretKey, true),
-            OPENSSL_RAW_DATA,
-            $iv
-        );
-
-        if ($cipherText === false) {
-            throw new RuntimeException('Không thể mã hóa payload vé.');
+        if (empty($qrCodeText)) {
+            $qrCodeText = 'FILMGO-' . Str::upper(Str::random(10));
         }
 
-        return base64_encode($iv . $cipherText);
+        if (str_starts_with($qrCodeText, 'data:image/') || str_starts_with($qrCodeText, 'http://') || str_starts_with($qrCodeText, 'https://')) {
+            return $qrCodeText;
+        }
+
+        return 'https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=' . urlencode($qrCodeText);
     }
 
     /**
-     * Giải mã payload vé từ chuỗi đã lưu trong QR.
+     * Đồng bộ mã định danh QR duy nhất ngắn gọn cho tất cả các vé của đơn hàng (Booking).
+     * Đảm bảo chuỗi ngắn vừa vặn với cột VARCHAR(255) trong MySQL, không bao giờ bị lỗi Data too long.
      */
-    public function decryptPayload(string $token): array
+    public function generateAndStoreForBooking(\App\Models\Booking $booking): void
     {
-        $decoded = base64_decode($token, true);
-        if ($decoded === false || strlen($decoded) < 16) {
-            throw new RuntimeException('Token QR không hợp lệ.');
-        }
-
-        $iv = substr($decoded, 0, 16);
-        $cipherText = substr($decoded, 16);
-        $plainText = openssl_decrypt(
-            $cipherText,
-            'AES-256-CBC',
-            hash('sha256', $this->secretKey, true),
-            OPENSSL_RAW_DATA,
-            $iv
-        );
-
-        if ($plainText === false) {
-            throw new RuntimeException('Không thể giải mã payload vé.');
-        }
-
-        return json_decode($plainText, true, 512, JSON_THROW_ON_ERROR);
-    }
-
-    /**
-     * Tạo chuỗi dữ liệu QR từ payload vé và chuyển sang ảnh QR dạng Base64.
-     * Đây là hàm mục tiêu để gọi sau khi thanh toán thành công.
-     */
-    public function generateQrBase64(array $payload): string
-    {
-        $token = $this->encryptPayload($payload);
-
-        $options = new QROptions([
-            'eccLevel' => QRCode::ECC_L,
-            'outputType' => QRCode::OUTPUT_IMAGE_PNG,
-            'imageBase64' => true,
+        $booking->loadMissing([
+            'bookingDetails.ticket',
         ]);
 
-        $qrCode = new QRCode($options);
+        foreach ($booking->bookingDetails as $detail) {
+            $ticket = $detail->ticket;
+            if (!$ticket) {
+                continue;
+            }
 
-        return $qrCode->render($token);
+            // Nếu vé chưa có mã định danh thì tạo mã độc nhất ngắn gọn
+            if (empty($ticket->qr_code)) {
+                $prefix = ($booking->booking_type === 'combo_only' || !$booking->showtime_id) ? 'CB' : 'TKT';
+                $ticket->update([
+                    'qr_code' => $prefix . '-' . Str::upper(Str::random(10)) . '-' . $ticket->id,
+                ]);
+            }
+        }
     }
 
     /**
-     * Tạo nội dung QR và lưu trực tiếp vào trường qr_code của vé.
-     * Hàm này tách riêng để việc lưu trữ không bị lẫn với logic sinh ảnh.
+     * Tương thích ngược với các gọi hàm cũ.
      */
     public function generateAndStoreQrForTicket($ticket, array $payload): string
     {
-        $qrBase64 = $this->generateQrBase64($payload);
+        $uniqueCode = 'TKT-' . Str::upper(Str::random(10)) . '-' . ($ticket->id ?? rand(100, 999));
         $ticket->update([
-            'qr_code' => $qrBase64,
+            'qr_code' => $uniqueCode,
         ]);
-
-        return $qrBase64;
+        return $uniqueCode;
     }
 }

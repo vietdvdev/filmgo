@@ -72,6 +72,29 @@
             </div>
         </div>
 
+        {{-- Mã QR Đơn Combo --}}
+        @php
+            $comboTicket = $booking->bookingDetails->first()?->ticket;
+            $comboQrSrc  = app(\App\Services\TicketQrCodeService::class)->getQrImageUrl($comboTicket?->qr_code ?? $booking->booking_code);
+        @endphp
+
+        <div class="bg-white border border-slate-200 rounded-3xl p-6 shadow-sm mb-6 text-center">
+            <div class="flex items-center justify-center gap-2 mb-4">
+                <span class="material-symbols-outlined text-red-500 text-xl">qr_code_2</span>
+                <h3 class="text-xs font-black text-slate-600 uppercase tracking-widest">Mã QR Nhận Hàng</h3>
+            </div>
+
+            <div class="flex flex-col items-center gap-3">
+                <img src="{{ $comboQrSrc }}"
+                     alt="QR đơn combo {{ $booking->booking_code }}"
+                     class="w-48 h-48 object-contain rounded-2xl border border-slate-100 p-2 shadow-sm">
+                <p class="text-[11px] text-slate-500 font-semibold">Xuất trình mã QR này tại quầy F&amp;B để nhận bắp nước</p>
+                <span class="text-xs font-mono font-bold text-slate-700 bg-slate-50 px-3 py-1 rounded-xl border border-slate-200">
+                    Mã đơn: #{{ $booking->booking_code }}
+                </span>
+            </div>
+        </div>
+
         {{-- Hướng dẫn --}}
         <div class="p-4 bg-amber-50 border border-amber-200/80 rounded-2xl mb-6 text-xs text-amber-800 space-y-1">
             <p class="font-bold flex items-center gap-1 text-amber-900">

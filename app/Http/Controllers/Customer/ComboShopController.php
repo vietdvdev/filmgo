@@ -3,11 +3,13 @@
 namespace App\Http\Controllers\Customer;
 
 use App\Http\Controllers\Controller;
+use App\Jobs\GenerateTicketQrJob;
 use App\Models\Booking;
 use App\Models\Cinema;
 use App\Models\Combo;
 use App\Models\ComboItem;
 use App\Models\Payment;
+use App\Models\Ticket;
 use App\Services\ComboOrderService;
 use App\Services\PaymentService;
 use App\Services\BookingEmailService;
@@ -15,12 +17,15 @@ use Exception;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 
+use App\Services\TicketQrCodeService;
+
 class ComboShopController extends Controller
 {
     public function __construct(
         protected ComboOrderService $comboOrderService,
         protected PaymentService $paymentService,
-        protected BookingEmailService $bookingEmailService
+        protected BookingEmailService $bookingEmailService,
+        protected TicketQrCodeService $qrCodeService
     ) {}
 
     // ─────────────────────────────────────────────────────────────────────────
@@ -340,6 +345,9 @@ class ComboShopController extends Controller
             ]);
         }
 
+        // Sinh QR code tức thì (đồng bộ CỰC NHANH)
+        $this->qrCodeService->generateAndStoreForBooking($booking);
+
         // Gửi email xác nhận tới khách hàng
         $this->bookingEmailService->sendConfirmationEmail($booking);
 
@@ -381,6 +389,9 @@ class ComboShopController extends Controller
                     'paid_at'          => now(),
                 ]);
             }
+
+            // Sinh QR code tức thì (đồng bộ CỰC NHANH)
+            $this->qrCodeService->generateAndStoreForBooking($booking);
 
             // Gửi email xác nhận tới khách hàng
             $this->bookingEmailService->sendConfirmationEmail($booking);
@@ -438,6 +449,9 @@ class ComboShopController extends Controller
                 ]);
             }
 
+            // Sinh QR code tức thì (đồng bộ CỰC NHANH)
+            $this->qrCodeService->generateAndStoreForBooking($booking);
+
             // Gửi email xác nhận tới khách hàng
             $this->bookingEmailService->sendConfirmationEmail($booking);
 
@@ -470,9 +484,14 @@ class ComboShopController extends Controller
             'combos',
             'comboItems.comboItem',
             'payments',
+            'bookingDetails.ticket',
         ])->where('id', $id)
           ->where('user_id', Auth::id())
           ->firstOrFail();
+
+        if ($booking->payment_status === 'paid') {
+            $this->qrCodeService->generateAndStoreForBooking($booking);
+        }
 
         return view('customer.combo-shop.success', compact('booking'));
     }

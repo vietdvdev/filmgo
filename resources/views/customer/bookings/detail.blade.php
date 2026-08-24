@@ -168,7 +168,37 @@
         </div>
         @endif
 
+        {{-- QR Code Đơn Hàng --}}
+        @if($booking->payment_status === 'paid')
+        @php
+            $isComboOnlyDet = ($booking->booking_type === 'combo_only' || !$booking->showtime_id);
+            $orderTicket    = $booking->bookingDetails->first()?->ticket;
+            $orderQrCode    = $orderTicket?->qr_code ?? $booking->booking_code;
+            $qrSrc          = app(\App\Services\TicketQrCodeService::class)->getQrImageUrl($orderQrCode);
+        @endphp
+
+        <div class="bg-white border border-gray-200/80 rounded-2xl p-5 shadow-sm mb-4 text-center">
+            <h3 class="text-xs font-black text-gray-500 uppercase tracking-widest mb-4 flex items-center justify-center gap-2">
+                <span class="material-symbols-outlined text-sm text-brand-primary">qr_code_2</span>
+                Mã QR {{ $isComboOnlyDet ? 'Nhận Hàng' : 'Check-in Vé & Nhận Hàng' }}
+            </h3>
+
+            <div class="flex flex-col items-center gap-3">
+                <img src="{{ $qrSrc }}"
+                     alt="QR Đơn {{ $booking->booking_code }}"
+                     class="w-48 h-48 object-contain rounded-xl border border-gray-100 p-2 shadow-sm">
+                <p class="text-xs text-gray-500 font-medium">
+                    Quét mã QR này tại rạp để {{ $isComboOnlyDet ? 'nhận combo bắp nước' : 'làm thủ tục nhận vé cứng và bắp nước' }}
+                </p>
+                <span class="text-xs font-mono font-bold text-gray-700 bg-gray-50 px-3.5 py-1 rounded-lg border border-gray-200">
+                    Mã đơn: #{{ $booking->booking_code }}
+                </span>
+            </div>
+        </div>
+        @endif
+
         {{-- Thanh toán --}}
+
         <div class="bg-white border border-gray-200/80 rounded-2xl p-5 shadow-sm mb-4">
             <h3 class="text-xs font-black text-gray-500 uppercase tracking-widest mb-4 flex items-center gap-2">
                 <span class="material-symbols-outlined text-sm text-brand-primary">payments</span>

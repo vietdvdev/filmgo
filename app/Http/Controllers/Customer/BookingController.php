@@ -20,6 +20,7 @@ use Illuminate\Support\Facades\DB;
 
 use App\Services\ShowtimeService;
 use App\Services\BookingEmailService;
+use App\Services\TicketQrCodeService;
 
 class BookingController extends Controller
 {
@@ -28,19 +29,22 @@ class BookingController extends Controller
     protected $seatValidationService;
     protected $showtimeService;
     protected $bookingEmailService;
+    protected $qrCodeService;
 
     public function __construct(
         BookingService $bookingService, 
         PaymentService $paymentService, 
         \App\Services\SeatValidationService $seatValidationService,
         ShowtimeService $showtimeService,
-        BookingEmailService $bookingEmailService
+        BookingEmailService $bookingEmailService,
+        TicketQrCodeService $qrCodeService
     ) {
         $this->bookingService = $bookingService;
         $this->paymentService = $paymentService;
         $this->seatValidationService = $seatValidationService;
         $this->showtimeService = $showtimeService;
         $this->bookingEmailService = $bookingEmailService;
+        $this->qrCodeService = $qrCodeService;
     }
 
     /**
@@ -618,6 +622,9 @@ class BookingController extends Controller
         ShowtimeSeat::whereIn('id', $booking->bookingDetails->pluck('showtime_seat_id'))->update(['status' => 'booked']);
         session()->forget("booking.{$booking->showtime_id}");
 
+        // Sinh QR code đồng bộ CỰC NHANH cho toàn bộ các vé
+        $this->qrCodeService->generateAndStoreForBooking($booking);
+
         // Gửi email xác nhận tới khách hàng
         $this->bookingEmailService->sendConfirmationEmail($booking);
 
@@ -630,11 +637,17 @@ class BookingController extends Controller
             'showtime.movie',
             'showtime.room.cinema',
             'bookingDetails.showtimeSeat.seat.seatType',
+            'bookingDetails.ticket',
             'combos',
         ])->findOrFail($bookingId);
 
         if ($booking->booking_type === 'combo_only' || !$booking->showtime_id) {
             return redirect()->route('combo-shop.success', $booking->id);
+        }
+
+        // Đảm bảo QR code đã sẵn sàng 100% khi xem trang success
+        if ($booking->payment_status === 'paid') {
+            $this->qrCodeService->generateAndStoreForBooking($booking);
         }
 
         return view('customer.bookings.success', compact('booking'));
@@ -904,9 +917,8 @@ class BookingController extends Controller
             $ticketIds = Ticket::whereIn('booking_detail_id', $booking->bookingDetails()->pluck('id'))->pluck('id');
             Ticket::whereIn('id', $ticketIds)->update(['ticket_status' => 'unused']);
 
-            foreach ($ticketIds as $ticketId) {
-                GenerateTicketQrJob::dispatch($ticketId);
-            }
+            // Sinh mã QR đồng bộ CỰC NHANH tức thì
+            $this->qrCodeService->generateAndStoreForBooking($booking);
 
             $showtimeSeatIds = $booking->bookingDetails()->pluck('showtime_seat_id');
             ShowtimeSeat::whereIn('id', $showtimeSeatIds)->update(['status' => 'booked']);

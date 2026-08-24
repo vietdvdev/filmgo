@@ -135,12 +135,166 @@ class StaffBookingController extends Controller
 
         $booking = $this->staffBookingService->getBookingForStaff($bookingId, $cinema->id);
 
+        $detailIds  = request()->query('detail_ids');
+        $isReprint  = !is_null($booking->printed_at); // Kiểm tra nếu đơn hàng ĐÃ ĐƯỢC IN TRƯỚC ĐÓ
+
+        // Cập nhật thời gian in vé
         $booking->update(['printed_at' => now()]);
 
-        $detailIds   = request()->query('detail_ids');
-        $includeFnb  = request()->boolean('include_fnb', !$detailIds); // in lần đầu thì luôn kèm F&B
+        // QUY ĐỊNH BẢO MẬT: Nếu là IN LẠI ($isReprint = true) hoặc in ghế riêng lẻ ($detailIds)
+        // -> TUYỆT ĐỐI KHÔNG IN KÈM PHIẾU BẮP NƯỚC (includeFnb = false)
+        $includeFnb = !$isReprint && !$detailIds;
+
         $ticketsData = $this->staffBookingService->generateTicketsQrData($booking, $detailIds ?: null);
 
-        return view('staff.bookings.print', compact('booking', 'cinema', 'ticketsData', 'includeFnb'));
+        return view('staff.bookings.print', compact('booking', 'cinema', 'ticketsData', 'includeFnb', 'isReprint'));
+    }
+
+    /**
+     * Hiển thị trang Quét mã QR liên kết Camera để in vé cho khách hàng.
+     */
+    public function scanQrView(): View
+    {
+        $user = Auth::user();
+        $cinema = $user?->cinemas()->first();
+
+        if (!$cinema) {
+            abort(Response::HTTP_FORBIDDEN, 'Bạn chưa được phân công làm việc tại rạp nào.');
+        }
+
+        return view('staff.bookings.scan-qr', compact('cinema'));
+    }
+
+    /**
+     * Tra cứu thông tin đơn hàng / vé từ chuỗi mã QR vừa quét hoặc nhập tay.
+     */
+    public function lookupQrCode(Request $request): JsonResponse
+    {
+        $user   = Auth::user();
+        $cinema = $user?->cinemas()->first();
+
+        if (!$cinema) {
+            return response()->json(['status' => 'error', 'message' => 'Bạn chưa được phân công làm việc tại rạp nào.'], 403);
+        }
+
+        $rawCode = trim((string) $request->input('code', ''));
+        if (empty($rawCode)) {
+            return response()->json(['status' => 'error', 'message' => 'Mã QR / Mã đơn hàng không được để trống.'], 422);
+        }
+
+        $cleanCode = ltrim($rawCode, '#');
+
+        // Tìm đơn theo booking_code
+        $booking = \App\Models\Booking::with([
+            'showtime.movie',
+            'showtime.room',
+            'user:id,full_name,phone,email',
+            'bookingDetails.showtimeSeat.seat',
+            'bookingDetails.ticket',
+            'combos',
+            'comboItems.comboItem',
+            'payments'
+        ])->where(function($q) use ($cleanCode, $rawCode) {
+            $q->where('booking_code', $cleanCode)
+              ->orWhere('booking_code', $rawCode);
+        })->first();
+
+        // Tìm theo ticket qr_code
+        if (!$booking) {
+            $ticket = \App\Models\Ticket::where('qr_code', $cleanCode)
+                ->orWhere('qr_code', $rawCode)
+                ->first();
+
+            if ($ticket && $ticket->bookingDetail) {
+                $booking = \App\Models\Booking::with([
+                    'showtime.movie',
+                    'showtime.room',
+                    'user:id,full_name,phone,email',
+                    'bookingDetails.showtimeSeat.seat',
+                    'bookingDetails.ticket',
+                    'combos',
+                    'comboItems.comboItem',
+                    'payments'
+                ])->find($ticket->bookingDetail->booking_id);
+            }
+        }
+
+        // Tìm theo token giải mã AES-256 (nếu có)
+        if (!$booking) {
+            try {
+                $qrService = app(\App\Services\TicketQrCodeService::class);
+                $payload = $qrService->decryptPayload($cleanCode);
+                if (!empty($payload['order_id'])) {
+                    $booking = \App\Models\Booking::with([
+                        'showtime.movie',
+                        'showtime.room',
+                        'user:id,full_name,phone,email',
+                        'bookingDetails.showtimeSeat.seat',
+                        'bookingDetails.ticket',
+                        'combos',
+                        'comboItems.comboItem',
+                        'payments'
+                    ])->where('booking_code', $payload['order_id'])->first();
+                }
+            } catch (\Throwable $e) {
+                // Ignore
+            }
+        }
+
+        if (!$booking) {
+            return response()->json([
+                'status'  => 'error',
+                'message' => 'Không tìm thấy đơn hàng hoặc vé phù hợp với mã: ' . $rawCode
+            ], 404);
+        }
+
+        // Kiểm tra đúng rạp
+        if ($booking->cinema_id && $booking->cinema_id !== $cinema->id) {
+            return response()->json([
+                'status'  => 'error',
+                'message' => 'Đơn hàng ' . $booking->booking_code . ' thuộc rạp khác, không phải rạp ' . $cinema->name
+            ], 403);
+        }
+
+        $isComboOnly = ($booking->booking_type === 'combo_only' || !$booking->showtime_id);
+        $seats = $booking->bookingDetails->map(function($d) {
+            $s = $d->showtimeSeat?->seat;
+            return $s ? strtoupper($s->seat_row) . $s->seat_number : null;
+        })->filter()->values();
+
+        $printUrl = $isComboOnly
+            ? route('staff.combo-bookings.print-receipt', $booking->id)
+            : route('staff.bookings.print-tickets', $booking->id);
+
+        return response()->json([
+            'status'  => 'success',
+            'booking' => [
+                'id'             => $booking->id,
+                'booking_code'   => $booking->booking_code,
+                'booking_type'   => $booking->booking_type,
+                'is_combo_only'  => $isComboOnly,
+                'payment_status' => $booking->payment_status,
+                'booking_status' => $booking->booking_status,
+                'total_amount'   => number_format($booking->final_total ?? $booking->total_amount),
+                'printed_at'     => $booking->printed_at ? $booking->printed_at->format('H:i - d/m/Y') : null,
+                'is_printed'     => !is_null($booking->printed_at),
+                'customer_name'  => $booking->user?->full_name ?? 'Khách vãng lai',
+                'customer_phone' => $booking->user?->phone ?? '—',
+                'movie_title'    => $booking->showtime?->movie?->title ?? ($isComboOnly ? 'Đơn Hàng Combo Bắp Nước' : 'Vé Xem Phim'),
+                'show_date'      => $booking->showtime?->show_date?->format('d/m/Y') ?? '—',
+                'show_time'      => $booking->showtime ? \Carbon\Carbon::parse($booking->showtime->start_time)->format('H:i') : '—',
+                'room_name'      => $booking->showtime?->room?->room_name ?? '—',
+                'seats'          => $seats,
+                'combos'         => $booking->combos->map(fn($c) => [
+                    'name' => $c->combo_name,
+                    'qty'  => $c->pivot->quantity,
+                ]),
+                'combo_items'    => $booking->comboItems->map(fn($ci) => [
+                    'name' => $ci->comboItem?->name ?? 'Món lẻ',
+                    'qty'  => $ci->quantity,
+                ]),
+                'print_url'      => $printUrl,
+            ]
+        ]);
     }
 }

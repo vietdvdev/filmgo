@@ -50,6 +50,10 @@ class StaffComboBookingController extends Controller
 
         $booking = $this->staffBookingService->getComboBookingForStaff($bookingId, $cinema->id);
 
+        if (is_null($booking->printed_at)) {
+            $booking->update(['printed_at' => now()]);
+        }
+
         return view('staff.combo-bookings.print-receipt', compact('booking', 'cinema'));
     }
 
