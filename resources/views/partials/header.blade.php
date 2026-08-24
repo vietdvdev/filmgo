@@ -18,7 +18,7 @@
                     Trang Chủ
                 </a>
                 <a href="{{ route('movies.showing') }}"
-                    class="{{ request()->routeIs('movies.*') || request()->routeIs('booking.*') ? 'text-brand-primary font-bold' : 'text-gray-300 hover:text-brand-primary font-medium' }} text-sm transition-colors duration-200 flex items-center gap-1.5">
+                    class="{{ request()->routeIs('movies.*') || (request()->routeIs('booking.*') && !request()->routeIs('booking.history.*')) ? 'text-brand-primary font-bold' : 'text-gray-300 hover:text-brand-primary font-medium' }} text-sm transition-colors duration-200 flex items-center gap-1.5">
                     <span class="material-symbols-outlined text-base">confirmation_number</span>
                     Đặt Vé
                 </a>
@@ -26,6 +26,11 @@
                     class="{{ request()->routeIs('combo-shop.*') ? 'text-brand-primary font-bold' : 'text-gray-300 hover:text-brand-primary font-medium' }} text-sm transition-colors duration-200 flex items-center gap-1.5">
                     <span class="material-symbols-outlined text-base">fastfood</span>
                     Bán Combo
+                </a>
+                <a href="{{ route('booking.history.index') }}"
+                    class="{{ request()->routeIs('booking.history.*') ? 'text-brand-primary font-bold' : 'text-gray-300 hover:text-brand-primary font-medium' }} text-sm transition-colors duration-200 flex items-center gap-1.5">
+                    <span class="material-symbols-outlined text-base">history</span>
+                    Lịch Sử
                 </a>
             </nav>
 
@@ -43,43 +48,74 @@
                 <!-- Auth State -->
                 @if (Auth::guard('web')->check())
                     <!-- Dropdown User -->
-                    <div class="relative group">
-                        <button class="flex items-center gap-2 focus:outline-none py-2">
+                    <!-- Dropdown User -->
+                    <div class="relative" id="user-menu-container">
+                        <button id="user-menu-button" class="flex items-center gap-2 focus:outline-none py-2 cursor-pointer w-full text-left group">
                             @if (Auth::guard('web')->user()->avatar)
                                 <img src="{{ Auth::guard('web')->user()->avatar_url }}" alt="Avatar"
-                                    class="w-8 h-8 rounded-full object-cover border border-brand-primary/40">
+                                    class="w-8 h-8 rounded-full object-cover border border-brand-primary/40 group-hover:border-white transition-colors">
                             @else
                                 <div
-                                    class="w-8 h-8 rounded-full bg-brand-primary/20 border border-brand-primary/40 flex items-center justify-center text-white">
+                                    class="w-8 h-8 rounded-full bg-brand-primary/20 border border-brand-primary/40 flex items-center justify-center text-white group-hover:bg-brand-primary/40 transition-colors">
                                     <span class="material-symbols-outlined text-lg">person</span>
                                 </div>
                             @endif
-                            <span
-                                class="text-sm font-medium text-gray-200 group-hover:text-white hidden md:block">{{ Auth::guard('web')->user()->full_name }}</span>
-                            <span
-                                class="material-symbols-outlined text-sm text-gray-400 group-hover:text-white">keyboard_arrow_down</span>
+                            <span class="text-sm font-medium text-gray-200 group-hover:text-white hidden md:block transition-colors">{{ Auth::guard('web')->user()->full_name }}</span>
+                            <span id="user-menu-arrow" class="material-symbols-outlined text-sm text-gray-400 group-hover:text-white transition-transform duration-300">keyboard_arrow_down</span>
                         </button>
+                        
                         <!-- Dropdown Menu -->
-                        <div
-                            class="absolute right-0 mt-1 w-48 bg-brand-secondary border border-white/10 rounded-lg shadow-xl py-1 hidden group-hover:block transition-all duration-300">
+                        <div id="user-menu-dropdown" class="absolute right-0 mt-2 w-48 bg-brand-secondary border border-white/10 rounded-lg shadow-xl py-1 opacity-0 invisible translate-y-2 transition-all duration-300 z-50">
                             <a href="{{ route('profile.edit') }}"
-                                class="block px-4 py-2.5 text-sm text-gray-300 hover:bg-white/5 hover:text-white flex items-center gap-2">
+                                class="block px-4 py-2.5 text-sm text-gray-300 hover:bg-white/5 hover:text-white flex items-center gap-2 transition-colors">
                                 <span class="material-symbols-outlined text-lg">account_circle</span> Tài khoản
-                            </a>
-                            <a href="{{ route('booking.history.index') }}"
-                                class="block px-4 py-2.5 text-sm text-gray-300 hover:bg-white/5 hover:text-white flex items-center gap-2">
-                                <span class="material-symbols-outlined text-lg">history</span> Lịch sử đặt vé
                             </a>
                             <hr class="border-white/5 my-1">
                             <form action="{{ route('logout') }}" method="POST" class="block">
                                 @csrf
                                 <button type="submit"
-                                    class="w-full text-left px-4 py-2.5 text-sm text-red-400 hover:bg-white/5 hover:text-red-300 flex items-center gap-2">
+                                    class="w-full text-left px-4 py-2.5 text-sm text-red-400 hover:bg-white/5 hover:text-red-300 flex items-center gap-2 transition-colors">
                                     <span class="material-symbols-outlined text-lg">logout</span> Đăng xuất
                                 </button>
                             </form>
                         </div>
                     </div>
+                    
+                    <!-- Script for Dropdown Toggle -->
+                    <script>
+                        document.addEventListener('DOMContentLoaded', function() {
+                            const btn = document.getElementById('user-menu-button');
+                            const dropdown = document.getElementById('user-menu-dropdown');
+                            const arrow = document.getElementById('user-menu-arrow');
+                            const container = document.getElementById('user-menu-container');
+                            
+                            if(btn && dropdown) {
+                                btn.addEventListener('click', function(e) {
+                                    e.preventDefault();
+                                    e.stopPropagation();
+                                    const isOpen = !dropdown.classList.contains('invisible');
+                                    if(isOpen) {
+                                        dropdown.classList.add('invisible', 'opacity-0', 'translate-y-2');
+                                        dropdown.classList.remove('opacity-100', 'translate-y-0');
+                                        arrow.style.transform = 'rotate(0deg)';
+                                    } else {
+                                        dropdown.classList.remove('invisible', 'opacity-0', 'translate-y-2');
+                                        dropdown.classList.add('opacity-100', 'translate-y-0');
+                                        arrow.style.transform = 'rotate(180deg)';
+                                    }
+                                });
+                                
+                                // Click outside to close
+                                document.addEventListener('click', function(e) {
+                                    if(!container.contains(e.target)) {
+                                        dropdown.classList.add('invisible', 'opacity-0', 'translate-y-2');
+                                        dropdown.classList.remove('opacity-100', 'translate-y-0');
+                                        arrow.style.transform = 'rotate(0deg)';
+                                    }
+                                });
+                            }
+                        });
+                    </script>
                 @else
                     <!-- Login / Register Buttons -->
                     <div class="flex items-center gap-3">
