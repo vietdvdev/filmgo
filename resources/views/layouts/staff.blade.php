@@ -98,6 +98,15 @@
                 <span class="text-label-md">Lịch Chiếu</span>
             </a>
 
+            {{-- Quét mã QR in vé --}}
+            <a href="{{ route('staff.scan-qr') }}"
+               class="flex items-center gap-3 px-4 py-3 rounded-lg transition-colors duration-200
+                      {{ request()->routeIs('staff.scan-qr*') ? 'bg-primary/10 text-primary font-bold' : 'text-on-surface-variant hover:bg-surface-container-low' }}">
+                <span class="material-symbols-outlined"
+                      style="font-variation-settings: 'FILL' {{ request()->routeIs('staff.scan-qr*') ? 1 : 0 }}">qr_code_scanner</span>
+                <span class="text-label-md">Quét Mã QR In Vé</span>
+            </a>
+
             {{-- Quản lý vé khách đặt --}}
             <a href="{{ route('staff.bookings.index') }}"
                class="flex items-center gap-3 px-4 py-3 rounded-lg transition-colors duration-200

@@ -80,15 +80,41 @@
                     </div>
                 </div>
 
-                <!-- Guidance and Home Navigation -->
+                {{-- ── 1 MÃ QR DUY NHẤT CHO TOÀN BỘ ĐƠN HÀNG ── --}}
+                @php
+                    $orderTicket = $booking->bookingDetails->first()?->ticket;
+                    $orderQrCode = $orderTicket?->qr_code ?? $booking->booking_code;
+                    $qrImage     = app(\App\Services\TicketQrCodeService::class)->getQrImageUrl($orderQrCode);
+                @endphp
+
+                <div class="mb-8 bg-neutral-50 border border-slate-200 rounded-3xl p-6 text-center">
+                    <div class="flex items-center gap-2 mb-3 justify-center">
+                        <span class="material-symbols-outlined text-indigo-500 text-xl">qr_code_2</span>
+                        <h3 class="text-xs font-black text-neutral-700 uppercase tracking-widest">Mã QR Đơn Hàng</h3>
+                    </div>
+                    <div class="flex flex-col items-center gap-3">
+                        <img src="{{ $qrImage }}"
+                             alt="QR Code Đơn {{ $booking->booking_code }}"
+                             class="w-48 h-48 object-contain rounded-2xl border border-slate-200 bg-white p-2 shadow-sm">
+                        <p class="text-[11px] text-neutral-500 font-semibold">Xuất trình mã QR này tại quầy rạp để check-in và nhận vé/bắp nước</p>
+                        <span class="text-xs font-mono font-bold text-indigo-600 bg-white border border-indigo-100 px-3 py-1 rounded-full shadow-2xs">
+                            Mã đơn: {{ $booking->booking_code }}
+                        </span>
+                    </div>
+                </div>
+
                 <div class="bg-indigo-50/50 border border-indigo-100 rounded-2xl p-4 text-left mb-10">
                     <h4 class="text-xs font-black text-indigo-800 uppercase tracking-wider mb-1 flex items-center gap-1">
                         <span class="material-symbols-outlined text-sm">info</span> Hướng dẫn nhận vé tại quầy
                     </h4>
-                    <p class="text-xs text-indigo-700/80 leading-relaxed font-semibold">Vui lòng xuất trình mã đơn đặt vé <span class="font-black text-indigo-900">{{ $booking->booking_code }}</span> cho nhân viên tại quầy vé của rạp để làm thủ tục nhận vé cứng và bắp nước trước suất chiếu ít nhất 15 phút.</p>
+                    <p class="text-xs text-indigo-700/80 leading-relaxed font-semibold">Vui lòng xuất trình mã đơn đặt vé <span class="font-black text-indigo-900">{{ $booking->booking_code }}</span> hoặc mã QR phía trên cho nhân viên tại quầy vé của rạp để làm thủ tục nhận vé cứng và bắp nước trước suất chiếu ít nhất 15 phút.</p>
                 </div>
 
                 <div class="flex flex-col sm:flex-row gap-4 justify-center">
+                    <a href="{{ route('booking.history.index') }}" class="px-8 py-3.5 bg-white hover:bg-neutral-50 text-neutral-700 border border-slate-200 font-bold rounded-2xl text-sm uppercase tracking-wider transition-all duration-200 flex items-center justify-center gap-1.5">
+                        <span class="material-symbols-outlined text-sm">history</span>
+                        Lịch Sử Đặt Vé
+                    </a>
                     <a href="{{ route('home') }}" class="px-8 py-3.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-2xl shadow-md shadow-indigo-600/20 text-sm uppercase tracking-wider transition-all duration-200 flex items-center justify-center gap-1.5">
                         <span class="material-symbols-outlined text-sm">home</span>
                         Quay Về Trang Chủ

@@ -308,6 +308,10 @@ Route::prefix('staff')->group(function () {
         // Lịch chiếu hôm nay
         Route::get('/showtimes', [App\Http\Controllers\Admin\StaffShowtimeController::class, 'index'])->name('staff.showtimes.index');
 
+        // Quét mã QR liên kết camera để in vé cho khách hàng
+        Route::get('/scan-qr', [App\Http\Controllers\Staff\StaffBookingController::class, 'scanQrView'])->name('staff.scan-qr');
+        Route::post('/scan-qr/lookup', [App\Http\Controllers\Staff\StaffBookingController::class, 'lookupQrCode'])->name('staff.scan-qr.lookup');
+
         // Danh sách vé đặt trong ngày của nhân viên rạp
         Route::get('/bookings', [App\Http\Controllers\Staff\StaffBookingController::class, 'index'])->name('staff.bookings.index');
 

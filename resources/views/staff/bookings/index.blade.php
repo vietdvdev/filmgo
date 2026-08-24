@@ -245,7 +245,7 @@
                                         </a>
                                     @else
                                         <button
-                                            onclick="openReprintModal({{ $booking->id }}, {{ $booking->bookingDetails->toJson() }}, {{ $booking->combos->count() > 0 ? 'true' : 'false' }})"
+                                            onclick="openReprintModal({{ $booking->id }}, {{ $booking->bookingDetails->toJson() }})"
                                             class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-sky-50 hover:bg-sky-100 dark:bg-sky-950/60 dark:hover:bg-sky-900/80 text-sky-700 dark:text-sky-300 text-xs font-bold rounded-lg border border-sky-200 dark:border-sky-800 transition-colors shadow-sm"
                                         >
                                             <span>🔁 In lại vé</span>
@@ -315,17 +315,18 @@
 
             <p id="reprint-empty" class="hidden text-xs text-gray-400 text-center py-2">Không có ghế nào trong đơn này.</p>
 
-            {{-- Phần bắp nước --}}
-            <div id="reprint-fnb-wrap" class="hidden">
-                <div class="border-t border-gray-200 dark:border-gray-600 pt-3">
-                    <label class="flex items-center gap-3 p-3 rounded-xl border-2 border-orange-200 dark:border-orange-700 bg-orange-50 dark:bg-orange-950/40 cursor-pointer hover:bg-orange-100 dark:hover:bg-orange-900/40 transition-colors">
-                        <input type="checkbox" id="reprint-fnb-cb"
-                               class="w-4 h-4 rounded accent-orange-500 cursor-pointer">
-                        <div>
-                            <span class="text-sm font-black text-orange-700 dark:text-orange-300">🍿 In lại phiếu bắp nước</span>
-                            <p class="text-xs text-orange-500 dark:text-orange-400 mt-0.5">In kèm phiếu nhận bắp nước cho khách</p>
-                        </div>
-                    </label>
+            {{-- Thông báo bảo mật: Không hỗ trợ in lại bắp nước --}}
+            <div class="pt-2">
+                <div class="p-3.5 bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 rounded-xl text-xs text-amber-800 dark:text-amber-300 space-y-1">
+                    <p class="font-bold flex items-center gap-1.5 text-amber-900 dark:text-amber-200">
+                        <svg class="w-4 h-4 text-amber-600 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                        Quy định bảo mật in vé
+                    </p>
+                    <p class="text-[11px] leading-relaxed text-amber-700 dark:text-amber-400 font-medium">
+                        Không hỗ trợ in lại phiếu nhận bắp nước (F&amp;B) để tránh trục lợi. Phiếu bắp nước chỉ được in <strong>01 lần duy nhất</strong> lúc xuất vé lần đầu.
+                    </p>
                 </div>
             </div>
         </div>
@@ -346,30 +347,22 @@
 <script>
 let _reprintBookingId = null;
 let _reprintDetails   = [];
-let _reprintHasFnb    = false;
 
-function openReprintModal(bookingId, details, hasFnb) {
+function openReprintModal(bookingId, details) {
     _reprintBookingId = bookingId;
     _reprintDetails   = details;
-    _reprintHasFnb    = hasFnb;
 
     const modal     = document.getElementById('reprint-modal');
     const codeEl    = document.getElementById('reprint-booking-code');
     const listEl    = document.getElementById('reprint-seat-list');
     const emptyEl   = document.getElementById('reprint-empty');
     const selectAll = document.getElementById('reprint-select-all');
-    const fnbWrap   = document.getElementById('reprint-fnb-wrap');
-    const fnbCb     = document.getElementById('reprint-fnb-cb');
 
     const row = document.querySelector(`[data-booking-id="${bookingId}"]`);
     codeEl.textContent = row ? row.dataset.bookingCode : '';
 
     selectAll.checked = false;
-    fnbCb.checked     = false;
     listEl.innerHTML  = '';
-
-    // Hiện/ẩn phần bắp nước
-    fnbWrap.classList.toggle('hidden', !hasFnb);
 
     if (!details || details.length === 0) {
         emptyEl.classList.remove('hidden');
@@ -410,7 +403,6 @@ function closeReprintModal() {
     document.getElementById('reprint-modal').classList.add('hidden');
     _reprintBookingId = null;
     _reprintDetails   = [];
-    _reprintHasFnb    = false;
 }
 
 function toggleSelectAll(cb) {
@@ -426,25 +418,20 @@ function syncSelectAll() {
 }
 
 function updateSubmitBtn() {
-    const btn        = document.getElementById('btn-reprint-submit');
+    const btn          = document.getElementById('btn-reprint-submit');
     const checkedSeats = document.querySelectorAll('.reprint-cb:checked');
-    const fnbChecked   = document.getElementById('reprint-fnb-cb').checked;
-    btn.disabled = checkedSeats.length === 0 && !fnbChecked;
+    btn.disabled       = checkedSeats.length === 0;
 }
-
-document.getElementById('reprint-fnb-cb').addEventListener('change', updateSubmitBtn);
 
 function submitReprint() {
     const checkedSeats = [...document.querySelectorAll('.reprint-cb:checked')].map(el => el.value);
-    const includeFnb   = document.getElementById('reprint-fnb-cb').checked;
-    if (!_reprintBookingId) return;
+    if (!_reprintBookingId || checkedSeats.length === 0) return;
 
     const url = `{{ route('staff.bookings.print-tickets', ['bookingId' => '__ID__']) }}`
         .replace('__ID__', _reprintBookingId);
 
     const params = new URLSearchParams();
     checkedSeats.forEach(id => params.append('detail_ids[]', id));
-    if (includeFnb) params.set('include_fnb', '1');
 
     window.open(url + '?' + params.toString(), '_blank');
     closeReprintModal();

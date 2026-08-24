@@ -46,6 +46,7 @@ class BookingHistoryController extends Controller
                 'showtime.room.cinema',
                 'cinema:id,name',
                 'bookingDetails.showtimeSeat.seat.seatType',
+                'bookingDetails.ticket',
                 'combos',
                 'comboItems.comboItem',
                 'promotions',
@@ -58,6 +59,11 @@ class BookingHistoryController extends Controller
         if ($booking->booking_status === 'cancelled' || $booking->payment_status === 'failed') {
             return redirect()->route('customer.bookings.history')
                 ->with('error', 'Đơn hàng này đã bị hủy hoặc chưa hoàn tất thanh toán.');
+        }
+
+        // Đảm bảo mã QR đã được sinh đồng bộ tức thì cho tất cả các vé của đơn
+        if ($booking->payment_status === 'paid') {
+            app(\App\Services\TicketQrCodeService::class)->generateAndStoreForBooking($booking);
         }
 
         return view('customer.bookings.detail', compact('booking'));
