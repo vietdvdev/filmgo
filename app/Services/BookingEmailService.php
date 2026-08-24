@@ -22,8 +22,10 @@ class BookingEmailService
             $booking->loadMissing([
                 'user',
                 'showtime.movie',
+                'showtime.format',
                 'showtime.room.cinema',
                 'bookingDetails.showtimeSeat.seat.seatType',
+                'bookingDetails.ticket',
                 'combos',
             ]);
 
