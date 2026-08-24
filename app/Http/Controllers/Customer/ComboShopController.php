@@ -36,8 +36,13 @@ class ComboShopController extends Controller
      * GET /shop/combos
      * Hiển thị trang mua combo/F&B riêng lẻ.
      */
-    public function index()
+    public function index(Request $request)
     {
+        // Khi người dùng truy cập lại trang /shop/combos (từ trang khác đến), tự động reset giỏ hàng để chọn lại từ đầu
+        if (!$request->ajax()) {
+            session()->forget(['combo_shop.cart', 'combo_shop.voucher', 'combo_shop.cinema_id']);
+        }
+
         $combos = Combo::with('items')
             ->where('status', 'active')
             ->latest()
@@ -96,7 +101,60 @@ class ComboShopController extends Controller
             return redirect()->route('combo-shop.checkout');
         }
 
-        return response()->json(['success' => true, 'cart' => $cart]);
+        // Tính toán thông tin tóm tắt cho AJAX
+        $selectedCombos = collect();
+        if (!empty($cart['combos'])) {
+            $combos = Combo::whereIn('id', array_keys($cart['combos']))
+                ->where('status', 'active')
+                ->get();
+            $selectedCombos = $combos->map(fn($c) => [
+                'id'       => $c->id,
+                'name'     => $c->combo_name,
+                'price'    => $c->price,
+                'quantity' => $cart['combos'][$c->id] ?? 0,
+                'subtotal' => $c->price * ($cart['combos'][$c->id] ?? 0),
+            ]);
+        }
+
+        $selectedItems = collect();
+        if (!empty($cart['items'])) {
+            $items = ComboItem::whereIn('id', array_keys($cart['items']))
+                ->where('status', 'active')
+                ->get();
+            $selectedItems = $items->map(fn($i) => [
+                'id'       => $i->id,
+                'name'     => $i->name,
+                'price'    => $i->price,
+                'quantity' => $cart['items'][$i->id] ?? 0,
+                'subtotal' => $i->price * ($cart['items'][$i->id] ?? 0),
+            ]);
+        }
+
+        $subtotal = $selectedCombos->sum('subtotal') + $selectedItems->sum('subtotal');
+        $appliedVoucher = session()->get('combo_shop.voucher');
+        $discountAmount = 0;
+
+        if ($appliedVoucher) {
+            $discountAmount = $appliedVoucher['discount_type'] === 'percent'
+                ? (int) ($subtotal * ($appliedVoucher['discount_value'] / 100))
+                : min($appliedVoucher['discount_amount'] ?? $appliedVoucher['discount_value'], $subtotal);
+        }
+
+        $finalTotal = max(0, $subtotal - $discountAmount);
+        $cinemaId   = session('combo_shop.cinema_id');
+        $cinema     = $cinemaId ? Cinema::find($cinemaId) : null;
+
+        return response()->json([
+            'success'          => true,
+            'cart'             => $cart,
+            'selected_combos'  => $selectedCombos->values(),
+            'selected_items'   => $selectedItems->values(),
+            'subtotal'         => $subtotal,
+            'discount_amount'  => $discountAmount,
+            'final_total'      => $finalTotal,
+            'voucher'          => $appliedVoucher,
+            'cinema'           => $cinema ? ['id' => $cinema->id, 'name' => $cinema->name] : null,
+        ]);
     }
 
     // ─────────────────────────────────────────────────────────────────────────
@@ -516,19 +574,31 @@ class ComboShopController extends Controller
             || ($promotion->start_date && $now->lt($promotion->start_date))
             || ($promotion->end_date && $now->gt($promotion->end_date))
         ) {
+            if ($request->expectsJson()) {
+                return response()->json(['success' => false, 'message' => 'Mã không hợp lệ hoặc đã hết hạn.'], 422);
+            }
             return back()->with('voucher_error', 'Mã không hợp lệ hoặc đã hết hạn.');
         }
 
         if ($promotion->usage_limit !== null && $promotion->used_count >= $promotion->usage_limit) {
+            if ($request->expectsJson()) {
+                return response()->json(['success' => false, 'message' => 'Mã đã hết lượt sử dụng.'], 422);
+            }
             return back()->with('voucher_error', 'Mã đã hết lượt sử dụng.');
         }
 
-        session()->put('combo_shop.voucher', [
+        $voucherData = [
             'promotion_id'   => $promotion->id,
             'code'           => $promotion->code,
             'discount_type'  => $promotion->discount_type,
             'discount_value' => $promotion->discount_value,
-        ]);
+        ];
+
+        session()->put('combo_shop.voucher', $voucherData);
+
+        if ($request->expectsJson()) {
+            return response()->json(['success' => true, 'message' => 'Áp dụng mã ' . $code . ' thành công!', 'voucher' => $voucherData]);
+        }
 
         return back()->with('voucher_success', 'Áp dụng mã ' . $code . ' thành công!');
     }
@@ -536,9 +606,13 @@ class ComboShopController extends Controller
     /**
      * POST /shop/combos/voucher/remove
      */
-    public function removeVoucher()
+    public function removeVoucher(Request $request)
     {
         session()->forget('combo_shop.voucher');
+
+        if ($request->expectsJson()) {
+            return response()->json(['success' => true, 'message' => 'Đã xóa mã giảm giá.']);
+        }
 
         return back()->with('voucher_success', 'Đã xóa mã giảm giá.');
     }
