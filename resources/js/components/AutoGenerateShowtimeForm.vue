@@ -244,40 +244,6 @@
           <p v-if="errors.standard_price" class="mt-1 text-xs text-rose-600 font-semibold">{{ errors.standard_price }}</p>
         </div>
 
-        <!-- Cấu Hình Mở Bán -->
-        <div class="space-y-3">
-          <h4 class="text-xs font-bold uppercase tracking-wider text-slate-700 border-b border-slate-200 pb-2">Cấu Hình Mở Bán</h4>
-          <div class="bg-blue-50/30 border border-blue-100 p-5 space-y-4">
-            <label class="flex items-center gap-2.5 cursor-pointer select-none w-max">
-              <input type="checkbox" v-model="isScheduled" @change="handleScheduleToggle"
-                class="w-4 h-4 text-purple-600 border-slate-300 rounded focus:ring-purple-500">
-              <span class="text-sm font-bold uppercase tracking-wider text-slate-700">Hẹn giờ mở bán tự động</span>
-            </label>
-            <div v-if="isScheduled" class="space-y-3 pl-6 border-l-2 border-purple-300 ml-1">
-              <div>
-                <label class="block text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-1">Thời gian mở bán</label>
-                <input v-model="publishAt" type="datetime-local"
-                  class="block w-full md:w-1/2 px-3 py-2 border border-slate-300 text-sm focus:outline-none focus:border-purple-600 focus:ring-1 focus:ring-purple-600 rounded-none bg-white">
-                <p class="mt-1 text-xs text-slate-400">Các suất chiếu sinh ra sẽ được lên lịch mở bán cùng thời điểm này.</p>
-              </div>
-              <div class="flex flex-wrap gap-2">
-                <button type="button" @click="setScheduleNow"
-                  class="px-2.5 py-1 bg-white border border-slate-300 hover:bg-purple-400 hover:text-purple-600 text-slate-600 text-xs font-semibold rounded-none transition-colors">
-                  ⚡ Ngay bây giờ
-                </button>
-                <button type="button" @click="setScheduleTomorrow"
-                  class="px-2.5 py-1 bg-white border border-slate-300 hover:bg-purple-400 hover:text-purple-600 text-slate-600 text-xs font-semibold rounded-none transition-colors">
-                  🌅 09:00 Sáng mai
-                </button>
-                <button type="button" @click="setSchedule24hBefore"
-                  class="px-2.5 py-1 bg-white border border-slate-300 hover:bg-purple-400 hover:text-purple-600 text-slate-600 text-xs font-semibold rounded-none transition-colors">
-                  🕐 Trước giờ mở ca 24h
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-
         <!-- Action Bar -->
         <div class="flex justify-end gap-3 pt-6 border-t border-slate-100">
           <button
@@ -360,32 +326,6 @@ const payload = reactive({
   standard_price: 80000
 });
 
-// ── Cấu hình mở bán ─────────────────────────────────────
-const isScheduled = ref(false);
-const publishAt   = ref('');
-
-const padZero2 = n => String(n).padStart(2, '0');
-const fmtDTL = (d) =>
-  `${d.getFullYear()}-${padZero2(d.getMonth()+1)}-${padZero2(d.getDate())}T${padZero2(d.getHours())}:${padZero2(d.getMinutes())}`;
-
-const handleScheduleToggle = () => {
-  if (!isScheduled.value) { publishAt.value = ''; }
-  else if (!publishAt.value) { setScheduleNow(); }
-};
-const setScheduleNow = () => { publishAt.value = fmtDTL(new Date()); };
-const setScheduleTomorrow = () => {
-  const d = new Date(); d.setDate(d.getDate() + 1); d.setHours(9, 0, 0, 0);
-  publishAt.value = fmtDTL(d);
-};
-const setSchedule24hBefore = () => {
-  if (!payload.show_date || !payload.shift_start) {
-    globalErrorMessage.value = 'Vui lòng chọn Ngày chiếu và Giờ mở ca trước.'; return;
-  }
-  const d = new Date(`${payload.show_date}T${payload.shift_start}:00`);
-  d.setHours(d.getHours() - 24);
-  publishAt.value = fmtDTL(d);
-};
-
 const isLoading           = ref(false);
 const isLoadingCinemas    = ref(true);
 const isLoadingRooms      = ref(false);
@@ -408,6 +348,11 @@ const selectedMovie = computed(() => movies.find(movie => movie.id == payload.mo
 const selectedRoom = computed(() => roomsList.value.find(room => room.id == payload.room_id) || null);
 const roomSurcharge = computed(() => Number(selectedRoom.value?.room_surcharge || 0));
 const estimatedPrice = computed(() => Number(payload.standard_price || 0) + roomSurcharge.value);
+
+const isDatetimePast = (showDate, startTime) => {
+  if (!showDate || !startTime) return false;
+  return new Date(`${showDate}T${startTime}:00`) < new Date();
+};
 
 onMounted(async () => {
   await fetchCinemas();
@@ -551,6 +496,9 @@ const submitAutoGenerate = async () => {
   } else if (payload.show_date < todayDate) {
     errors.value.show_date = 'Ngày chiếu không được là ngày trong quá khứ.';
   }
+  if (isDatetimePast(payload.show_date, payload.shift_start)) {
+    errors.value.shift_start = 'Thời gian bắt đầu suất chiếu không được ở trong quá khứ. Vui lòng chọn thời gian từ hiện tại trở đi.';
+  }
   if (payload.shift_start >= payload.shift_end) {
     errors.value.shift_end = 'Giờ đóng ca phải sau giờ mở ca.';
   }
@@ -569,10 +517,7 @@ const submitAutoGenerate = async () => {
   isLoading.value = true;
 
   try {
-    const res = await axios.post(props.autoGenerateUrl, {
-      ...payload,
-      publish_at: isScheduled.value ? (publishAt.value || null) : null
-    });
+    const res = await axios.post(props.autoGenerateUrl, payload);
 
     if (res.data && res.data.success) {
       sessionStorage.setItem('showtime_success_message', `Đã tự động xếp thành công ${res.data.total_generated} suất chiếu mới cho ngày ${payload.show_date}!`);

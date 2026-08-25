@@ -40,7 +40,6 @@ class AutoGenerateController extends Controller
             'shift_end'      => 'required|date_format:H:i|after:shift_start',
             'cleaning_time'  => 'required|integer|min:0',
             'standard_price' => 'required|integer|min:0',
-            'publish_at'     => 'nullable|date_format:Y-m-d\TH:i',
         ], [
             'shift_end.after'          => 'Giờ đóng ca phải sau giờ mở ca.',
             'show_date.after_or_equal' => 'Ngày chiếu không được là ngày trong quá khứ.',
@@ -55,6 +54,20 @@ class AutoGenerateController extends Controller
             ], 422);
         }
 
+        $shiftStart = Carbon::createFromFormat(
+            'Y-m-d H:i',
+            $request->input('show_date') . ' ' . $request->input('shift_start')
+        );
+        if ($shiftStart->isPast()) {
+            return response()->json([
+                'success' => false,
+                'errors'  => [
+                    'shift_start' => ['Thời gian bắt đầu suất chiếu không được ở trong quá khứ. Vui lòng chọn thời gian từ hiện tại trở đi.'],
+                ],
+                'message' => 'Thời gian bắt đầu suất chiếu không được ở trong quá khứ. Vui lòng chọn thời gian từ hiện tại trở đi.',
+            ], 422);
+        }
+
         $movieId       = (int) $request->input('movie_id');
         $formatId      = (int) $request->input('format_id');
         $roomId        = (int) $request->input('room_id');
@@ -63,10 +76,7 @@ class AutoGenerateController extends Controller
         $shiftEndStr   = $request->input('shift_end');
         $cleaningTime  = (int) $request->input('cleaning_time');
         $standardPrice = (int) $request->input('standard_price');
-        $publishAtInput = $request->input('publish_at');
-        $publishAt     = $publishAtInput ? Carbon::parse($publishAtInput, 'Asia/Ho_Chi_Minh')->setTimezone(config('app.timezone')) : null;
-        // [Fix] Trạng thái mặc định là 'upcoming' (chờ mở bán), chỉ active khi publish_at <= now
-        $status = ($publishAt !== null && $publishAt->lte(now())) ? 'active' : 'upcoming';
+        $status = 'active';
 
         try {
             // 2. CORE ALGORITHM: SMART SLOT FINDING
@@ -184,7 +194,7 @@ class AutoGenerateController extends Controller
                     'end_time'          => $proposedEnd->format('H:i:s'),
                     'base_price'        => $actualPrice,
                     'status'            => $status,
-                    'publish_at'        => $publishAt,
+                    'publish_at'        => null,
                     // [v2.0] Đánh dấu suất do hệ thống TỰ ĐỘNG sinh (phân biệt với tạo tay)
                     'is_auto_generated' => true,
                     'created_at'        => now(),

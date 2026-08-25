@@ -128,15 +128,27 @@ class MovieFormatShowtimeTest extends TestCase
      */
     public function test_api_get_compatible_rooms_for_3d_format(): void
     {
-        // Chọn định dạng 3D -> chỉ phòng 3D và IMAX thỏa mãn (bỏ qua phòng 2D)
+        // Chọn định dạng 3D -> chỉ phòng được cấu hình đúng 3D.
         $response = $this->actingAs($this->admin)
             ->getJson("/manager/showtimes/api/compatible-rooms?cinema_id={$this->cinema->id}&format_id={$this->format3D->id}");
 
         $response->assertStatus(200)
-            ->assertJsonCount(2)
+            ->assertJsonCount(1)
             ->assertJsonFragment(['room_name' => 'Phòng 2 (3D)'])
-            ->assertJsonFragment(['room_name' => 'Phòng 3 (IMAX)'])
-            ->assertJsonMissing(['room_name' => 'Phòng 1 (2D)']);
+            ->assertJsonMissing(['room_name' => 'Phòng 1 (2D)'])
+            ->assertJsonMissing(['room_name' => 'Phòng 3 (IMAX)']);
+    }
+
+    public function test_api_get_rooms_by_movie_returns_only_rooms_matching_movie_formats(): void
+    {
+        $response = $this->actingAs($this->admin)
+            ->getJson("/manager/showtimes/api/rooms-by-movie/{$this->movie->id}");
+
+        $response->assertStatus(200)
+            ->assertJsonCount(2, 'data')
+            ->assertJsonFragment(['room_name' => 'Phòng 1 (2D)'])
+            ->assertJsonFragment(['room_name' => 'Phòng 2 (3D)'])
+            ->assertJsonMissing(['room_name' => 'Phòng 3 (IMAX)']);
     }
 
     /**
@@ -251,7 +263,26 @@ class MovieFormatShowtimeTest extends TestCase
         ]);
     }
 
-    public function test_auto_generate_applies_room_surcharge_to_a_2d_movie(): void
+    public function test_auto_generate_rejects_a_shift_start_in_the_past(): void
+    {
+        $response = $this->actingAs($this->admin)
+            ->postJson('/manager/showtimes/api/auto-generate', [
+                'movie_id'       => $this->movie->id,
+                'format_id'      => $this->format2D->id,
+                'room_id'        => $this->room2D->id,
+                'show_date'      => today()->toDateString(),
+                'shift_start'    => '00:00',
+                'shift_end'      => '23:59',
+                'cleaning_time'  => 20,
+                'standard_price' => 80000,
+                'publish_at'     => null,
+            ]);
+
+        $response->assertStatus(422)
+            ->assertJsonValidationErrors(['shift_start']);
+    }
+
+    public function test_auto_generate_rejects_a_2d_movie_in_a_3d_room(): void
     {
         $this->room3D->update(['format_id' => $this->format3D->id]);
         $movie2D = Movie::create([
@@ -277,25 +308,17 @@ class MovieFormatShowtimeTest extends TestCase
                 'publish_at'     => null,
             ]);
 
-        $response->assertStatus(201);
-        $priceRule = PriceRule::where('is_active', 1)
-            ->where('day_of_week', now()->addDays(6)->dayOfWeek)
-            ->where('start_time', '<=', '14:00:00')
-            ->where('end_time', '>=', '14:00:00')
-            ->first();
-        $expectedPrice = 80000
-            + $this->format3D->surcharge_price
-            + ($priceRule?->adjustment_amount ?? 0);
+        $response->assertStatus(422)
+            ->assertJsonPath('success', false);
 
-        $this->assertDatabaseHas('showtimes', [
-            'movie_id'   => $movie2D->id,
-            'room_id'    => $this->room3D->id,
-            'format_id'  => $this->format2D->id,
-            'base_price' => $expectedPrice,
+        $this->assertDatabaseMissing('showtimes', [
+            'movie_id'  => $movie2D->id,
+            'room_id'   => $this->room3D->id,
+            'format_id' => $this->format2D->id,
         ]);
     }
 
-    public function test_auto_generate_resolves_room_type_surcharge_when_room_format_link_is_missing(): void
+    public function test_auto_generate_rejects_a_2d_movie_when_legacy_room_type_is_4dx(): void
     {
         $this->room3D->update(['room_type' => '4DX', 'format_id' => null]);
         $movie2D = Movie::create([
@@ -321,21 +344,13 @@ class MovieFormatShowtimeTest extends TestCase
                 'publish_at'     => null,
             ]);
 
-        $response->assertStatus(201);
-        $priceRule = PriceRule::where('is_active', 1)
-            ->where('day_of_week', now()->addDays(7)->dayOfWeek)
-            ->where('start_time', '<=', '14:00:00')
-            ->where('end_time', '>=', '14:00:00')
-            ->first();
-        $expectedPrice = 80000
-            + $this->format4dx->surcharge_price
-            + ($priceRule?->adjustment_amount ?? 0);
+        $response->assertStatus(422)
+            ->assertJsonPath('success', false);
 
-        $this->assertDatabaseHas('showtimes', [
-            'movie_id'   => $movie2D->id,
-            'room_id'    => $this->room3D->id,
-            'format_id'  => $this->format2D->id,
-            'base_price' => $expectedPrice,
+        $this->assertDatabaseMissing('showtimes', [
+            'movie_id'  => $movie2D->id,
+            'room_id'   => $this->room3D->id,
+            'format_id' => $this->format2D->id,
         ]);
     }
 }

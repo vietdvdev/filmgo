@@ -136,14 +136,12 @@ class ManagerShowtimeApiController extends Controller
      * API: Luồng Ưu Tiên Phim (Movie-first) - Lấy danh sách Phòng chiếu tương thích với Phim.
      * GET /manager/showtimes/api/rooms-by-movie/{movieId}
      */
-    public function getRoomsByMovie($movieId)
+    public function getRoomsByMovie($movieId, FormatService $formatService)
     {
-        $movie = Movie::with('formats:id,name')->findOrFail($movieId);
+        $movie = Movie::with('formats:id,name,surcharge_price')->findOrFail($movieId);
         $cinemaIds = $this->getCinemaIds();
 
-        $movieFormatNames = $movie->formats->pluck('name')->toArray();
-
-        if (empty($movieFormatNames)) {
+        if ($movie->formats->isEmpty()) {
             return response()->json([
                 'success' => true,
                 'data'    => [],
@@ -155,9 +153,10 @@ class ManagerShowtimeApiController extends Controller
             ->where('status', 'active')
             ->with(['cinema:id,name', 'format:id,name,surcharge_price'])
             ->get(['id', 'room_name', 'room_type', 'capacity', 'cinema_id', 'format_id'])
-            ->filter(function ($room) use ($movieFormatNames) {
-                $supported = $this->getSupportedFormatsByRoomType($room->room_type);
-                return count(array_intersect($movieFormatNames, $supported)) > 0;
+            ->filter(function ($room) use ($movie, $formatService) {
+                return $movie->formats->contains(
+                    fn ($format) => $formatService->roomMatchesFormat($room, $format)
+                );
             })
             ->map(function ($room) {
                 $room->cinema_name = $room->cinema?->name;
@@ -217,10 +216,10 @@ class ManagerShowtimeApiController extends Controller
      * API 2: Luồng Ưu Tiên Phòng (Room-first) - Lấy danh sách Định dạng giao điểm giữa Phòng và Phim.
      * GET /api/rooms/{room_id}/movies/{movie_id}/formats
      */
-    public function getIntersectionFormats($roomId, $movieId)
+    public function getIntersectionFormats($roomId, $movieId, FormatService $formatService)
     {
         $room  = Room::findOrFail($roomId);
-        $movie = Movie::findOrFail($movieId);
+        $movie = Movie::with('formats:id,name,surcharge_price')->findOrFail($movieId);
 
         $cinemaIds = $this->getCinemaIds();
         if (!in_array((int)$room->cinema_id, $cinemaIds, true)) {
@@ -229,14 +228,10 @@ class ManagerShowtimeApiController extends Controller
             ], 403);
         }
 
-        $roomFormats = $this->getSupportedFormatsByRoomType($room->room_type);
-
-        $formats = Format::whereHas('movies', function ($q) use ($movie) {
-                $q->where('movies.id', $movie->id);
-            })
-            ->whereIn('name', $roomFormats)
-            ->orderBy('id')
-            ->get(['id', 'name', 'surcharge_price']);
+        $formats = $movie->formats
+            ->filter(fn ($format) => $formatService->roomMatchesFormat($room, $format))
+            ->sortBy('id')
+            ->values();
 
         return response()->json([
             'success' => true,

@@ -74,13 +74,28 @@ class FormatService
             return new Collection();
         }
 
-        $compatibleTypes = $this->getCompatibleRoomTypes($format->name);
-
         return Room::where('cinema_id', $cinemaId)
             ->where('status', 'active')
-            ->whereIn('room_type', $compatibleTypes)
             ->orderBy('room_name')
-            ->get(['id', 'room_name', 'room_type', 'capacity', 'cinema_id']);
+            ->get(['id', 'room_name', 'room_type', 'capacity', 'cinema_id', 'format_id'])
+            ->filter(fn (Room $room) => $this->roomMatchesFormat($room, $format))
+            ->values();
+    }
+
+    /**
+     * Kiểm tra phòng có đúng định dạng đã cấu hình hay không.
+     * Phòng cũ chưa có format_id được đối chiếu qua room_type.
+     */
+    public function roomMatchesFormat(Room $room, Format $format): bool
+    {
+        if ($room->format_id !== null) {
+            return (int) $room->format_id === (int) $format->id;
+        }
+
+        $roomType = strtoupper(trim((string) $room->room_type));
+        $roomType = $roomType === '4D' ? '4DX' : $roomType;
+
+        return $roomType === strtoupper(trim($format->name));
     }
 
     /**
@@ -104,19 +119,16 @@ class FormatService
             $errors['format_id'] = 'Định dạng chiếu này không nằm trong danh sách hỗ trợ của bộ phim đã chọn.';
         }
 
-        // 2. Kiểm tra Phòng chiếu có đủ tiêu chuẩn chiếu Định dạng đó hay không
+        // 2. Kiểm tra Phòng chiếu có đúng định dạng đó hay không
         $format = Format::find($formatId);
         $room   = Room::find($roomId);
 
         if ($format && $room) {
-            $compatibleTypes = $this->getCompatibleRoomTypes($format->name);
-            if (!in_array($room->room_type, $compatibleTypes, true)) {
+            if (!$this->roomMatchesFormat($room, $format)) {
                 $errors['room_id'] = sprintf(
-                    'Phòng chiếu "%s" (Loại %s) không đủ tiêu chuẩn để chiếu định dạng %s. Vui lòng chọn phòng loại: %s.',
+                    'Phòng chiếu "%s" không được cấu hình cho định dạng %s. Vui lòng chọn phòng đúng định dạng.',
                     $room->room_name,
-                    $room->room_type,
-                    $format->name,
-                    implode(', ', $compatibleTypes)
+                    $format->name
                 );
             }
         }
