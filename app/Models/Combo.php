@@ -67,15 +67,18 @@ class Combo extends Model
     public function getImageUrlAttribute(): string
     {
         if (empty($this->image)) {
-            return asset('images/no-image.jpg');
+            return 'https://ui-avatars.com/api/?name=' . urlencode($this->name ?? 'Combo') . '&background=random&size=512';
         }
 
         if (str_starts_with($this->image, 'http://') || str_starts_with($this->image, 'https://')) {
             return $this->image;
         }
 
-        // Bỏ tiền tố 'storage/' ở đầu nếu đã có sẵn trong DB để tránh lặp 'storage/storage/'
         $cleanPath = ltrim(preg_replace('/^storage\//i', '', $this->image), '/');
+
+        if (!\Illuminate\Support\Facades\Storage::disk('public')->exists($cleanPath)) {
+            return 'https://ui-avatars.com/api/?name=' . urlencode($this->name ?? 'Combo') . '&background=random&size=512';
+        }
 
         return asset('storage/' . $cleanPath);
     }
