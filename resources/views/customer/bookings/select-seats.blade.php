@@ -156,7 +156,7 @@
                     <div class="bg-white rounded-none border border-slate-200 shadow-sm overflow-hidden p-6">
                         <div class="flex gap-4 pb-4 border-b border-slate-200">
                             <div class="w-20 aspect-[2/3] rounded-none overflow-hidden bg-slate-100 border border-slate-200 flex-shrink-0">
-                                <img src="{{ $showtime->movie->poster ? asset('storage/' . $showtime->movie->poster) : asset('images/no-image.jpg') }}" 
+                                <img src="{{ $showtime->movie->poster_url }}" 
                                      alt="" 
                                      class="w-full h-full object-cover">
                             </div>
