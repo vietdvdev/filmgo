@@ -98,17 +98,19 @@ class User extends Authenticatable
     public function getAvatarUrlAttribute(): ?string
     {
         if (!$this->avatar) {
-            return asset('images/avatar-default.png');
+            return 'https://ui-avatars.com/api/?name=' . urlencode($this->full_name ?? 'User') . '&background=random&size=512';
         }
 
         if (str_starts_with($this->avatar, 'http://') || str_starts_with($this->avatar, 'https://')) {
             return $this->avatar;
         }
 
-        if (str_starts_with($this->avatar, 'storage/')) {
-            return asset($this->avatar);
+        $cleanPath = ltrim(preg_replace('/^storage\//i', '', $this->avatar), '/');
+
+        if (!\Illuminate\Support\Facades\Storage::disk('public')->exists($cleanPath)) {
+            return 'https://ui-avatars.com/api/?name=' . urlencode($this->full_name ?? 'User') . '&background=random&size=512';
         }
 
-        return asset('storage/' . ltrim($this->avatar, '/'));
+        return asset('storage/' . $cleanPath);
     }
 }

@@ -88,18 +88,20 @@ class Movie extends Model
     public function getPosterUrlAttribute(): ?string
     {
         if (!$this->poster) {
-            return null;
+            return 'https://ui-avatars.com/api/?name=' . urlencode($this->title ?? 'Movie') . '&background=random&size=512';
         }
 
         if (str_starts_with($this->poster, 'http://') || str_starts_with($this->poster, 'https://')) {
             return $this->poster;
         }
 
-        if (str_starts_with($this->poster, 'storage/')) {
-            return asset($this->poster);
+        $cleanPath = ltrim(preg_replace('/^storage\//i', '', $this->poster), '/');
+
+        if (!\Illuminate\Support\Facades\Storage::disk('public')->exists($cleanPath)) {
+            return 'https://ui-avatars.com/api/?name=' . urlencode($this->title ?? 'Movie') . '&background=random&size=512';
         }
 
-        return asset('storage/' . ltrim($this->poster, '/'));
+        return asset('storage/' . $cleanPath);
     }
 
     public function getTrailerEmbedUrlAttribute(): ?string
