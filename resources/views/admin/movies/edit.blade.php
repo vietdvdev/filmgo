@@ -191,27 +191,33 @@
                         <!-- Trạng thái (Radio Button Group) -->
                         <div class="space-y-3">
                             <label class="block font-label-md text-label-md text-on-surface">Trạng Thái <span class="text-error">*</span></label>
-                            <div class="grid grid-cols-1 gap-2">
+                            <div class="grid grid-cols-3 gap-2">
                                 <!-- Sắp chiếu -->
-                                <input type="radio" name="status" id="status_upcoming" value="upcoming" class="hidden peer" {{ old('status', $movie->status) == 'upcoming' ? 'checked' : '' }}>
-                                <label for="status_upcoming" class="cursor-pointer flex items-center gap-3 px-4 py-3 border border-outline-variant rounded-lg text-on-surface-variant hover:bg-surface-container-low peer-checked:border-amber-500 peer-checked:bg-amber-500/10 peer-checked:text-amber-700 transition-all duration-200">
-                                    <span class="material-symbols-outlined text-xl">schedule</span>
-                                    <span class="text-body-md font-semibold">Sắp chiếu</span>
-                                </label>
+                                <div>
+                                    <input type="radio" name="status" id="status_upcoming" value="upcoming" class="hidden peer" {{ old('status', $movie->status) == 'upcoming' ? 'checked' : '' }}>
+                                    <label for="status_upcoming" class="cursor-pointer flex flex-col items-center justify-center gap-1 px-2 py-3 border border-outline-variant rounded-lg text-on-surface-variant hover:bg-surface-container-low peer-checked:border-amber-500 peer-checked:bg-amber-500/10 peer-checked:text-amber-700 transition-all duration-200 select-none h-full">
+                                        <span class="material-symbols-outlined text-2xl mb-1">schedule</span>
+                                        <span class="text-xs font-bold text-center leading-none">Sắp chiếu</span>
+                                    </label>
+                                </div>
 
                                 <!-- Đang chiếu -->
-                                <input type="radio" name="status" id="status_showing" value="showing" class="hidden peer" {{ old('status', $movie->status) == 'showing' ? 'checked' : '' }}>
-                                <label for="status_showing" class="cursor-pointer flex items-center gap-3 px-4 py-3 border border-outline-variant rounded-lg text-on-surface-variant hover:bg-surface-container-low peer-checked:border-emerald-500 peer-checked:bg-emerald-500/10 peer-checked:text-emerald-700 transition-all duration-200">
-                                    <span class="material-symbols-outlined text-xl">play_circle</span>
-                                    <span class="text-body-md font-semibold">Đang chiếu</span>
-                                </label>
+                                <div>
+                                    <input type="radio" name="status" id="status_showing" value="showing" class="hidden peer" {{ old('status', $movie->status) == 'showing' ? 'checked' : '' }}>
+                                    <label for="status_showing" class="cursor-pointer flex flex-col items-center justify-center gap-1 px-2 py-3 border border-outline-variant rounded-lg text-on-surface-variant hover:bg-surface-container-low peer-checked:border-emerald-500 peer-checked:bg-emerald-500/10 peer-checked:text-emerald-700 transition-all duration-200 select-none h-full">
+                                        <span class="material-symbols-outlined text-2xl mb-1">play_circle</span>
+                                        <span class="text-xs font-bold text-center leading-none">Đang chiếu</span>
+                                    </label>
+                                </div>
 
                                 <!-- Ngừng chiếu -->
-                                <input type="radio" name="status" id="status_stopped" value="stopped" class="hidden peer" {{ old('status', $movie->status) == 'stopped' ? 'checked' : '' }}>
-                                <label for="status_stopped" class="cursor-pointer flex items-center gap-3 px-4 py-3 border border-outline-variant rounded-lg text-on-surface-variant hover:bg-surface-container-low peer-checked:border-red-500 peer-checked:bg-red-500/10 peer-checked:text-red-700 transition-all duration-200">
-                                    <span class="material-symbols-outlined text-xl">cancel</span>
-                                    <span class="text-body-md font-semibold">Ngừng chiếu</span>
-                                </label>
+                                <div>
+                                    <input type="radio" name="status" id="status_stopped" value="stopped" class="hidden peer" {{ old('status', $movie->status) == 'stopped' ? 'checked' : '' }}>
+                                    <label for="status_stopped" class="cursor-pointer flex flex-col items-center justify-center gap-1 px-2 py-3 border border-outline-variant rounded-lg text-on-surface-variant hover:bg-surface-container-low peer-checked:border-red-500 peer-checked:bg-red-500/10 peer-checked:text-red-700 transition-all duration-200 select-none h-full">
+                                        <span class="material-symbols-outlined text-2xl mb-1">cancel</span>
+                                        <span class="text-xs font-bold text-center leading-none">Ngừng chiếu</span>
+                                    </label>
+                                </div>
                             </div>
                             @error('status')<p class="text-error font-body-md text-xs mt-1">{{ $message }}</p>@enderror
                         </div>
