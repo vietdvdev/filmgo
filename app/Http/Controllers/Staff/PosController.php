@@ -116,7 +116,7 @@ class PosController extends Controller
         $result = $movies->map(fn($movie) => [
             'id'        => $movie->id,
             'title'     => $movie->title,
-            'poster'    => $movie->poster,
+            'poster'    => $movie->poster_url,
             'duration'  => $movie->duration,
             'age_limit' => $movie->age_limit,
             'showtimes' => $movie->showtimes
