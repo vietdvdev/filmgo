@@ -76,6 +76,22 @@ class CinemaController extends Controller
             'city.required'    => 'Thành phố không được để trống.',
         ]);
 
+        if ($request->status === 'inactive' && $cinema->status !== 'inactive') {
+            $hasFutureShowtimes = \App\Models\Showtime::whereHas('room', fn($q) => $q->where('cinema_id', $cinema->id))
+                ->where('status', '!=', 'cancelled')
+                ->where(function ($query) {
+                    $query->where('show_date', '>', now()->toDateString())
+                          ->orWhere(function ($q) {
+                              $q->where('show_date', '=', now()->toDateString())
+                                ->where('start_time', '>', now()->toTimeString());
+                          });
+                })->exists();
+
+            if ($hasFutureShowtimes) {
+                return back()->with('error', "Không thể chuyển rạp «{$cinema->name}» sang trạng thái Ngừng hoạt động khi đang có suất chiếu trong tương lai!")->withInput();
+            }
+        }
+
         $cinema->update($request->only('name', 'address', 'phone', 'city', 'status'));
 
         return redirect()->route('admin.cinemas.index')->with('success', 'Cập nhật rạp chiếu phim thành công!');

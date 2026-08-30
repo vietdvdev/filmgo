@@ -148,33 +148,63 @@
                     <tbody class="text-sm text-on-surface divide-y divide-outline-variant/40">
                         @foreach($bookings as $booking)
                             @php
+                                $isComboOnly = ($booking->booking_type === 'combo_only' || !$booking->showtime_id);
                                 $seats = $booking->bookingDetails->map(fn($d) => optional(optional($d->showtimeSeat)->seat)->seat_row . optional(optional($d->showtimeSeat)->seat)->seat_number)->filter()->sort()->values();
                                 $showtime = $booking->showtime;
-                                $cinema = optional(optional($showtime)->room)->cinema;
+                                $cinema = optional(optional($showtime)->room)->cinema ?? $booking->cinema;
+
+                                // Tổng hợp tên combo và món lẻ nếu là đơn bắp nước
+                                $comboNames = $booking->combos->pluck('combo_name');
+                                $itemNames = $booking->comboItems->map(fn($i) => optional($i->comboItem)->name)->filter();
+                                $allFnbNames = $comboNames->concat($itemNames);
                             @endphp
                             <tr class="hover:bg-surface-container-low/60 transition-all duration-200">
                                 <td class="py-3.5 px-4 text-on-surface-variant">{{ $loop->iteration + ($bookings->currentPage() - 1) * $bookings->perPage() }}</td>
                                 <td class="py-3.5 px-4">
                                     <span class="font-mono text-sm font-semibold text-primary">{{ $booking->booking_code }}</span>
+                                    @if($isComboOnly)
+                                        <div class="mt-0.5">
+                                            <span class="inline-flex items-center px-1.5 py-0.2 rounded text-[10px] font-bold bg-amber-100 text-amber-800 border border-amber-200">F&B</span>
+                                        </div>
+                                    @endif
                                 </td>
                                 <td class="py-3.5 px-4">
                                     <div class="font-semibold text-on-surface">{{ optional($booking->user)->full_name ?? '—' }}</div>
                                     <div class="text-xs text-on-surface-variant">{{ optional($booking->user)->email ?? '' }}</div>
                                     <div class="text-xs text-on-surface-variant">{{ optional($booking->user)->phone ?? '' }}</div>
                                 </td>
-                                <td class="py-3.5 px-4 max-w-[160px]">
-                                    <span class="font-medium text-on-surface line-clamp-2">{{ optional(optional($showtime)->movie)->title ?? '—' }}</span>
+                                <td class="py-3.5 px-4 max-w-[180px]">
+                                    @if($isComboOnly)
+                                        <div class="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-semibold bg-amber-50 text-amber-800 border border-amber-200">
+                                            <span>🍿 Đơn bắp nước</span>
+                                        </div>
+                                        @if($allFnbNames->isNotEmpty())
+                                            <div class="text-xs text-on-surface-variant line-clamp-1 mt-1" title="{{ $allFnbNames->implode(', ') }}">
+                                                {{ $allFnbNames->implode(', ') }}
+                                            </div>
+                                        @endif
+                                    @else
+                                        <span class="font-medium text-on-surface line-clamp-2">{{ optional(optional($showtime)->movie)->title ?? '—' }}</span>
+                                    @endif
                                 </td>
                                 <td class="py-3.5 px-4">
                                     <div class="font-medium text-on-surface">{{ optional($cinema)->name ?? '—' }}</div>
-                                    <div class="text-xs text-on-surface-variant">{{ optional(optional($showtime)->room)->room_name ?? '' }}</div>
+                                    <div class="text-xs text-on-surface-variant">{{ $isComboOnly ? 'Nhận tại quầy' : (optional(optional($showtime)->room)->room_name ?? '') }}</div>
                                 </td>
                                 <td class="py-3.5 px-4 whitespace-nowrap">
-                                    <div class="text-sm font-medium">{{ $showtime ? $showtime->show_date->format('d/m/Y') : '—' }}</div>
-                                    <div class="text-xs text-on-surface-variant">{{ $showtime ? \Illuminate\Support\Str::substr($showtime->start_time, 0, 5) : '' }}</div>
+                                    @if($isComboOnly)
+                                        <span class="text-xs text-on-surface-variant italic">Đơn bắp nước</span>
+                                    @else
+                                        <div class="text-sm font-medium">{{ $showtime ? $showtime->show_date->format('d/m/Y') : '—' }}</div>
+                                        <div class="text-xs text-on-surface-variant">{{ $showtime ? \Illuminate\Support\Str::substr($showtime->start_time, 0, 5) : '' }}</div>
+                                    @endif
                                 </td>
                                 <td class="py-3.5 px-4">
-                                    <span class="text-sm font-medium text-on-surface">{{ $seats->implode(', ') ?: '—' }}</span>
+                                    @if($isComboOnly)
+                                        <span class="text-xs text-on-surface-variant italic">—</span>
+                                    @else
+                                        <span class="text-sm font-medium text-on-surface">{{ $seats->implode(', ') ?: '—' }}</span>
+                                    @endif
                                 </td>
                                 <td class="py-3.5 px-4 whitespace-nowrap">
                                     <span class="font-semibold text-primary">{{ number_format($booking->final_total) }} ₫</span>

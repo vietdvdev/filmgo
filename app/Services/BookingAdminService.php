@@ -20,6 +20,9 @@ class BookingAdminService
             'user:id,full_name,email,phone',
             'showtime.movie:id,title',
             'showtime.room.cinema:id,name',
+            'cinema:id,name',
+            'combos:id,combo_name',
+            'comboItems.comboItem:id,name',
             'payments:id,booking_id,payment_method,payment_status,amount',
         ])->excludeExpired();  // Ẩn các đơn đã bị hủy tự động do hết hạn giữ ghế
 
@@ -34,7 +37,10 @@ class BookingAdminService
         }
 
         if (!empty($filters['cinema_id'])) {
-            $query->whereHas('showtime.room', fn($q) => $q->where('cinema_id', $filters['cinema_id']));
+            $query->where(function ($q) use ($filters) {
+                $q->whereHas('showtime.room', fn($r) => $r->where('cinema_id', $filters['cinema_id']))
+                  ->orWhere('cinema_id', $filters['cinema_id']);
+            });
         }
 
         if (!empty($filters['movie_id'])) {
@@ -76,10 +82,13 @@ class BookingAdminService
     {
         return Booking::with([
             'user',
+            'staff',
             'showtime.movie',
             'showtime.room.cinema',
-            'bookingDetails.showtimeSeat.seat',
+            'cinema',
+            'bookingDetails.showtimeSeat.seat.seatType',
             'combos',
+            'comboItems.comboItem',
             'promotion',
             'payments',
         ])->findOrFail($id);

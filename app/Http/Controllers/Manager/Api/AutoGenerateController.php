@@ -91,6 +91,16 @@ class AutoGenerateController extends Controller
                 ], 422);
             }
 
+            if ($movie->release_date && $showDate < Carbon::parse($movie->release_date)->toDateString()) {
+                return response()->json([
+                    'success' => false,
+                    'errors'  => [
+                        'show_date' => ['Chỉ được tạo suất chiếu từ ngày khởi chiếu của phim trở đi (' . Carbon::parse($movie->release_date)->format('d/m/Y') . ').'],
+                    ],
+                    'message' => 'Chỉ được tạo suất chiếu từ ngày khởi chiếu của phim trở đi (' . Carbon::parse($movie->release_date)->format('d/m/Y') . ').',
+                ], 422);
+            }
+
             // Lấy thông tin phòng và kiểm tra hoạt động
             $room = Room::findOrFail($roomId);
             if ($room->status !== 'active') {

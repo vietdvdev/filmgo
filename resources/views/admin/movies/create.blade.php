@@ -17,6 +17,19 @@
             <h2 class="font-headline-lg text-headline-lg text-on-surface">Thêm Phim Mới</h2>
         </div>
 
+        @if(session('success'))
+            <div class="flex items-center gap-3 p-4 bg-emerald-50 text-emerald-800 border border-emerald-200 rounded-lg shadow-sm">
+                <span class="material-symbols-outlined text-emerald-600">check_circle</span>
+                <span class="font-body-md text-body-md font-medium">{{ session('success') }}</span>
+            </div>
+        @endif
+        @if(session('error'))
+            <div class="flex items-center gap-3 p-4 bg-red-50 text-red-800 border border-red-200 rounded-lg shadow-sm">
+                <span class="material-symbols-outlined text-red-600">error</span>
+                <span class="font-body-md text-body-md font-medium">{{ session('error') }}</span>
+            </div>
+        @endif
+
         <form action="{{ route('admin.movies.store') }}" method="POST" enctype="multipart/form-data" id="movieForm">
             @csrf
 

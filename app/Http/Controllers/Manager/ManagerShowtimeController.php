@@ -220,7 +220,7 @@ class ManagerShowtimeController extends Controller
         $movies = Movie::whereIn('status', ['showing', 'upcoming'])
             ->with('formats:id,name,surcharge_price')
             ->orderBy('title')
-            ->get(['id', 'title', 'duration', 'age_limit']);
+            ->get(['id', 'title', 'duration', 'age_limit', 'release_date']);
 
         return view('manager.showtimes.create', compact('movies'));
     }
@@ -229,7 +229,7 @@ class ManagerShowtimeController extends Controller
     {
         $movies = Movie::whereIn('status', ['showing', 'upcoming'])
             ->orderBy('title')
-            ->get(['id', 'title', 'duration', 'age_limit']);
+            ->get(['id', 'title', 'duration', 'age_limit', 'release_date']);
 
         return view('manager.showtimes.auto-generate', compact('movies'));
     }
@@ -252,11 +252,18 @@ class ManagerShowtimeController extends Controller
             return back()->withInput()->withErrors(['movie_id' => 'Phim này đã ngừng chiếu, không thể tạo suất chiếu mới.']);
         }
 
+        $showDateStr = $request->input('show_date');
+
+        if ($movie->release_date && $showDateStr < Carbon::parse($movie->release_date)->toDateString()) {
+            return back()->withInput()->withErrors([
+                'show_date' => 'Chỉ được tạo suất chiếu từ ngày khởi chiếu của phim trở đi (' . Carbon::parse($movie->release_date)->format('d/m/Y') . ').'
+            ]);
+        }
+
         $startTime   = Carbon::createFromFormat('Y-m-d H:i', $request->input('show_date') . ' ' . $request->input('start_time'), config('app.timezone'));
         $endTime     = $startTime->copy()->addMinutes($movie->duration);
         $startStr    = $startTime->format('H:i:s');
         $endStr      = $endTime->format('H:i:s');
-        $showDateStr = $request->input('show_date');
 
         // Bước 3: Kiểm tra trùng lịch (bỏ qua suất đã hủy)
         $overlapQuery = Showtime::where('room_id', $room->id)

@@ -225,16 +225,15 @@
                             <td class="py-4 px-5 text-right whitespace-nowrap">
                                 @php
                                     $showtime = $booking->showtime;
-                                    $showtimeStarted30 = $showtime?->show_date && $showtime?->start_time
-                                        && \Carbon\Carbon::parse($showtime->show_date->format('Y-m-d') . ' ' . $showtime->start_time)
-                                            ->addMinutes(30)->isPast();
+                                    $isExpired = $showtime ? $showtime->isExpired() : false;
+                                    $isPrinted = !is_null($booking->printed_at);
                                 @endphp
                                 <div class="flex items-center justify-end gap-2">
-                                    @if($showtimeStarted30)
-                                        <span class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400 text-xs font-bold rounded-lg border border-gray-200 dark:border-gray-600">
-                                            <span>🚫 Đã chiếu</span>
+                                    @if($isExpired)
+                                        <span class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400 text-xs font-bold rounded-lg border border-gray-200 dark:border-gray-600" title="Suất chiếu đã kết thúc hoặc hết hạn — Không thể in hoặc in lại vé">
+                                            <span>🚫 Suất chiếu đã hết hạn</span>
                                         </span>
-                                    @elseif(is_null($booking->printed_at))
+                                    @elseif(!$isPrinted)
                                         <a 
                                             href="{{ route('staff.bookings.print-tickets', $booking->id) }}" 
                                             target="_blank"
@@ -247,6 +246,7 @@
                                         <button
                                             onclick="openReprintModal({{ $booking->id }}, {{ $booking->bookingDetails->toJson() }})"
                                             class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-sky-50 hover:bg-sky-100 dark:bg-sky-950/60 dark:hover:bg-sky-900/80 text-sky-700 dark:text-sky-300 text-xs font-bold rounded-lg border border-sky-200 dark:border-sky-800 transition-colors shadow-sm"
+                                            title="In lại cuống vé xem phim (không kèm phiếu bắp nước)"
                                         >
                                             <span>🔁 In lại vé</span>
                                         </button>

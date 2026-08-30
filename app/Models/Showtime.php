@@ -127,4 +127,31 @@ class Showtime extends Model
     {
         return $this->hasMany(Booking::class, 'showtime_id');
     }
+
+    /**
+     * Kiểm tra xem suất chiếu đã hết hạn / kết thúc hay chưa.
+     */
+    public function isExpired(): bool
+    {
+        if (!$this->show_date) {
+            return false;
+        }
+
+        $dateStr = $this->show_date instanceof \DateTimeInterface 
+            ? $this->show_date->format('Y-m-d') 
+            : substr((string)$this->show_date, 0, 10);
+
+        if (!empty($this->end_time)) {
+            $endDateTime = \Carbon\Carbon::parse($dateStr . ' ' . $this->end_time);
+            return $endDateTime->isPast();
+        }
+
+        if (!empty($this->start_time)) {
+            $duration = $this->movie?->duration ?? 120;
+            $endDateTime = \Carbon\Carbon::parse($dateStr . ' ' . $this->start_time)->addMinutes($duration);
+            return $endDateTime->isPast();
+        }
+
+        return \Carbon\Carbon::parse($dateStr)->endOfDay()->isPast();
+    }
 }
