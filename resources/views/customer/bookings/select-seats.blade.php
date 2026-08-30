@@ -60,63 +60,80 @@
 
                         <!-- Grid Seat map -->
                         <div class="w-full overflow-x-auto pb-6 pt-2 px-2 no-scrollbar relative">
-                            <div class="min-w-max flex flex-col gap-3 md:justify-center w-max mx-auto">
+                            @php
+                                $maxCol = 0;
+                                $seatMap = [];
+                                foreach ($seatsByRow as $rowKey => $rowSeats) {
+                                    foreach ($rowSeats as $ss) {
+                                        $seatMap[$rowKey][$ss->seat->seat_number] = $ss;
+                                        if ($ss->seat->seat_number > $maxCol) {
+                                            $maxCol = $ss->seat->seat_number;
+                                        }
+                                    }
+                                }
+                            @endphp
+                            <div class="w-fit min-w-max mx-auto flex flex-col gap-2.5">
                                 @foreach($seatsByRow as $row => $seats)
-                                    <div class="flex items-center gap-2 relative">
+                                    <div class="flex items-center gap-2 flex-nowrap">
                                         <!-- Row Label Left -->
-                                        <div class="sticky left-0 z-20 w-8 h-9 flex items-center justify-center text-sm font-black text-slate-600 bg-white/95 backdrop-blur-sm rounded-r-lg shadow-[2px_0_5px_rgba(0,0,0,0.05)] border-y border-r border-slate-100">
+                                        <div class="w-8 h-9 flex items-center justify-center text-sm font-black text-slate-600 flex-shrink-0">
                                             {{ $row }}
                                         </div>
                                         
                                         <!-- Seats in Row -->
-                                        <div class="flex gap-2 px-1">
-                                            @foreach($seats as $ss)
-                                                @php
-                                                    $seatType = $ss->seat->seatType;
-                                                    $isSaved  = in_array($ss->id, $savedSeatIds);
+                                        <div class="flex items-center gap-2 px-1 flex-nowrap">
+                                            @for($col = 1; $col <= $maxCol; $col++)
+                                                @if(isset($seatMap[$row][$col]))
+                                                    @php
+                                                        $ss = $seatMap[$row][$col];
+                                                        $seatType = $ss->seat->seatType;
+                                                        $isSaved  = in_array($ss->id, $savedSeatIds);
 
-                                                    // Ghế do CHÍNH user hiện tại đang giữ (holding/locked) từ session trước
-                                                    $isHeldByMe = $isSaved && in_array($ss->status, ['holding', 'locked']);
+                                                        // Ghế do CHÍNH user hiện tại đang giữ (holding/locked) từ session trước
+                                                        $isHeldByMe = $isSaved && in_array($ss->status, ['holding', 'locked']);
 
-                                                    // Ghế bị chiếm khi: không phải available VÀ không phải do mình giữ
-                                                    $isBooked = ($ss->status !== 'available') && !$isHeldByMe;
+                                                        // Ghế bị chiếm khi: không phải available VÀ không phải do mình giữ
+                                                        $isBooked = ($ss->status !== 'available') && !$isHeldByMe;
 
-                                                    // Xác định class CSS
-                                                    $btnClass = 'w-9 h-9 rounded-xl border-2 flex items-center justify-center text-xs font-black transition-all duration-200 ';
+                                                        // Xác định class CSS
+                                                        $btnClass = 'w-9 h-9 flex-shrink-0 rounded-xl border-2 flex items-center justify-center text-xs font-black transition-all duration-200 ';
 
-                                                    if ($isHeldByMe) {
-                                                        // Ghế đang do mình giữ → hiển thị màu đỏ selected
-                                                        $btnClass .= 'bg-brand-primary border-brand-primary text-white shadow-[0_0_12px_rgba(229,9,20,0.4)] scale-110 z-10 selected-seat';
-                                                    } elseif ($isBooked) {
-                                                        // Ghế đã có người khác đặt → disabled
-                                                        $btnClass .= 'bg-slate-200 border-slate-300 text-slate-400 cursor-not-allowed opacity-70';
-                                                    } else {
-                                                        // Ghế trống → màu theo loại ghế
-                                                        if ($seatType->name === 'VIP') {
-                                                            $btnClass .= 'bg-gradient-to-br from-amber-100 to-amber-200 border-amber-400 text-amber-800 hover:from-amber-200 hover:to-amber-300 shadow-sm seat-available';
-                                                        } elseif ($seatType->name === 'Sweetbox') {
-                                                            $btnClass .= 'bg-gradient-to-br from-pink-100 to-pink-200 border-pink-400 text-pink-800 hover:from-pink-200 hover:to-pink-300 shadow-sm seat-available';
+                                                        if ($isHeldByMe) {
+                                                            // Ghế đang do mình giữ → hiển thị màu đỏ selected
+                                                            $btnClass .= 'bg-brand-primary border-brand-primary text-white shadow-[0_0_12px_rgba(229,9,20,0.4)] scale-110 z-10 selected-seat';
+                                                        } elseif ($isBooked) {
+                                                            // Ghế đã có người khác đặt → disabled
+                                                            $btnClass .= 'bg-slate-200 border-slate-300 text-slate-400 cursor-not-allowed opacity-70';
                                                         } else {
-                                                            $btnClass .= 'bg-white border-slate-200 text-slate-600 hover:border-brand-primary hover:text-brand-primary shadow-sm seat-available';
+                                                            // Ghế trống → màu theo loại ghế
+                                                            if ($seatType->name === 'VIP') {
+                                                                $btnClass .= 'bg-gradient-to-br from-amber-100 to-amber-200 border-amber-400 text-amber-800 hover:from-amber-200 hover:to-amber-300 shadow-sm seat-available';
+                                                            } elseif ($seatType->name === 'Sweetbox') {
+                                                                $btnClass .= 'bg-gradient-to-br from-pink-100 to-pink-200 border-pink-400 text-pink-800 hover:from-pink-200 hover:to-pink-300 shadow-sm seat-available';
+                                                            } else {
+                                                                $btnClass .= 'bg-white border-slate-200 text-slate-600 hover:border-brand-primary hover:text-brand-primary shadow-sm seat-available';
+                                                            }
                                                         }
-                                                    }
-                                                @endphp
-                                                <button type="button"
-                                                        class="{{ $btnClass }}"
-                                                        data-id="{{ $ss->id }}"
-                                                        data-row="{{ $row }}"
-                                                        data-number="{{ $ss->seat->seat_number }}"
-                                                        data-price="{{ $showtime->base_price + ($seatType->surcharge_price ?? 0) }}"
-                                                        data-type="{{ $seatType->name }}"
-                                                        @if($isBooked) disabled @endif>
-                                                    {{ $ss->seat->seat_number }}
-                                                </button>
-
-                                            @endforeach
+                                                    @endphp
+                                                    <button type="button"
+                                                            class="{{ $btnClass }}"
+                                                            data-id="{{ $ss->id }}"
+                                                            data-row="{{ $row }}"
+                                                            data-number="{{ $ss->seat->seat_number }}"
+                                                            data-price="{{ $showtime->base_price + ($seatType->surcharge_price ?? 0) }}"
+                                                            data-type="{{ $seatType->name }}"
+                                                            @if($isBooked) disabled @endif>
+                                                        {{ $ss->seat->seat_number }}
+                                                    </button>
+                                                @else
+                                                    {{-- Lối đi / Ô trống --}}
+                                                    <div class="w-9 h-9 flex-shrink-0 invisible pointer-events-none" aria-hidden="true"></div>
+                                                @endif
+                                            @endfor
                                         </div>
                                         
                                         <!-- Row Label Right -->
-                                        <div class="sticky right-0 z-20 w-8 h-9 flex items-center justify-center text-sm font-black text-slate-600 bg-white/95 backdrop-blur-sm rounded-l-lg shadow-[-2px_0_5px_rgba(0,0,0,0.05)] border-y border-l border-slate-100">
+                                        <div class="w-8 h-9 flex items-center justify-center text-sm font-black text-slate-600 flex-shrink-0">
                                             {{ $row }}
                                         </div>
                                     </div>

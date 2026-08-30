@@ -899,12 +899,14 @@ const POS = (() => {
         document.getElementById('seat-showtime-title').textContent =
             `${showtime.movie} — ${showtime.room} — ${String(showtime.start_time).substring(0,5)}`;
 
-        // Nhóm ghế theo hàng
-        const seatsByRow = {};
-        rows.forEach(r => seatsByRow[r] = []);
-        seats.forEach(s => { if (seatsByRow[s.row]) seatsByRow[s.row].push(s); });
-
-        const maxCols = Math.max(...Object.values(seatsByRow).map(r => r.length));
+        // Lập ma trận ghế theo hàng và cột
+        const seatGrid = {};
+        let maxCols = 10;
+        seats.forEach(s => {
+            const colNum = parseInt(s.number) || 0;
+            if (colNum > maxCols) maxCols = colNum;
+            seatGrid[`${s.row}_${colNum}`] = s;
+        });
 
         container.innerHTML = `
             <div class="w-full max-w-3xl flex flex-col items-center">
@@ -914,20 +916,26 @@ const POS = (() => {
                     <p class="text-center text-[10px] text-gray-400 font-semibold tracking-widest uppercase">MÀN CHIẾU PHIM</p>
                 </div>
 
-                <!-- Sơ đồ ghế -->
-                <div class="space-y-3 pb-2 flex flex-col items-center">
-                    ${rows.map(row => {
-                        const rowSeatsList = seatsByRow[row] || [];
-                        return `
-                            <div class="flex items-center gap-2">
+                <!-- Sơ đồ ghế ma trận chuẩn -->
+                <div class="w-full overflow-x-auto pb-4 flex flex-col items-center">
+                    <div class="w-fit min-w-max mx-auto space-y-2.5">
+                        ${rows.map(row => `
+                            <div class="flex items-center gap-1.5 flex-nowrap">
                                 <span class="w-6 text-center text-xs font-black text-gray-500 flex-shrink-0 uppercase">${row}</span>
-                                <div class="flex flex-wrap items-center gap-1.5 justify-center">
-                                    ${renderRowSeats(rowSeatsList)}
+                                <div class="flex items-center gap-1.5 flex-nowrap">
+                                    ${Array.from({ length: maxCols }, (_, i) => i + 1).map(col => {
+                                        const s = seatGrid[`${row}_${col}`];
+                                        if (s) {
+                                            return renderSeatBtn(s);
+                                        } else {
+                                            return `<div class="w-9 h-9 flex-shrink-0 invisible pointer-events-none" aria-hidden="true"></div>`;
+                                        }
+                                    }).join('')}
                                 </div>
                                 <span class="w-6 text-center text-xs font-black text-gray-500 flex-shrink-0 uppercase">${row}</span>
                             </div>
-                        `;
-                    }).join('')}
+                        `).join('')}
+                    </div>
                 </div>
 
                 <!-- KHUNG CHÚ THÍCH (THE LEGEND BAR) -->
@@ -1060,7 +1068,7 @@ const POS = (() => {
          *    - VIP         : bg-purple-50 text-purple-700 border-2 border-purple-600 cursor-pointer hover:bg-purple-100
          *    - Standard    : bg-gray-100 text-gray-700 border-2 border-emerald-500 cursor-pointer hover:bg-emerald-100
          */
-        let classes = "w-9 h-9 text-xs font-bold rounded-lg border-2 flex items-center justify-center transition-all duration-150 relative shadow-sm ";
+        let classes = "w-9 h-9 text-xs font-bold rounded-lg border-2 flex items-center justify-center transition-all duration-150 relative shadow-sm flex-shrink-0 ";
 
         if (isSelected) {
             classes += "bg-blue-600 text-white ring-4 ring-blue-300 scale-105 cursor-pointer z-10";
@@ -1154,7 +1162,7 @@ const POS = (() => {
         const isVip = typeName.includes('vip');
         const isCouple = typeName.includes('đôi') || typeName.includes('sweetbox') || typeName.includes('couple');
 
-        let baseClasses = "w-9 h-9 text-xs font-bold rounded-lg border-2 flex items-center justify-center transition-all duration-150 relative shadow-sm ";
+        let baseClasses = "w-9 h-9 text-xs font-bold rounded-lg border-2 flex items-center justify-center transition-all duration-150 relative shadow-sm flex-shrink-0 ";
         if (isNowSelected) {
             baseClasses += "bg-blue-600 text-white ring-4 ring-blue-300 scale-105 cursor-pointer z-10";
         } else {
