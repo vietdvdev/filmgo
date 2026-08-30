@@ -85,7 +85,7 @@
     <!-- ═══════════════════════════════════════════════════════════════════
          LEGEND — Chú thích màu sắc
     ═══════════════════════════════════════════════════════════════════ -->
-    <div class="flex flex-wrap gap-3 mb-4 text-[11px] font-semibold text-slate-600">
+    <div class="flex flex-wrap items-center justify-center gap-4 mb-6 text-[11px] font-semibold text-slate-600">
       <div class="flex items-center gap-1.5">
         <div class="w-4 h-4 border border-dashed border-slate-300 bg-white"></div>
         Lối đi / Trống
@@ -108,18 +108,18 @@
     <!-- ═══════════════════════════════════════════════════════════════════
          MÀN HÌNH ẢO
     ═══════════════════════════════════════════════════════════════════ -->
-    <div class="text-center mb-8">
-      <div class="inline-block w-1/2 bg-slate-700 text-white text-[10px] font-black uppercase tracking-widest py-1.5">
+    <div class="text-center mb-8 flex flex-col items-center">
+      <div class="w-full max-w-xl bg-slate-700 text-white text-[10px] font-black uppercase tracking-widest py-1.5 shadow-sm">
         ▲ MÀN HÌNH CHIẾU PHIM ▲
       </div>
-      <div class="w-1/2 mx-auto h-0.5 bg-gradient-to-r from-transparent via-slate-400 to-transparent mt-0.5"></div>
+      <div class="w-full max-w-xl h-0.5 bg-gradient-to-r from-transparent via-slate-400 to-transparent mt-0.5"></div>
     </div>
 
     <!-- ═══════════════════════════════════════════════════════════════════
          SEAT GRID — Ma trận ghế 2 chiều
     ═══════════════════════════════════════════════════════════════════ -->
-    <div class="overflow-x-auto pb-4">
-      <div class="inline-flex flex-col gap-1.5 min-w-max mx-auto">
+    <div class="w-full overflow-x-auto pb-6">
+      <div class="w-fit min-w-max mx-auto flex flex-col gap-1.5">
 
         <!-- Tiêu đề số cột -->
         <div class="flex items-center gap-1.5">

@@ -74,60 +74,78 @@
         </div>
 
         <!-- Seat Grid -->
-        <div class="flex flex-col items-center space-y-3 overflow-x-auto py-4">
-            @forelse($seatsGrouped as $rowName => $showtimeSeats)
-                <div class="flex items-center gap-2 flex-nowrap">
-                    <!-- Row Name Label Left -->
-                    <span class="w-6 text-sm font-black text-slate-400 text-center">{{ $rowName }}</span>
-                    
-                    <!-- Seats -->
-                    @foreach($showtimeSeats->sortBy('seat.seat_number') as $showtimeSeat)
-                        @php
-                            $seat = $showtimeSeat->seat;
-                            $seatType = $seat->seatType;
-                            
-                            // Mặc định CSS class cho ghế
-                            $seatClass = 'border text-[10px] font-bold flex items-center justify-center select-none rounded-none transition-all h-8 ';
-                            $tooltip = "Ghế " . $rowName . $seat->seat_number . " - " . ($seatType->name ?? 'Thường');
-                            
-                            if ($showtimeSeat->status === 'booked') {
-                                // Đã đặt/bán
-                                $seatClass .= 'bg-red-600 border-red-700 text-white cursor-not-allowed';
-                                $tooltip .= " (Đã bán)";
-                            } elseif ($showtimeSeat->status === 'holding') {
-                                // Đang giữ/chọn
-                                $seatClass .= 'bg-amber-400 border-amber-500 text-slate-900 animate-pulse cursor-wait';
-                                $tooltip .= " (Đang giữ)";
-                            } else {
-                                // Ghế còn trống (available) - Đổi màu theo loại ghế
-                                if ($seatType && strtolower($seatType->name) === 'vip') {
-                                    $seatClass .= 'bg-amber-50 hover:bg-amber-100 border-amber-300 text-amber-800 cursor-pointer';
-                                    $tooltip .= " (Trống)";
-                                } elseif ($seatType && (strtolower($seatType->name) === 'sweetbox' || str_contains(strtolower($seatType->name), 'đôi'))) {
-                                    $seatClass .= 'bg-pink-50 hover:bg-pink-100 border-pink-300 text-pink-800 cursor-pointer';
-                                    $tooltip .= " (Trống)";
-                                } else {
-                                    $seatClass .= 'bg-slate-100 hover:bg-slate-200 border-slate-300 text-slate-600 cursor-pointer';
-                                    $tooltip .= " (Trống)";
-                                }
-                            }
-
-                            // Điều chỉnh kích thước nếu là ghế đôi
-                            $isDouble = ($seatType && (strtolower($seatType->name) === 'sweetbox' || str_contains(strtolower($seatType->name), 'đôi')));
-                            $widthClass = $isDouble ? 'w-16' : 'w-8';
-                        @endphp
+        <div class="w-full overflow-x-auto py-4">
+            @php
+                $maxCol = 0;
+                $seatMap = [];
+                foreach ($seatsGrouped as $rowKey => $rowSeats) {
+                    foreach ($rowSeats as $ss) {
+                        $seatMap[$rowKey][$ss->seat->seat_number] = $ss;
+                        if ($ss->seat->seat_number > $maxCol) {
+                            $maxCol = $ss->seat->seat_number;
+                        }
+                    }
+                }
+            @endphp
+            <div class="w-fit min-w-max mx-auto space-y-2.5">
+                @forelse($seatsGrouped as $rowName => $showtimeSeats)
+                    <div class="flex items-center gap-2 flex-nowrap">
+                        <!-- Row Name Label Left -->
+                        <span class="w-6 text-sm font-black text-slate-400 text-center flex-shrink-0">{{ $rowName }}</span>
                         
-                        <div class="{{ $seatClass }} {{ $widthClass }}" title="{{ $tooltip }}">
-                            {{ $rowName }}{{ $seat->seat_number }}
+                        <!-- Seats in Row -->
+                        <div class="flex items-center gap-1.5 flex-nowrap">
+                            @for($col = 1; $col <= $maxCol; $col++)
+                                @if(isset($seatMap[$rowName][$col]))
+                                    @php
+                                        $showtimeSeat = $seatMap[$rowName][$col];
+                                        $seat = $showtimeSeat->seat;
+                                        $seatType = $seat->seatType;
+                                        
+                                        // Mặc định CSS class cho ghế
+                                        $seatClass = 'border text-[10px] font-bold flex items-center justify-center select-none rounded-none transition-all h-8 w-8 flex-shrink-0 ';
+                                        $tooltip = "Ghế " . $rowName . $seat->seat_number . " - " . ($seatType->name ?? 'Thường');
+                                        
+                                        if ($showtimeSeat->status === 'booked') {
+                                            // Đã đặt/bán
+                                            $seatClass .= 'bg-red-600 border-red-700 text-white cursor-not-allowed';
+                                            $tooltip .= " (Đã bán)";
+                                        } elseif ($showtimeSeat->status === 'holding') {
+                                            // Đang giữ/chọn
+                                            $seatClass .= 'bg-amber-400 border-amber-500 text-slate-900 animate-pulse cursor-wait';
+                                            $tooltip .= " (Đang giữ)";
+                                        } else {
+                                            // Ghế còn trống (available) - Đổi màu theo loại ghế
+                                            if ($seatType && strtolower($seatType->name) === 'vip') {
+                                                $seatClass .= 'bg-amber-50 hover:bg-amber-100 border-amber-300 text-amber-800 cursor-pointer';
+                                                $tooltip .= " (Trống)";
+                                            } elseif ($seatType && (strtolower($seatType->name) === 'sweetbox' || str_contains(strtolower($seatType->name), 'đôi'))) {
+                                                $seatClass .= 'bg-pink-50 hover:bg-pink-100 border-pink-300 text-pink-800 cursor-pointer';
+                                                $tooltip .= " (Trống)";
+                                            } else {
+                                                $seatClass .= 'bg-slate-100 hover:bg-slate-200 border-slate-300 text-slate-600 cursor-pointer';
+                                                $tooltip .= " (Trống)";
+                                            }
+                                        }
+                                    @endphp
+                                    
+                                    <div class="{{ $seatClass }}" title="{{ $tooltip }}">
+                                        {{ $rowName }}{{ $seat->seat_number }}
+                                    </div>
+                                @else
+                                    {{-- Lối đi / Ô trống --}}
+                                    <div class="w-8 h-8 flex-shrink-0 invisible pointer-events-none" aria-hidden="true"></div>
+                                @endif
+                            @endfor
                         </div>
-                    @endforeach
 
-                    <!-- Row Name Label Right -->
-                    <span class="w-6 text-sm font-black text-slate-400 text-center">{{ $rowName }}</span>
-                </div>
-            @empty
-                <div class="text-center py-10 text-slate-400 italic">Không có sơ đồ ghế hoặc suất chiếu chưa khởi tạo ghế.</div>
-            @endforelse
+                        <!-- Row Name Label Right -->
+                        <span class="w-6 text-sm font-black text-slate-400 text-center flex-shrink-0">{{ $rowName }}</span>
+                    </div>
+                @empty
+                    <div class="text-center py-10 text-slate-400 italic">Không có sơ đồ ghế hoặc suất chiếu chưa khởi tạo ghế.</div>
+                @endforelse
+            </div>
         </div>
 
         <!-- Legend -->

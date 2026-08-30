@@ -42,8 +42,8 @@
     </div>
 
     <!-- 4. Seat Matrix (Ma trận ghế) -->
-    <div class="w-full overflow-x-auto pb-4">
-      <div class="min-w-[600px] flex flex-col items-center">
+    <div class="w-full overflow-x-auto pb-6">
+      <div class="w-fit min-w-max mx-auto flex flex-col items-center">
         <div 
           v-for="(rowSeats, rowName) in groupedSeats" 
           :key="rowName" 
