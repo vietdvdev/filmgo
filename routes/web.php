@@ -27,6 +27,7 @@ use App\Http\Controllers\Manager\ManagerAuthController;
 use App\Http\Controllers\Manager\ManagerCinemaController;
 use App\Http\Controllers\Manager\ManagerStaffController;
 use App\Http\Controllers\Manager\ManagerSeatController;
+use App\Http\Controllers\Manager\ManagerBookingController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -271,6 +272,10 @@ Route::prefix('manager')->group(function () {
         // Thêm API endpoint cho rạp và phòng chiếu (dưới prefix /manager)
         Route::get('/api/admin/my-cinemas', [App\Http\Controllers\Manager\Api\ManagerShowtimeApiController::class, 'myCinemas'])->name('manager.api.my-cinemas');
         Route::get('/api/admin/cinemas/{cinema_id}/rooms', [App\Http\Controllers\Manager\Api\ManagerShowtimeApiController::class, 'roomsByCinema'])->name('manager.api.rooms-by-cinema');
+
+        // Quản lý vé & đơn hàng
+        Route::get('/bookings', [ManagerBookingController::class, 'index'])->name('manager.bookings.index');
+        Route::get('/bookings/{id}', [ManagerBookingController::class, 'show'])->name('manager.bookings.show');
 
         // Báo cáo & Thống kê
         Route::get('/reports', [App\Http\Controllers\Manager\ManagerReportController::class, 'index'])->name('manager.reports.index');

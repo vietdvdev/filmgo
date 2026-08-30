@@ -138,9 +138,9 @@ class StaffBookingController extends Controller
         $detailIds  = request()->query('detail_ids');
         $isReprint  = !is_null($booking->printed_at); // Kiểm tra nếu đơn hàng ĐÃ ĐƯỢC IN TRƯỚC ĐÓ
 
-        // QUY ĐỊNH BẢO MẬT: Không cho in lại vé đối với các suất chiếu đã hết hạn
-        if ($isReprint && $booking->showtime && $booking->showtime->isExpired()) {
-            abort(Response::HTTP_BAD_REQUEST, 'Không thể in lại vé cho suất chiếu đã kết thúc hoặc hết hạn.');
+        // QUY ĐỊNH BẢO MẬT: Không cho in vé đối với các suất chiếu đã hết hạn
+        if ($booking->showtime && $booking->showtime->isExpired()) {
+            abort(Response::HTTP_BAD_REQUEST, 'Không thể in vé cho suất chiếu đã kết thúc hoặc hết hạn.');
         }
 
         // Cập nhật thời gian in vé
