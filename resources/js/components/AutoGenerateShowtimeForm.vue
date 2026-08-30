@@ -92,6 +92,9 @@
             <p v-if="selectedMovie" class="mt-1.5 text-xs text-slate-500">
               Thời lượng: <strong>{{ selectedMovie.duration }} phút</strong>
               &nbsp;•&nbsp; Giới hạn tuổi: <strong>{{ selectedMovie.age_limit || 'T18' }}</strong>
+              <span v-if="selectedMovie.release_date">
+                &nbsp;•&nbsp; Khởi chiếu: <strong class="text-purple-700">{{ formatDate(selectedMovie.release_date) }}</strong>
+              </span>
             </p>
             <p v-if="errors.movie_id" class="mt-1 text-xs text-rose-600 font-semibold">{{ errors.movie_id }}</p>
           </div>
@@ -149,7 +152,7 @@
               id="show_date"
               v-model="payload.show_date"
               type="date"
-              :min="todayDate"
+              :min="computedMinDate"
               class="block w-full px-3 py-2 border text-sm focus:outline-none focus:border-purple-600 focus:ring-1 focus:ring-purple-600 rounded-none bg-white"
               :class="errors.show_date ? 'border-rose-400' : 'border-slate-300'"
             />
@@ -315,6 +318,16 @@ axios.defaults.headers.common['Accept']       = 'application/json';
 
 const todayDate = new Date().toISOString().split('T')[0];
 
+const formatDate = (dateStr) => {
+  if (!dateStr) return '';
+  const d = new Date(dateStr);
+  if (isNaN(d)) return dateStr;
+  const day = String(d.getDate()).padStart(2, '0');
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const year = d.getFullYear();
+  return `${day}/${month}/${year}`;
+};
+
 const payload = reactive({
   room_id: '',
   movie_id: '',
@@ -348,6 +361,14 @@ const selectedMovie = computed(() => movies.find(movie => movie.id == payload.mo
 const selectedRoom = computed(() => roomsList.value.find(room => room.id == payload.room_id) || null);
 const roomSurcharge = computed(() => Number(selectedRoom.value?.room_surcharge || 0));
 const estimatedPrice = computed(() => Number(payload.standard_price || 0) + roomSurcharge.value);
+
+const computedMinDate = computed(() => {
+  if (selectedMovie.value && selectedMovie.value.release_date) {
+    const movieRelease = selectedMovie.value.release_date.split('T')[0];
+    return movieRelease > todayDate ? movieRelease : todayDate;
+  }
+  return todayDate;
+});
 
 const isDatetimePast = (showDate, startTime) => {
   if (!showDate || !startTime) return false;
@@ -447,6 +468,10 @@ const onAutoMovieChange = async () => {
 
   if (!payload.movie_id || !selectedCinemaId.value) return;
 
+  if (payload.show_date < computedMinDate.value) {
+    payload.show_date = computedMinDate.value;
+  }
+
   isLoadingRooms.value = true;
   isLoadingAutoFormats.value = true;
   try {
@@ -495,6 +520,8 @@ const submitAutoGenerate = async () => {
     errors.value.show_date = 'Vui lòng chọn ngày chiếu.';
   } else if (payload.show_date < todayDate) {
     errors.value.show_date = 'Ngày chiếu không được là ngày trong quá khứ.';
+  } else if (selectedMovie.value?.release_date && payload.show_date < selectedMovie.value.release_date.split('T')[0]) {
+    errors.value.show_date = `Chỉ được tạo suất chiếu từ ngày khởi chiếu của phim trở đi (${formatDate(selectedMovie.value.release_date)}).`;
   }
   if (isDatetimePast(payload.show_date, payload.shift_start)) {
     errors.value.shift_start = 'Thời gian bắt đầu suất chiếu không được ở trong quá khứ. Vui lòng chọn thời gian từ hiện tại trở đi.';

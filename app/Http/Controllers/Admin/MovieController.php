@@ -157,7 +157,7 @@ class MovieController extends Controller
             'format_ids.min'        => 'Vui lòng chọn ít nhất một định dạng chiếu.',
         ]);
 
-        if ($request->status === 'stopped' && $movie->status !== 'stopped') {
+        if (in_array($request->status, ['stopped', 'upcoming']) && $movie->status !== $request->status) {
             $hasFutureShowtimes = $movie->showtimes()
                 ->where('status', '!=', 'cancelled')
                 ->where(function ($query) {
@@ -169,7 +169,12 @@ class MovieController extends Controller
                 })->exists();
 
             if ($hasFutureShowtimes) {
-                return back()->with('error', 'Không thể chuyển trạng thái Ngừng chiếu khi phim đang có suất chiếu trong tương lai!')->withInput();
+                $statusLabel = $request->status === 'stopped' ? 'Ngừng chiếu' : 'Sắp chiếu';
+                $errorMessage = "Không thể chuyển trạng thái «{$statusLabel}» khi phim đang có suất chiếu trong tương lai!";
+                return back()
+                    ->with('error', $errorMessage)
+                    ->withErrors(['status' => $errorMessage])
+                    ->withInput();
             }
         }
 

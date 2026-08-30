@@ -264,6 +264,13 @@ class ManagerShowtimeApiController extends Controller
             }
         }
 
+        if ($movie->release_date && $request->input('show_date') < Carbon::parse($movie->release_date)->toDateString()) {
+            return response()->json([
+                'overlap' => true,
+                'message' => 'Chỉ được tạo suất chiếu từ ngày khởi chiếu của phim trở đi (' . Carbon::parse($movie->release_date)->format('d/m/Y') . ').',
+            ]);
+        }
+
         $startTime = Carbon::createFromFormat(
             'Y-m-d H:i',
             $request->input('show_date') . ' ' . $request->input('start_time'),
@@ -386,6 +393,14 @@ class ManagerShowtimeApiController extends Controller
         if ($movie->status === 'stopped') {
             return response()->json([
                 'errors' => ['movie_id' => ['Phim này đã ngừng chiếu, không thể tạo suất chiếu mới.']]
+            ], 422);
+        }
+
+        $showDateStr = $request->input('show_date');
+
+        if ($movie->release_date && $showDateStr < Carbon::parse($movie->release_date)->toDateString()) {
+            return response()->json([
+                'errors' => ['show_date' => ['Chỉ được tạo suất chiếu từ ngày khởi chiếu của phim trở đi (' . Carbon::parse($movie->release_date)->format('d/m/Y') . ').']]
             ], 422);
         }
 

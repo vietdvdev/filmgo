@@ -116,7 +116,7 @@ class StoreShowtimeRequest extends FormRequest
                 }
             }
 
-            // 3. Kiểm tra thời gian suất chiếu không ở trong quá khứ
+            // 4. Kiểm tra thời gian suất chiếu không ở trong quá khứ
             if ($showDate && $startTime && !$validator->errors()->has('show_date') && !$validator->errors()->has('start_time')) {
                 $startDateTime = \Carbon\Carbon::createFromFormat(
                     'Y-m-d H:i',
@@ -129,6 +129,20 @@ class StoreShowtimeRequest extends FormRequest
                         'start_time',
                         'Thời gian bắt đầu suất chiếu không được ở trong quá khứ. Vui lòng chọn thời gian từ hiện tại trở đi.'
                     );
+                }
+            }
+
+            // 5. Kiểm tra ngày chiếu phải bằng hoặc sau ngày khởi chiếu của phim
+            if ($movieId && $showDate && !$validator->errors()->has('show_date')) {
+                $movie = \App\Models\Movie::find($movieId);
+                if ($movie && $movie->release_date) {
+                    $releaseDateStr = \Carbon\Carbon::parse($movie->release_date)->toDateString();
+                    if ($showDate < $releaseDateStr) {
+                        $validator->errors()->add(
+                            'show_date',
+                            'Chỉ được tạo suất chiếu từ ngày khởi chiếu của phim trở đi (' . \Carbon\Carbon::parse($movie->release_date)->format('d/m/Y') . ').'
+                        );
+                    }
                 }
             }
         });

@@ -167,6 +167,23 @@
 
                     {{-- Action buttons --}}
                     <div class="pt-4 space-y-2">
+                        {{-- Thông báo chuyển sang Quản lý vé đặt khi đơn đã in --}}
+                        <div id="res-reprint-notice" class="hidden p-3.5 bg-sky-50 border border-sky-200 text-sky-900 rounded-xl text-xs space-y-1.5">
+                            <div class="flex items-center gap-2 font-bold text-sky-800">
+                                <span class="material-symbols-outlined text-lg text-sky-600">info</span>
+                                <span>Đơn hàng này đã được in vé trước đó</span>
+                            </div>
+                            <p class="text-sky-700 leading-relaxed">
+                                Để <strong>in lại vé</strong>, vui lòng truy cập chức năng <a href="{{ route('staff.bookings.index') }}" class="underline font-bold hover:text-sky-900 text-primary">Quản lý vé đặt</a> (chỉ hỗ trợ khi suất chiếu chưa hết hạn).
+                            </p>
+                        </div>
+
+                        {{-- Thông báo suất chiếu đã hết hạn --}}
+                        <div id="res-expired-notice" class="hidden p-3.5 bg-red-50 border border-red-200 text-red-900 rounded-xl text-xs flex items-center gap-2">
+                            <span class="material-symbols-outlined text-lg text-red-600">block</span>
+                            <span class="font-bold text-red-800">Suất chiếu đã kết thúc hoặc hết hạn — Không thể in vé.</span>
+                        </div>
+
                         <button id="btn-do-print" type="button"
                                 class="w-full py-3.5 bg-emerald-600 hover:bg-emerald-700 text-white font-black text-xs uppercase tracking-wider rounded-xl transition-all shadow-md flex items-center justify-center gap-2">
                             <span class="material-symbols-outlined text-lg">print</span>
@@ -215,6 +232,8 @@
 
         const btnDoPrint = document.getElementById('btn-do-print');
         const btnResetScan = document.getElementById('btn-reset-scan');
+        const reprintNotice = document.getElementById('res-reprint-notice');
+        const expiredNotice = document.getElementById('res-expired-notice');
 
         // Toggle clear button on input
         inputCode.addEventListener('input', function() {
@@ -291,6 +310,22 @@
                 bSub.textContent = 'Đơn hàng này đã được in vé lúc ' + (b.printed_at || '');
                 bTag.className = 'text-[10px] font-black uppercase tracking-wider px-2.5 py-1 rounded-full bg-emerald-200 text-emerald-800';
                 bTag.textContent = 'ĐÃ IN';
+
+                // YÊU CẦU: Quét mã QR đơn nào ĐÃ IN thì KHÔNG hiển thị nút in vé & đánh dấu đã in
+                btnDoPrint.classList.add('hidden');
+                reprintNotice.classList.remove('hidden');
+                expiredNotice.classList.add('hidden');
+            } else if (b.is_expired) {
+                banner.className = 'p-4 rounded-xl border bg-red-50 border-red-200 text-red-900 flex items-center justify-between';
+                bIcon.textContent = 'cancel';
+                bTitle.textContent = 'HẾT HẠN SUẤT CHIẾU';
+                bSub.textContent = 'Suất chiếu của đơn này đã kết thúc, không thể in vé.';
+                bTag.className = 'text-[10px] font-black uppercase tracking-wider px-2.5 py-1 rounded-full bg-red-200 text-red-800';
+                bTag.textContent = 'HẾT HẠN';
+
+                btnDoPrint.classList.add('hidden');
+                reprintNotice.classList.add('hidden');
+                expiredNotice.classList.remove('hidden');
             } else {
                 banner.className = 'p-4 rounded-xl border bg-amber-50 border-amber-200 text-amber-900 flex items-center justify-between';
                 bIcon.textContent = 'warning';
@@ -298,6 +333,10 @@
                 bSub.textContent = 'Sẵn sàng in vé và phát cho khách hàng tại quầy.';
                 bTag.className = 'text-[10px] font-black uppercase tracking-wider px-2.5 py-1 rounded-full bg-amber-200 text-amber-800';
                 bTag.textContent = 'CHƯA IN';
+
+                btnDoPrint.classList.remove('hidden');
+                reprintNotice.classList.add('hidden');
+                expiredNotice.classList.add('hidden');
             }
 
             // Seats list

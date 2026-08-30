@@ -59,6 +59,10 @@
             Thời lượng: <strong>{{ selectedMovie.duration }} phút</strong>
             &nbsp;•&nbsp;
             Giới hạn tuổi: <strong>{{ selectedMovie.age_limit || 'T18' }}</strong>
+            <span v-if="selectedMovie.release_date">
+              &nbsp;•&nbsp;
+              Khởi chiếu: <strong class="text-blue-700">{{ formatDate(selectedMovie.release_date) }}</strong>
+            </span>
           </p>
           <div v-if="movieFormats.length" class="mt-2 flex flex-wrap gap-1.5">
             <span
@@ -108,7 +112,7 @@
             <label for="show_date" class="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1">
               Ngày Chiếu
             </label>
-            <input id="show_date" v-model="form.show_date" type="date" required :min="today"
+            <input id="show_date" v-model="form.show_date" type="date" required :min="computedMinDate"
               @change="onDateOrTimeChange"
               class="block w-full px-3 py-2 border border-slate-300 text-sm focus:outline-none focus:border-blue-600 focus:ring-1 focus:ring-blue-600">
             <p v-if="fieldErrors.show_date" class="mt-1 text-xs text-red-600 font-semibold">
@@ -242,6 +246,16 @@ axios.defaults.headers.common['Accept']       = 'application/json';
 
 const today = new Date().toISOString().split('T')[0];
 
+const formatDate = (dateStr) => {
+  if (!dateStr) return '';
+  const d = new Date(dateStr);
+  if (isNaN(d)) return dateStr;
+  const day = String(d.getDate()).padStart(2, '0');
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const year = d.getFullYear();
+  return `${day}/${month}/${year}`;
+};
+
 const isDatetimePast = (showDate, startTime) => {
   if (!showDate || !startTime) return false;
   return new Date(`${showDate}T${startTime}:00`) < new Date();
@@ -280,6 +294,14 @@ let roomChangeRequest = 0;
 
 const selectedMovie = computed(() => movies.find(m => m.id == form.movie_id) || null);
 const selectedRoom = computed(() => rooms.value.find(room => room.id == form.room_id) || null);
+
+const computedMinDate = computed(() => {
+  if (selectedMovie.value && selectedMovie.value.release_date) {
+    const movieRelease = selectedMovie.value.release_date.split('T')[0];
+    return movieRelease > today ? movieRelease : today;
+  }
+  return today;
+});
 
 const formatBadgeClass = (name) => {
   const map = {
@@ -356,6 +378,10 @@ const onMovieChange = async () => {
   overlapOk.value    = false;
 
   if (!form.movie_id || !form.cinema_id) return;
+
+  if (form.show_date < computedMinDate.value) {
+    form.show_date = computedMinDate.value;
+  }
 
   loadingRooms.value   = true;
   loadingFormats.value = true;
@@ -435,6 +461,11 @@ const triggerOverlapCheck = () => {
     return;
   }
 
+  if (selectedMovie.value?.release_date && form.show_date < selectedMovie.value.release_date.split('T')[0]) {
+    overlapError.value = `Chỉ được tạo suất chiếu từ ngày khởi chiếu của phim trở đi (${formatDate(selectedMovie.value.release_date)}).`;
+    return;
+  }
+
   overlapTimer = setTimeout(async () => {
     checkingOverlap.value = true;
     try {
@@ -480,6 +511,11 @@ const submitForm = async () => {
   if (isDatetimePast(form.show_date, form.start_time)) {
     addToast('Thời gian bắt đầu suất chiếu không được ở trong quá khứ!', 'error');
     overlapError.value = 'Thời gian bắt đầu suất chiếu không được ở trong quá khứ. Vui lòng chọn thời gian từ hiện tại trở đi.';
+    return;
+  }
+  if (selectedMovie.value?.release_date && form.show_date < selectedMovie.value.release_date.split('T')[0]) {
+    addToast(`Chỉ được tạo suất chiếu từ ngày khởi chiếu của phim trở đi (${formatDate(selectedMovie.value.release_date)})!`, 'error');
+    overlapError.value = `Chỉ được tạo suất chiếu từ ngày khởi chiếu của phim trở đi (${formatDate(selectedMovie.value.release_date)}).`;
     return;
   }
   Object.keys(fieldErrors).forEach(k => delete fieldErrors[k]);

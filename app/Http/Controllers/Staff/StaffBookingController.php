@@ -138,6 +138,11 @@ class StaffBookingController extends Controller
         $detailIds  = request()->query('detail_ids');
         $isReprint  = !is_null($booking->printed_at); // Kiểm tra nếu đơn hàng ĐÃ ĐƯỢC IN TRƯỚC ĐÓ
 
+        // QUY ĐỊNH BẢO MẬT: Không cho in lại vé đối với các suất chiếu đã hết hạn
+        if ($isReprint && $booking->showtime && $booking->showtime->isExpired()) {
+            abort(Response::HTTP_BAD_REQUEST, 'Không thể in lại vé cho suất chiếu đã kết thúc hoặc hết hạn.');
+        }
+
         // Cập nhật thời gian in vé
         $booking->update(['printed_at' => now()]);
 
@@ -257,6 +262,7 @@ class StaffBookingController extends Controller
         }
 
         $isComboOnly = ($booking->booking_type === 'combo_only' || !$booking->showtime_id);
+        $isExpired = $booking->showtime ? $booking->showtime->isExpired() : false;
         $seats = $booking->bookingDetails->map(function($d) {
             $s = $d->showtimeSeat?->seat;
             return $s ? strtoupper($s->seat_row) . $s->seat_number : null;
@@ -278,6 +284,7 @@ class StaffBookingController extends Controller
                 'total_amount'   => number_format($booking->final_total ?? $booking->total_amount),
                 'printed_at'     => $booking->printed_at ? $booking->printed_at->format('H:i - d/m/Y') : null,
                 'is_printed'     => !is_null($booking->printed_at),
+                'is_expired'     => $isExpired,
                 'customer_name'  => $booking->user?->full_name ?? 'Khách vãng lai',
                 'customer_phone' => $booking->user?->phone ?? '—',
                 'movie_title'    => $booking->showtime?->movie?->title ?? ($isComboOnly ? 'Đơn Hàng Combo Bắp Nước' : 'Vé Xem Phim'),
