@@ -167,15 +167,13 @@
 
                     {{-- Action buttons --}}
                     <div class="pt-4 space-y-2">
-                        {{-- Thông báo chuyển sang Quản lý vé đặt khi đơn đã in --}}
+                        {{-- Thông báo chuyển sang Quản lý khi đơn đã in --}}
                         <div id="res-reprint-notice" class="hidden p-3.5 bg-sky-50 border border-sky-200 text-sky-900 rounded-xl text-xs space-y-1.5">
                             <div class="flex items-center gap-2 font-bold text-sky-800">
                                 <span class="material-symbols-outlined text-lg text-sky-600">info</span>
-                                <span>Đơn hàng này đã được in vé trước đó</span>
+                                <span id="reprint-notice-title">Đơn hàng này đã được in trước đó</span>
                             </div>
-                            <p class="text-sky-700 leading-relaxed">
-                                Để <strong>in lại vé</strong>, vui lòng truy cập chức năng <a href="{{ route('staff.bookings.index') }}" class="underline font-bold hover:text-sky-900 text-primary">Quản lý vé đặt</a> (chỉ hỗ trợ khi suất chiếu chưa hết hạn).
-                            </p>
+                            <p id="reprint-notice-desc" class="text-sky-700 leading-relaxed"></p>
                         </div>
 
                         {{-- Thông báo suất chiếu đã hết hạn --}}
@@ -231,8 +229,12 @@
         const stateSuccess = document.getElementById('state-success');
 
         const btnDoPrint = document.getElementById('btn-do-print');
+        const btnDoPrintIcon = btnDoPrint.querySelector('span:first-child');
+        const btnDoPrintText = btnDoPrint.querySelector('span:last-child');
         const btnResetScan = document.getElementById('btn-reset-scan');
         const reprintNotice = document.getElementById('res-reprint-notice');
+        const reprintNoticeTitle = document.getElementById('reprint-notice-title');
+        const reprintNoticeDesc = document.getElementById('reprint-notice-desc');
         const expiredNotice = document.getElementById('res-expired-notice');
 
         // Toggle clear button on input
@@ -291,10 +293,43 @@
             document.getElementById('res-customer').textContent = b.customer_name;
             document.getElementById('res-phone').textContent = b.customer_phone;
             document.getElementById('res-movie').textContent = b.movie_title;
-            document.getElementById('res-showtime').textContent = b.is_combo_only 
-                ? 'Đơn Hàng F&B' 
-                : `${b.show_time} | ${b.show_date} (${b.room_name})`;
+            
+            const showtimeElem = document.getElementById('res-showtime');
+            if (b.is_combo_only) {
+                showtimeElem.innerHTML = '<span class="inline-flex items-center gap-1 text-purple-700 font-bold"><span class="material-symbols-outlined text-sm">fastfood</span> Đơn Hàng F&B (Bắp Nước)</span>';
+            } else {
+                let showtimeHtml = `${b.show_time} | ${b.show_date} (${b.room_name})`;
+                if (b.is_expired) {
+                    showtimeHtml += ` <span class="inline-flex items-center text-xs font-bold text-red-600 ml-1.5">🚫 Đã hết hạn</span>`;
+                }
+                showtimeElem.innerHTML = showtimeHtml;
+            }
             document.getElementById('res-total').textContent = b.total_amount + 'đ';
+
+            // Header Badges
+            const badgesContainer = document.getElementById('res-badges');
+            if (badgesContainer) {
+                badgesContainer.innerHTML = '';
+                if (b.is_combo_only) {
+                    badgesContainer.innerHTML += `<span class="inline-flex items-center gap-1 px-2.5 py-1 bg-purple-100 text-purple-700 font-extrabold text-[11px] rounded-full border border-purple-200">
+                        <span class="material-symbols-outlined text-[13px]">fastfood</span> ĐƠN COMBO
+                    </span>`;
+                }
+                if (b.is_expired && !b.is_combo_only) {
+                    badgesContainer.innerHTML += `<span class="inline-flex items-center gap-1 px-2.5 py-1 bg-red-100 text-red-700 font-extrabold text-[11px] rounded-full border border-red-200">
+                        <span class="material-symbols-outlined text-[13px]">timer_off</span> ĐÃ HẾT HẠN
+                    </span>`;
+                }
+                if (b.is_printed) {
+                    badgesContainer.innerHTML += `<span class="inline-flex items-center gap-1 px-2.5 py-1 bg-emerald-100 text-emerald-700 font-extrabold text-[11px] rounded-full border border-emerald-200">
+                        <span class="material-symbols-outlined text-[13px]">check_circle</span> ${b.is_combo_only ? 'ĐÃ IN PHIẾU' : 'ĐÃ IN VÉ'}
+                    </span>`;
+                } else if (!b.is_expired || b.is_combo_only) {
+                    badgesContainer.innerHTML += `<span class="inline-flex items-center gap-1 px-2.5 py-1 bg-amber-100 text-amber-700 font-extrabold text-[11px] rounded-full border border-amber-200">
+                        <span class="material-symbols-outlined text-[13px]">schedule</span> ${b.is_combo_only ? 'CHƯA IN PHIẾU' : 'CHƯA IN VÉ'}
+                    </span>`;
+                }
+            }
 
             // Print status banner
             const banner = document.getElementById('res-print-banner');
@@ -303,7 +338,52 @@
             const bSub = document.getElementById('banner-sub');
             const bTag = document.getElementById('banner-tag');
 
-            if (b.is_printed) {
+            if (b.is_combo_only) {
+                // Đơn hàng Combo bắp nước riêng lẻ
+                if (b.is_printed) {
+                    banner.className = 'p-4 rounded-xl border bg-emerald-50 border-emerald-200 text-emerald-900 flex items-center justify-between';
+                    bIcon.textContent = 'check_circle';
+                    bTitle.textContent = 'ĐÃ IN BIÊN LAI BẮP NƯỚC';
+                    bSub.textContent = 'Đơn bắp nước này đã được in biên lai lúc ' + (b.printed_at || '');
+                    bTag.className = 'text-[10px] font-black uppercase tracking-wider px-2.5 py-1 rounded-full bg-emerald-200 text-emerald-800';
+                    bTag.textContent = 'ĐÃ IN';
+
+                    reprintNoticeTitle.textContent = 'Đơn bắp nước này đã được in biên lai trước đó';
+                    reprintNoticeDesc.innerHTML = `Để <strong>in lại biên lai</strong>, vui lòng truy cập chức năng <a href="{{ route('staff.combo-bookings.index') }}" class="underline font-bold hover:text-sky-900 text-primary">Quản lý đơn bắp nước</a>.`;
+
+                    btnDoPrint.classList.add('hidden');
+                    reprintNotice.classList.remove('hidden');
+                    expiredNotice.classList.add('hidden');
+                } else {
+                    banner.className = 'p-4 rounded-xl border bg-amber-50 border-amber-200 text-amber-900 flex items-center justify-between';
+                    bIcon.textContent = 'receipt_long';
+                    bTitle.textContent = 'CHƯA IN BIÊN LAI BẮP NƯỚC';
+                    bSub.textContent = 'Sẵn sàng in biên lai bắp nước và trả món cho khách hàng.';
+                    bTag.className = 'text-[10px] font-black uppercase tracking-wider px-2.5 py-1 rounded-full bg-amber-200 text-amber-800';
+                    bTag.textContent = 'CHƯA IN';
+
+                    btnDoPrintIcon.textContent = 'receipt_long';
+                    btnDoPrintText.textContent = 'IN BIÊN LAI BẮP NƯỚC VÀ TRẢ MÓN';
+                    btnDoPrint.classList.remove('hidden');
+                    reprintNotice.classList.add('hidden');
+                    expiredNotice.classList.add('hidden');
+                }
+            } else if (b.is_expired) {
+                // Đơn vé xem phim đã hết hạn
+                banner.className = 'p-4 rounded-xl border bg-red-50 border-red-200 text-red-900 flex items-center justify-between';
+                bIcon.textContent = 'cancel';
+                bTitle.textContent = 'SUẤT CHIẾU ĐÃ HẾT HẠN';
+                bSub.textContent = b.is_printed 
+                    ? `Suất chiếu đã kết thúc (Đã in vé lúc ${b.printed_at || ''}). Không thể in lại.`
+                    : 'Suất chiếu của đơn hàng này đã kết thúc hoặc hết hạn. Không thể thực hiện in vé.';
+                bTag.className = 'text-[10px] font-black uppercase tracking-wider px-2.5 py-1 rounded-full bg-red-200 text-red-800';
+                bTag.textContent = 'ĐÃ HẾT HẠN';
+
+                btnDoPrint.classList.add('hidden');
+                reprintNotice.classList.add('hidden');
+                expiredNotice.classList.remove('hidden');
+            } else if (b.is_printed) {
+                // Đơn vé xem phim đã in vé
                 banner.className = 'p-4 rounded-xl border bg-emerald-50 border-emerald-200 text-emerald-900 flex items-center justify-between';
                 bIcon.textContent = 'check_circle';
                 bTitle.textContent = 'ĐÃ IN VÉ';
@@ -311,29 +391,23 @@
                 bTag.className = 'text-[10px] font-black uppercase tracking-wider px-2.5 py-1 rounded-full bg-emerald-200 text-emerald-800';
                 bTag.textContent = 'ĐÃ IN';
 
-                // YÊU CẦU: Quét mã QR đơn nào ĐÃ IN thì KHÔNG hiển thị nút in vé & đánh dấu đã in
+                reprintNoticeTitle.textContent = 'Đơn hàng này đã được in vé trước đó';
+                reprintNoticeDesc.innerHTML = `Để <strong>in lại vé</strong>, vui lòng truy cập chức năng <a href="{{ route('staff.bookings.index') }}" class="underline font-bold hover:text-sky-900 text-primary">Quản lý vé đặt</a> (chỉ hỗ trợ khi suất chiếu chưa hết hạn).`;
+
                 btnDoPrint.classList.add('hidden');
                 reprintNotice.classList.remove('hidden');
                 expiredNotice.classList.add('hidden');
-            } else if (b.is_expired) {
-                banner.className = 'p-4 rounded-xl border bg-red-50 border-red-200 text-red-900 flex items-center justify-between';
-                bIcon.textContent = 'cancel';
-                bTitle.textContent = 'HẾT HẠN SUẤT CHIẾU';
-                bSub.textContent = 'Suất chiếu của đơn này đã kết thúc, không thể in vé.';
-                bTag.className = 'text-[10px] font-black uppercase tracking-wider px-2.5 py-1 rounded-full bg-red-200 text-red-800';
-                bTag.textContent = 'HẾT HẠN';
-
-                btnDoPrint.classList.add('hidden');
-                reprintNotice.classList.add('hidden');
-                expiredNotice.classList.remove('hidden');
             } else {
+                // Đơn vé xem phim chưa in
                 banner.className = 'p-4 rounded-xl border bg-amber-50 border-amber-200 text-amber-900 flex items-center justify-between';
-                bIcon.textContent = 'warning';
+                bIcon.textContent = 'confirmation_number';
                 bTitle.textContent = 'CHƯA IN VÉ';
                 bSub.textContent = 'Sẵn sàng in vé và phát cho khách hàng tại quầy.';
                 bTag.className = 'text-[10px] font-black uppercase tracking-wider px-2.5 py-1 rounded-full bg-amber-200 text-amber-800';
                 bTag.textContent = 'CHƯA IN';
 
+                btnDoPrintIcon.textContent = 'print';
+                btnDoPrintText.textContent = 'IN VÉ VÀ ĐÁNH DẤU ĐÃ IN VÉ';
                 btnDoPrint.classList.remove('hidden');
                 reprintNotice.classList.add('hidden');
                 expiredNotice.classList.add('hidden');

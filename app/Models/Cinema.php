@@ -46,6 +46,6 @@ class Cinema extends Model
     public function users(): BelongsToMany
     {
         return $this->belongsToMany(User::class, 'user_cinemas', 'cinema_id', 'user_id')
-                    ->withTimestamps();
+                    ->withPivot('created_at');
     }
 }

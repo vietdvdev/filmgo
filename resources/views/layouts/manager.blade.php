@@ -81,6 +81,11 @@
                 <span class="material-symbols-outlined text-lg">schedule</span>
                 Suất Chiếu
             </a>
+            <a href="{{ route('manager.bookings.index') }}"
+               class="flex items-center gap-3 px-3 py-2.5 text-sm font-semibold transition-colors duration-200 rounded-none {{ request()->routeIs('manager.bookings.*') ? 'bg-blue-600 text-white' : 'text-slate-300 hover:bg-slate-800 hover:text-white' }}">
+                <span class="material-symbols-outlined text-lg">confirmation_number</span>
+                Vé &amp; Đơn Hàng
+            </a>
             <a href="{{ route('manager.reports.index') }}"
                class="flex items-center gap-3 px-3 py-2.5 text-sm font-semibold transition-colors duration-200 rounded-none {{ request()->routeIs('manager.reports.*') ? 'bg-blue-600 text-white' : 'text-slate-300 hover:bg-slate-800 hover:text-white' }}">
                 <span class="material-symbols-outlined text-lg">insert_chart</span>
