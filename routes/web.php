@@ -128,7 +128,7 @@ Route::prefix('admin')->group(function () {
     });
 
     // Nhân sự quản trị đã đăng nhập (Admin, Manager, Staff)
-    Route::middleware(['auth', 'admin'])->group(function () {
+    Route::middleware('admin')->group(function () {
         // 2. Đường dẫn xử lý Đăng xuất (Bắt buộc dùng POST để bảo mật)
         Route::post('/logout', [ManagementAuthController::class, 'logout'])->name('admin.logout');
 
@@ -196,7 +196,7 @@ Route::prefix('manager')->group(function () {
     Route::middleware('auth')->get('/no-cinema', [ManagerAuthController::class, 'noCinema'])->name('manager.no-cinema');
 
     // 2. Các trang yêu cầu đăng nhập và vai trò manager
-    Route::middleware(['auth', 'manager'])->group(function () {
+    Route::middleware('manager')->group(function () {
         // Đăng xuất
         Route::post('/logout', [ManagerAuthController::class, 'logout'])->name('manager.logout');
 
@@ -288,7 +288,7 @@ Route::prefix('manager')->group(function () {
 });
 
 // Định nghĩa thêm ở ngoài prefix /manager để đúng hoàn toàn URL /api/admin/... và /api/rooms/... mà đề bài yêu cầu
-Route::middleware(['auth', 'manager'])->group(function () {
+Route::middleware('manager')->group(function () {
     Route::get('/api/admin/my-cinemas', [App\Http\Controllers\Manager\Api\ManagerShowtimeApiController::class, 'myCinemas'])->name('api.admin.my-cinemas');
     Route::get('/api/admin/cinemas/{cinema_id}/rooms', [App\Http\Controllers\Manager\Api\ManagerShowtimeApiController::class, 'roomsByCinema'])->name('api.admin.cinemas.rooms');
 
@@ -307,7 +307,7 @@ Route::prefix('staff')->group(function () {
     });
 
     // Các trang yêu cầu đăng nhập và vai trò staff
-    Route::middleware(['auth', 'staff'])->group(function () {
+    Route::middleware('staff')->group(function () {
         Route::post('/logout', [App\Http\Controllers\Staff\StaffAuthController::class, 'logout'])->name('staff.logout');
 
         // Lịch chiếu hôm nay

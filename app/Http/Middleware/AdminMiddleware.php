@@ -21,6 +21,21 @@ class AdminMiddleware
 
         $user = Auth::user();
 
+        // Kiểm tra tài khoản có bị khóa không
+        if ($user->status !== 'active') {
+            Auth::logout();
+            $request->session()->invalidate();
+            $request->session()->regenerateToken();
+
+            if ($request->expectsJson()) {
+                return response()->json(['message' => 'Tài khoản của bạn đã bị khóa. Vui lòng liên hệ quản trị viên.'], 403);
+            }
+
+            return redirect()->route('admin.login')->withErrors([
+                'email' => 'Tài khoản của bạn đã bị khóa. Vui lòng liên hệ quản trị viên.',
+            ]);
+        }
+
         // Chỉ role 'admin' được phép vào khu vực Admin
         if ($user->roles()->where('name', 'admin')->exists()) {
             return $next($request);

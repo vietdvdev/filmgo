@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Role;
 use App\Models\User;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\Rule;
 
@@ -176,6 +177,7 @@ class UserController extends Controller
             return back()->with('error', 'Không thể xóa người dùng đang được phân công quản lý rạp. Hãy hủy phân công trước.');
         }
 
+        DB::table('sessions')->where('user_id', $user->id)->delete();
         $user->delete();
 
         return redirect()->route('admin.users.index')

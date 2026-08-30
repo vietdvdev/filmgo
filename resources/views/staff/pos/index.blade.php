@@ -552,103 +552,103 @@
      Hiển thị sau khi confirmCheckout() thành công
 ════════════════════════════════════════════════════════════ --}}
 <div id="success-modal"
-     class="hidden fixed inset-0 z-[60] flex items-center justify-center no-print"
+     class="hidden fixed inset-0 z-[60] flex items-center justify-center p-3 no-print"
      role="dialog" aria-modal="true" aria-labelledby="success-modal-title">
 
     {{-- Overlay đen mờ --}}
-    <div class="absolute inset-0 bg-black/60 backdrop-blur-sm"></div>
+    <div class="absolute inset-0 bg-black/60 backdrop-blur-sm" onclick="POS.resetPOS()"></div>
 
     {{-- Card nội dung --}}
-    <div class="relative bg-white rounded-2xl shadow-2xl w-full max-w-md mx-4 overflow-hidden
+    <div class="relative bg-white rounded-2xl shadow-2xl w-full max-w-md mx-auto max-h-[92vh] flex flex-col overflow-y-auto
                 transform transition-all duration-300 scale-100">
 
         {{-- ── Phần header: Checkmark + Booking Code ── --}}
-        <div class="bg-gradient-to-br from-green-500 to-emerald-600 px-6 pt-8 pb-6 text-center">
+        <div class="bg-gradient-to-br from-green-500 to-emerald-600 px-5 pt-4 pb-3.5 text-center shrink-0">
             {{-- Animated checkmark --}}
-            <div class="w-20 h-20 bg-white/20 rounded-full flex items-center justify-center mx-auto mb-4
+            <div class="w-12 h-12 bg-white/20 rounded-full flex items-center justify-center mx-auto mb-2
                         ring-4 ring-white/30 animate-pulse">
-                <span class="material-symbols-outlined text-white" style="font-size:48px; font-variation-settings:'FILL' 1;">check_circle</span>
+                <span class="material-symbols-outlined text-white text-3xl" style="font-variation-settings:'FILL' 1;">check_circle</span>
             </div>
-            <h2 id="success-modal-title" class="text-2xl font-black text-white tracking-wide">Thanh Toán Thành Công!</h2>
-            <p class="text-green-100 text-sm mt-1">Giao dịch đã được xác nhận</p>
+            <h2 id="success-modal-title" class="text-lg font-black text-white tracking-wide">Thanh Toán Thành Công!</h2>
+            <p class="text-green-100 text-xs mt-0.5">Giao dịch đã được xác nhận</p>
             {{-- Booking code badge --}}
-            <div class="mt-4 inline-flex items-center gap-2 bg-white/20 border border-white/30
-                        rounded-full px-5 py-2">
-                <span class="material-symbols-outlined text-white text-base">confirmation_number</span>
-                <span class="text-white font-mono font-black text-lg tracking-widest"
+            <div class="mt-2.5 inline-flex items-center gap-1.5 bg-white/20 border border-white/30
+                        rounded-full px-3.5 py-1">
+                <span class="material-symbols-outlined text-white text-sm">confirmation_number</span>
+                <span class="text-white font-mono font-black text-sm tracking-wider"
                       id="success-booking-code">—</span>
             </div>
         </div>
 
         {{-- ── Thông tin tóm tắt ── --}}
-        <div class="px-6 py-4 bg-gray-50 border-b border-gray-100 text-sm">
+        <div class="px-5 py-3 bg-gray-50 border-b border-gray-100 text-xs shrink-0">
             <div class="grid grid-cols-2 gap-2">
                 <div>
-                    <p class="text-xs text-gray-500 uppercase tracking-wider font-semibold">Phim</p>
-                    <p id="success-movie" class="font-bold text-gray-900 mt-0.5 leading-tight"></p>
+                    <p class="text-[11px] text-gray-500 uppercase tracking-wider font-semibold">Phim</p>
+                    <p id="success-movie" class="font-bold text-gray-900 mt-0.5 leading-tight truncate"></p>
                 </div>
                 <div>
-                    <p class="text-xs text-gray-500 uppercase tracking-wider font-semibold">Suất chiếu</p>
+                    <p class="text-[11px] text-gray-500 uppercase tracking-wider font-semibold">Suất chiếu</p>
                     <p id="success-time" class="font-bold text-gray-900 mt-0.5"></p>
                 </div>
                 <div>
-                    <p class="text-xs text-gray-500 uppercase tracking-wider font-semibold">Ghế</p>
+                    <p class="text-[11px] text-gray-500 uppercase tracking-wider font-semibold">Ghế</p>
                     <p id="success-seats" class="font-bold text-gray-900 mt-0.5"></p>
                 </div>
                 <div>
-                    <p class="text-xs text-gray-500 uppercase tracking-wider font-semibold">Tổng tiền</p>
-                    <p id="success-total" class="font-black text-green-600 text-base mt-0.5"></p>
+                    <p class="text-[11px] text-gray-500 uppercase tracking-wider font-semibold">Tổng tiền</p>
+                    <p id="success-total" class="font-black text-green-600 text-sm mt-0.5"></p>
                 </div>
             </div>
         </div>
 
         {{-- ── Khu vực hiển thị mã QR điện tử (mặc định ẩn) ── --}}
-        <div id="qr-display-area" class="hidden px-6 py-4 border-b border-gray-100 text-center">
-            <p class="text-xs text-gray-500 font-semibold uppercase tracking-wider mb-3">
+        <div id="qr-display-area" class="hidden px-5 py-2.5 border-b border-gray-100 text-center shrink-0">
+            <p class="text-[11px] text-gray-500 font-semibold uppercase tracking-wider mb-2">
                 Khách quét để nhận vé điện tử
             </p>
-            <div id="qr-code-container" class="flex justify-center mb-2"></div>
+            <div id="qr-code-container" class="flex justify-center mb-1.5"></div>
             <p id="qr-booking-code-label" class="text-[10px] font-mono text-gray-400"></p>
         </div>
 
         {{-- ── 3 nút hành động ── --}}
-        <div class="px-6 py-4 space-y-3">
-            <div class="grid grid-cols-2 gap-3">
+        <div class="px-5 py-3 space-y-2 shrink-0">
+            <div class="grid grid-cols-2 gap-2.5">
                 {{-- Nút 1: In vé giấy --}}
                 <button id="btn-print-ticket"
                         onclick="POS.handlePrintTicket()"
-                        class="flex flex-col items-center gap-1.5 px-4 py-3.5
+                        class="flex flex-col items-center gap-1 px-3 py-2.5
                                border-2 border-blue-600 text-blue-700 bg-blue-50
-                               rounded-xl font-bold text-sm
+                               rounded-xl font-bold text-xs
                                hover:bg-blue-100 hover:border-blue-700
-                               active:scale-95 transition-all duration-150">
-                    <span class="material-symbols-outlined text-blue-600" style="font-size:26px;">print</span>
+                               active:scale-95 transition-all duration-150 cursor-pointer">
+                    <span class="material-symbols-outlined text-blue-600 text-xl">print</span>
                     <span>In Vé Giấy</span>
-                    <span class="text-[10px] font-normal text-blue-500">Máy in 80mm</span>
+                    <span class="text-[9px] font-normal text-blue-500">Máy in 80mm</span>
                 </button>
 
                 {{-- Nút 2: Quét mã QR --}}
                 <button id="btn-show-qr"
                         onclick="POS.handleShowQR()"
-                        class="flex flex-col items-center gap-1.5 px-4 py-3.5
+                        class="flex flex-col items-center gap-1 px-3 py-2.5
                                bg-blue-700 text-white
-                               rounded-xl font-bold text-sm
+                               rounded-xl font-bold text-xs
                                hover:bg-blue-800
-                               active:scale-95 transition-all duration-150">
-                    <span class="material-symbols-outlined" style="font-size:26px;">qr_code_scanner</span>
+                               active:scale-95 transition-all duration-150 cursor-pointer">
+                    <span class="material-symbols-outlined text-xl">qr_code_scanner</span>
                     <span>Vé Điện Tử</span>
-                    <span class="text-[10px] font-normal text-blue-200">Khách quét QR</span>
+                    <span class="text-[9px] font-normal text-blue-200">Khách quét QR</span>
                 </button>
             </div>
 
             {{-- Nút 3: Hoàn tất & Tạo đơn mới --}}
             <button id="btn-new-order"
                     onclick="POS.resetPOS()"
-                    class="w-full flex items-center justify-center gap-2
-                           py-3.5 bg-gray-900 hover:bg-gray-700
-                           text-white font-black text-sm rounded-xl
-                           active:scale-[0.98] transition-all duration-150">
-                <span class="material-symbols-outlined" style="font-size:20px;">add_circle</span>
+                    class="w-full flex items-center justify-center gap-1.5
+                           py-2.5 bg-gray-900 hover:bg-gray-700
+                           text-white font-black text-xs uppercase tracking-wider rounded-xl
+                           shadow-md active:scale-[0.98] transition-all duration-150 cursor-pointer">
+                <span class="material-symbols-outlined text-base">add_circle</span>
                 Hoàn Tất & Tạo Đơn Mới
                 <kbd class="ml-1 px-1.5 py-0.5 text-[9px] bg-white/20 rounded font-mono">F2</kbd>
             </button>
@@ -1566,7 +1566,7 @@ const POS = (() => {
         const qrCon  = document.getElementById('qr-code-container');
         qrCon.innerHTML = '';
         const qrVal = b.seats[0].qr || b.booking_code;
-        new QRCode(qrCon, { text: qrVal, width: 160, height: 160, correctLevel: QRCode.CorrectLevel.M });
+        new QRCode(qrCon, { text: qrVal, width: 120, height: 120, correctLevel: QRCode.CorrectLevel.M });
         document.getElementById('qr-booking-code-label').textContent = qrVal;
         qrArea.classList.remove('hidden');
     }

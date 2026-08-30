@@ -17,6 +17,21 @@ class StaffMiddleware
 
         $user = Auth::user();
 
+        // Kiểm tra tài khoản có bị khóa không
+        if ($user->status !== 'active') {
+            Auth::logout();
+            $request->session()->invalidate();
+            $request->session()->regenerateToken();
+
+            if ($request->expectsJson()) {
+                return response()->json(['message' => 'Tài khoản của bạn đã bị khóa. Vui lòng liên hệ quản trị viên.'], 403);
+            }
+
+            return redirect()->route('staff.login')->withErrors([
+                'email' => 'Tài khoản của bạn đã bị khóa. Vui lòng liên hệ quản trị viên.',
+            ]);
+        }
+
         if ($user->roles()->where('name', 'staff')->exists()) {
             return $next($request);
         }
