@@ -14,12 +14,30 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
+        $middleware->redirectGuestsTo(function (Request $request) {
+            if ($request->is('admin*') || $request->routeIs('admin.*')) {
+                return route('admin.login');
+            }
+            if ($request->is('manager*') || $request->routeIs('manager.*')) {
+                return route('manager.login');
+            }
+            if ($request->is('staff*') || $request->routeIs('staff.*')) {
+                return route('staff.login');
+            }
+            return route('login');
+        });
+
+        $middleware->web(append: [
+            \App\Http\Middleware\CheckUserStatus::class,
+        ]);
+
         $middleware->alias([
-            'admin'    => \App\Http\Middleware\AdminMiddleware::class,
-            'manager'  => \App\Http\Middleware\ManagerMiddleware::class,
-            'customer' => \App\Http\Middleware\CustomerMiddleware::class,
-            'staff'    => \App\Http\Middleware\StaffMiddleware::class,
-            'guest'    => \App\Http\Middleware\RedirectIfAuthenticated::class,
+            'admin'        => \App\Http\Middleware\AdminMiddleware::class,
+            'manager'      => \App\Http\Middleware\ManagerMiddleware::class,
+            'customer'     => \App\Http\Middleware\CustomerMiddleware::class,
+            'staff'        => \App\Http\Middleware\StaffMiddleware::class,
+            'guest'        => \App\Http\Middleware\RedirectIfAuthenticated::class,
+            'check.status' => \App\Http\Middleware\CheckUserStatus::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

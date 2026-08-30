@@ -8,6 +8,7 @@ use App\Models\User;
 use App\Models\UserCinema;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 
 class ManagerStaffController extends Controller
@@ -225,6 +226,7 @@ class ManagerStaffController extends Controller
         $staff = $this->findStaffInMyCinemas((int)$id);
 
         UserCinema::where('user_id', $staff->id)->delete();
+        DB::table('sessions')->where('user_id', $staff->id)->delete();
         $staff->delete();
 
         return redirect()
@@ -242,10 +244,9 @@ class ManagerStaffController extends Controller
     {
         $staff = $this->findStaffInMyCinemas((int)$id);
 
+        $newStatus = $staff->status === 'active' ? 'locked' : 'active';
         $staff->update([
-            'status' => $staff->status === 'active'
-                ? 'locked'
-                : 'active'
+            'status' => $newStatus
         ]);
 
         return redirect()

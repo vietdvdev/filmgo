@@ -21,6 +21,21 @@ class ManagerMiddleware
 
         $user = Auth::user();
 
+        // Kiểm tra tài khoản có bị khóa không
+        if ($user->status !== 'active') {
+            Auth::logout();
+            $request->session()->invalidate();
+            $request->session()->regenerateToken();
+
+            if ($request->expectsJson()) {
+                return response()->json(['message' => 'Tài khoản của bạn đã bị khóa. Vui lòng liên hệ quản trị viên.'], 403);
+            }
+
+            return redirect()->route('manager.login')->withErrors([
+                'email' => 'Tài khoản của bạn đã bị khóa. Vui lòng liên hệ quản trị viên.',
+            ]);
+        }
+
         // Chỉ role 'manager' được phép vào khu vực Manager
         if ($user->roles()->where('name', 'manager')->exists()) {
             // === TRƯỜNG HỢP 3: Manager chưa được phân công rạp ===

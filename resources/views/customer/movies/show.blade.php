@@ -81,13 +81,14 @@
                         <!-- Actors -->
                         @if($movie->actors->count() > 0)
                             <div class="border-t border-slate-150 pt-6">
-                                <span class="block text-xs text-slate-400 font-black uppercase tracking-widest mb-3">Diễn viên</span>
+                                <span class="block text-xs text-slate-500 font-black uppercase tracking-widest mb-3">Diễn viên</span>
                                 <div class="flex flex-wrap gap-2">
                                     @foreach($movie->actors as $actor)
-                                        <span class="px-3 py-1.5 text-xs font-semibold text-slate-650 bg-slate-50 rounded-none border border-slate-200">
-                                            {{ $actor->name }}
+                                        <span class="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-bold text-slate-800 bg-slate-100 rounded-lg border border-slate-200 shadow-sm">
+                                            <span class="material-symbols-outlined text-xs text-slate-400">person</span>
+                                            <span>{{ $actor->name }}</span>
                                             @if($actor->pivot && $actor->pivot->role_name)
-                                                <span class="text-slate-400 text-[10px] font-medium">({{ $actor->pivot->role_name }})</span>
+                                                <span class="text-slate-500 text-[11px] font-medium">({{ $actor->pivot->role_name }})</span>
                                             @endif
                                         </span>
                                     @endforeach
