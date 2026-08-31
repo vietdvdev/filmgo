@@ -86,55 +86,82 @@
                                 </span>
                             </div>
 
-                            <div class="grid grid-cols-2 sm:grid-cols-4 gap-x-4 gap-y-1.5 text-xs">
-                                <div>
-                                    <p class="text-gray-400 font-semibold mb-0.5">Loại đơn</p>
-                                    <p class="text-gray-800 font-bold truncate">
-                                        {{ $isComboOnly ? 'Bắp Nước (F&B)' : (optional(optional(optional($booking->showtime)->room)->cinema)->name ?? 'Xem Phim') }}
-                                    </p>
+                            @if($isComboOnly)
+                                <div class="mb-2">
+                                    <div class="flex items-center gap-2 mb-2">
+                                        <span class="material-symbols-outlined text-brand-primary text-[18px]">local_dining</span>
+                                        <span class="text-xs font-bold text-gray-800 uppercase">Chi tiết Bắp Nước</span>
+                                    </div>
+                                    <ul class="text-xs font-semibold text-gray-700 space-y-1 mb-3 pl-6 border-l-2 border-dashed border-gray-200">
+                                        @forelse($booking->combos as $combo)
+                                            <li>{{ $combo->name }} <span class="text-brand-primary font-bold">x{{ $combo->pivot->quantity }}</span></li>
+                                        @empty
+                                            <li>Không có thông tin bắp nước</li>
+                                        @endforelse
+                                    </ul>
+                                    <div class="grid grid-cols-2 gap-2 text-xs">
+                                        <div>
+                                            <p class="text-gray-400 font-semibold mb-0.5">Nhận tại rạp</p>
+                                            <p class="text-brand-primary font-bold truncate">{{ optional($booking->cinema)->name ?? 'Chưa xác định' }}</p>
+                                        </div>
+                                        <div>
+                                            <p class="text-gray-400 font-semibold mb-0.5">Ngày đặt</p>
+                                            <p class="text-gray-800 font-bold">{{ $booking->created_at->format('d/m/Y') }}</p>
+                                        </div>
+                                    </div>
                                 </div>
-                                <div>
-                                    <p class="text-gray-400 font-semibold mb-0.5">Rạp / Suất chiếu</p>
-                                    <p class="text-brand-primary font-bold">
-                                        @if($isComboOnly)
-                                            {{ optional($booking->cinema)->name ?? 'Chưa xác định' }}
-                                        @else
+                            @else
+                                <div class="grid grid-cols-2 sm:grid-cols-4 gap-x-4 gap-y-1.5 text-xs">
+                                    <div>
+                                        <p class="text-gray-400 font-semibold mb-0.5">Loại đơn</p>
+                                        <p class="text-gray-800 font-bold truncate">
+                                            {{ optional(optional(optional($booking->showtime)->room)->cinema)->name ?? 'Xem Phim' }}
+                                        </p>
+                                    </div>
+                                    <div>
+                                        <p class="text-gray-400 font-semibold mb-0.5">Rạp / Suất chiếu</p>
+                                        <p class="text-brand-primary font-bold">
                                             {{ $booking->showtime ? \Carbon\Carbon::parse($booking->showtime->start_time)->format('H:i') : '—' }}
                                             · {{ $booking->showtime ? $booking->showtime->show_date->format('d/m/Y') : '' }}
-                                        @endif
-                                    </p>
-                                </div>
-                                <div>
-                                    <p class="text-gray-400 font-semibold mb-0.5">Ghế / Sản phẩm</p>
-                                    <p class="text-gray-800 font-bold truncate">
-                                        @if($isComboOnly)
-                                            Nhận tại quầy F&B
-                                        @else
+                                        </p>
+                                    </div>
+                                    <div>
+                                        <p class="text-gray-400 font-semibold mb-0.5">Ghế / Sản phẩm</p>
+                                        <p class="text-gray-800 font-bold truncate">
                                             {{ $seats ?: '—' }}
-                                        @endif
-                                    </p>
+                                        </p>
+                                    </div>
+                                    <div>
+                                        <p class="text-gray-400 font-semibold mb-0.5">Ngày đặt</p>
+                                        <p class="text-gray-800 font-bold">{{ $booking->created_at->format('d/m/Y') }}</p>
+                                    </div>
                                 </div>
-                                <div>
-                                    <p class="text-gray-400 font-semibold mb-0.5">Ngày đặt</p>
-                                    <p class="text-gray-800 font-bold">{{ $booking->created_at->format('d/m/Y') }}</p>
-                                </div>
-                            </div>
+                            @endif
 
                             {{-- Badge hạn sử dụng bắp nước --}}
                             @if($isComboOnly && $booking->combo_expires_at)
                                 @if($booking->isComboExpired())
-                                    <div class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-bold bg-red-50 text-red-600 border border-red-200">
-                                        <span class="material-symbols-outlined text-xs">schedule</span>
-                                        Đã hết hạn sử dụng ({{ $booking->combo_expires_at->format('d/m/Y') }})
+                                    <div class="mt-2 text-[11px] bg-red-50 text-red-700 p-2 rounded-lg border border-red-200">
+                                        <div class="font-bold mb-0.5 flex items-center gap-1">
+                                            <span class="material-symbols-outlined text-[14px]">error</span>
+                                            Đã hết hạn sử dụng ({{ $booking->combo_expires_at->format('d/m/Y') }})
+                                        </div>
+                                        <p class="text-red-600 mt-1">Đơn bắp nước đã hết hạn sử dụng, không thể nhận hàng.</p>
                                     </div>
                                 @else
-                                    <div class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-bold bg-orange-50 text-orange-600 border border-orange-200">
-                                        <span class="material-symbols-outlined text-xs">schedule</span>
-                                        Hạn dùng: {{ $booking->combo_expires_at->format('d/m/Y') }}
-                                        @php $days = $booking->comboDaysRemaining(); @endphp
-                                        @if($days !== null)
-                                            · Còn {{ $days }} ngày
-                                        @endif
+                                    <div class="mt-2 text-[11px] bg-orange-50 text-orange-700 p-2 rounded-lg border border-orange-200">
+                                        <div class="font-bold mb-0.5 flex items-center gap-1">
+                                            <span class="material-symbols-outlined text-[14px]">schedule</span>
+                                            Hạn dùng: {{ $booking->combo_expires_at->format('d/m/Y') }}
+                                            @php $days = $booking->comboDaysRemaining(); @endphp
+                                            @if($days !== null)
+                                                <span class="text-brand-primary ml-1">(Còn {{ $days }} ngày)</span>
+                                            @endif
+                                        </div>
+                                        <p class="text-orange-600 mt-1.5 flex gap-1 items-start leading-snug">
+                                            <span class="material-symbols-outlined text-[14px] flex-shrink-0 mt-0.5">warning</span>
+                                            <span>Vui lòng đến <strong>{{ optional($booking->cinema)->name ?? 'rạp' }}</strong> nhận bắp nước trước ngày <strong>{{ $booking->combo_expires_at->format('d/m/Y') }}</strong>. Quá hạn đơn hàng sẽ mất hiệu lực và không được sử dụng.</span>
+                                        </p>
                                     </div>
                                 @endif
                             @endif

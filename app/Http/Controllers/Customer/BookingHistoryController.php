@@ -25,6 +25,7 @@ class BookingHistoryController extends Controller
                 'cinema:id,name',
                 'bookingDetails',
                 'payments:id,booking_id,payment_method,payment_status',
+                'combos'
             ])
             ->where('user_id', Auth::id())
             ->customerHistory()             // Chỉ lấy các đơn đã thanh toán thành công, ẩn triệt để đơn hủy/thất bại

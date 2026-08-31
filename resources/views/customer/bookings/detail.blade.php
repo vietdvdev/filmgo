@@ -111,19 +111,19 @@
             {{ $booking->isComboExpired()
                 ? 'bg-red-50 border border-red-200'
                 : 'bg-orange-50 border border-orange-200' }}">
-            <span class="material-symbols-outlined text-xl mt-0.5 {{ $booking->isComboExpired() ? 'text-red-500' : 'text-orange-500' }}">schedule</span>
+            <span class="material-symbols-outlined text-xl mt-0.5 flex-shrink-0 {{ $booking->isComboExpired() ? 'text-red-500' : 'text-orange-500' }}">{{ $booking->isComboExpired() ? 'error' : 'schedule' }}</span>
             <div>
                 @if($booking->isComboExpired())
                     <p class="text-sm font-black text-red-700 mb-0.5">Đơn Hàng Đã Hết Hạn Sử Dụng</p>
-                    <p class="text-xs text-red-600">Hạn dùng <strong>{{ $booking->combo_expires_at->format('H:i — d/m/Y') }}</strong> đã qua. Đơn hàng không còn hiệu lực.</p>
+                    <p class="text-xs text-red-600">Đơn bắp nước đã hết hạn sử dụng ({{ $booking->combo_expires_at->format('d/m/Y') }}), không thể nhận hàng.</p>
                 @else
-                    <p class="text-sm font-black text-orange-700 mb-0.5">Hạn Sử Dụng Bắp Nước</p>
-                    <p class="text-xs text-orange-600">
-                        Đến quầy F&amp;B trước <strong>{{ $booking->combo_expires_at->format('H:i — d/m/Y') }}</strong>.
+                    <p class="text-sm font-black text-orange-700 mb-0.5">Hạn Sử Dụng Bắp Nước: {{ $booking->combo_expires_at->format('d/m/Y') }}</p>
+                    <p class="text-xs text-orange-600 leading-relaxed mt-1">
                         @php $days = $booking->comboDaysRemaining(); @endphp
                         @if($days !== null)
-                            Còn <strong>{{ $days }} ngày</strong>.
+                            <span class="font-bold">Còn {{ $days }} ngày.</span>
                         @endif
+                        Vui lòng đến <strong>{{ optional($booking->cinema)->name ?? 'rạp' }}</strong> nhận bắp nước trước ngày <strong>{{ $booking->combo_expires_at->format('d/m/Y') }}</strong>. Quá hạn đơn hàng sẽ mất hiệu lực và không được sử dụng.
                     </p>
                 @endif
             </div>
