@@ -238,7 +238,7 @@ class RoomSeatSyncService
 
             if ($upcomingShowtimes->isNotEmpty()) {
                 $surchargeMap = \App\Models\SeatType::all()->pluck('surcharge_price', 'id');
-                $newSeats = Seat::where('room_id', $room->id)->select('id', 'seat_type_id')->get();
+                $newSeats = Seat::where('room_id', $room->id)->select('id', 'seat_type_id', 'status')->get();
 
                 foreach ($upcomingShowtimes as $showtime) {
                     // Giữ lại các ghế đã được đặt (booked) hoặc đang giữ chỗ (holding) để bảo toàn giao dịch
@@ -247,12 +247,12 @@ class RoomSeatSyncService
                         ->pluck('seat_id')
                         ->toArray();
 
-                    // Xóa các ghế trống (available) cũ
+                    // Xóa các ghế trống (available) và ghế bảo trì (maintenance) cũ
                     \App\Models\ShowtimeSeat::where('showtime_id', $showtime->id)
-                        ->where('status', 'available')
+                        ->whereIn('status', ['available', 'maintenance'])
                         ->delete();
 
-                    // Sinh lại ghế trống (available) mới theo sơ đồ phòng vừa tạo
+                    // Sinh lại ghế theo sơ đồ phòng vừa tạo (kế thừa trạng thái bảo trì/trống từ bảng seats)
                     $showtimeSeatsData = [];
                     foreach ($newSeats as $seat) {
                         if (in_array($seat->id, $existingBookedSeatIds)) {
@@ -263,7 +263,7 @@ class RoomSeatSyncService
                             'showtime_id' => $showtime->id,
                             'seat_id'     => $seat->id,
                             'user_id'     => null,
-                            'status'      => 'available',
+                            'status'      => ($seat->status === 'maintenance') ? 'maintenance' : 'available',
                             'price'       => $showtime->base_price + $surcharge,
                             'locked_at'   => null,
                             'expires_at'  => null,

@@ -102,6 +102,11 @@ class SeatValidationService
             $ss = $allSeats->get($id);
             $seatLabel = $ss->seat->seat_row . $ss->seat->seat_number;
 
+            // Ghế đang bảo trì (kiểm tra cả trạng thái suất chiếu lẫn trạng thái vật lý của ghế)
+            if ($ss->status === 'maintenance' || $ss->seat?->status === 'maintenance') {
+                return $this->fail("Ghế {$seatLabel} hiện đang bảo trì, vui lòng chọn ghế khác.");
+            }
+
             // Ghế đang bị người khác giữ còn hạn (Rule 7)
             if ($ss->status === 'locked' && $ss->user_id !== $userId && $ss->expires_at && $ss->expires_at->isFuture()) {
                 return $this->fail("Ghế {$seatLabel} đang được người khác giữ.");
@@ -142,7 +147,7 @@ class SeatValidationService
      * Thuật toán phát hiện ghế cô đơn (Single Seat Rule) — giống CGV.
      *
      * Logic: Với mỗi hàng, xây dựng mảng trạng thái ghế:
-     *   - 'X' = không khả dụng (đã bán / đang giữ bởi người khác)
+     *   - 'X' = không khả dụng (đã bán / đang giữ bởi người khác / bảo trì)
      *   - 'S' = khách đang chọn
      *   - 'O' = trống (available)
      *
@@ -166,6 +171,7 @@ class SeatValidationService
                 $seatNumber = $ss->seat->seat_number;
                 $isSelected = isset($selectedSet[$ss->id]);
                 $isUnavailable = in_array($ss->status, self::UNAVAILABLE_STATUSES)
+                    || $ss->seat?->status === 'maintenance'
                     || ($ss->status === 'locked' && $ss->user_id !== $userId && $ss->expires_at?->isFuture())
                     || ($ss->status === 'holding' && $ss->user_id !== $userId);
 
@@ -309,6 +315,13 @@ class SeatValidationService
                 ->get();
 
             foreach ($seats as $ss) {
+                if ($ss->status === 'maintenance' || $ss->seat?->status === 'maintenance') {
+                    return [
+                        'success' => false,
+                        'message' => 'Ghế ' . $ss->seat->seat_row . $ss->seat->seat_number . ' hiện đang bảo trì.',
+                    ];
+                }
+
                 // Cho phép nếu chính user đang giữ (Rule 28)
                 if (($ss->status === 'holding' || $ss->status === 'locked') && $ss->user_id === $userId) {
                     continue;

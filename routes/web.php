@@ -259,6 +259,7 @@ Route::prefix('manager')->group(function () {
         Route::post('/showtimes', [App\Http\Controllers\Manager\ManagerShowtimeController::class, 'store'])->name('manager.showtimes.store');
         Route::patch('/showtimes/{id}/cancel', [App\Http\Controllers\Manager\ManagerShowtimeController::class, 'cancelShowtime'])->name('manager.showtimes.cancel');
         Route::get('/showtimes/{id}/seats', [App\Http\Controllers\Manager\ManagerShowtimeController::class, 'seatStatus'])->name('manager.showtimes.seats');
+        Route::patch('/showtimes/{id}/seats/{seatId}/toggle-maintenance', [App\Http\Controllers\Manager\ManagerShowtimeController::class, 'apiToggleSeatStatus'])->name('manager.showtimes.seats.toggle-maintenance');
 
         // API endpoints cho Vue Form (paths tương đối so với prefix /manager)
         Route::get('/showtimes/api/formats-by-movie/{movieId}', [App\Http\Controllers\Manager\Api\ManagerShowtimeApiController::class, 'getFormatsByMovie'])->name('manager.showtimes.api.formats-by-movie');

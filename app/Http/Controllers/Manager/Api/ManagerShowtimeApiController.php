@@ -484,7 +484,7 @@ class ManagerShowtimeApiController extends Controller
 
             $showtimeSeatsData = [];
             \App\Models\Seat::where('room_id', $room->id)
-                ->select('id', 'seat_type_id')
+                ->select('id', 'seat_type_id', 'status')
                 ->chunk(500, function ($seats) use ($showtime, $basePrice, $surchargeMap, &$showtimeSeatsData) {
                     foreach ($seats as $seat) {
                         $surcharge = (int) ($surchargeMap[$seat->seat_type_id] ?? 0);
@@ -492,7 +492,7 @@ class ManagerShowtimeApiController extends Controller
                             'showtime_id' => $showtime->id,
                             'seat_id'     => $seat->id,
                             'user_id'     => null,
-                            'status'      => 'available',
+                            'status'      => ($seat->status === 'maintenance') ? 'maintenance' : 'available',
                             // [v2.0] Snapshot giá = base_price + surcharge loại ghế
                             'price'       => $basePrice + $surcharge,
                             'locked_at'   => null,

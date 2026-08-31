@@ -239,10 +239,9 @@ class AutoGenerateController extends Controller
                 ->pluck('id')
                 ->toArray();
 
-            // Lấy toàn bộ danh sách ghế đang hoạt động của phòng chiếu này
-            // [v2.0] Tối ưu: Lấy danh sách ghế và seat_type_id
+            // Lấy toàn bộ danh sách ghế của phòng chiếu này
             $seats = Seat::where('room_id', $roomId)
-                ->select('id', 'seat_type_id')
+                ->select('id', 'seat_type_id', 'status')
                 ->get();
 
             if ($seats->isEmpty()) {
@@ -278,7 +277,7 @@ class AutoGenerateController extends Controller
                             'showtime_id' => $showtimeId,
                             'seat_id'     => $seat->id,
                             'user_id'     => null,
-                            'status'      => 'available',
+                            'status'      => ($seat->status === 'maintenance') ? 'maintenance' : 'available',
                             // [v2.0] Snapshot giá tại thời điểm tạo suất: base_price + surcharge_price loại ghế
                             // Backend sau này chỉ cần SUM(price) để tính tổng giỏ hàng mà không tính lại công thức
                             'price'       => $basePrice + $surcharge,

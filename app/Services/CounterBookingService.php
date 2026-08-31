@@ -85,6 +85,12 @@ class CounterBookingService
             }
 
             foreach ($showtimeSeats as $ss) {
+                // Ghế bảo trì thì không được bán
+                if ($ss->status === 'maintenance' || $ss->seat?->status === 'maintenance') {
+                    throw new Exception(
+                        "Ghế {$ss->seat->seat_row}{$ss->seat->seat_number} đang trong tình trạng bảo trì. Không thể bán vé."
+                    );
+                }
                 // Ghế 'booked' (đã bán hoàn tất) thì không thể bán lại
                 if ($ss->status === 'booked') {
                     throw new Exception(

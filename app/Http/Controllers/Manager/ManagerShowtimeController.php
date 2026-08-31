@@ -321,7 +321,7 @@ class ManagerShowtimeController extends Controller
             // Eager-load seatType để tránh N+1 query trong vòng lặp chunk
             Seat::where('room_id', $room->id)
                 ->with('seatType:id,surcharge_price')
-                ->select('id', 'seat_type_id')
+                ->select('id', 'seat_type_id', 'status')
                 ->chunk(500, function ($seats) use ($showtime, $basePrice, $surchargeMap, &$showtimeSeatsData) {
                     foreach ($seats as $seat) {
                         // Đọc surcharge_price từ relation; fallback = 0 nếu ghế chưa gán type
@@ -331,7 +331,7 @@ class ManagerShowtimeController extends Controller
                             'showtime_id' => $showtime->id,
                             'seat_id'     => $seat->id,
                             'user_id'     => null,
-                            'status'      => 'available',
+                            'status'      => ($seat->status === 'maintenance') ? 'maintenance' : 'available',
                             // [v2.0] Snapshot giá = base_price suất + surcharge_price loại ghế
                             'price'       => $basePrice + $surcharge,
                             'locked_at'   => null,
@@ -431,12 +431,35 @@ class ManagerShowtimeController extends Controller
         $seatsGrouped = $showtimeSeats->groupBy(fn($item) => $item->seat->seat_row)->sortKeys();
 
         $stats = [
-            'total'     => $showtimeSeats->count(),
-            'available' => $showtimeSeats->where('status', 'available')->count(),
-            'holding'   => $showtimeSeats->where('status', 'holding')->count(),
-            'booked'    => $showtimeSeats->where('status', 'booked')->count(),
+            'total'       => $showtimeSeats->count(),
+            'available'   => $showtimeSeats->where('status', 'available')->count(),
+            'holding'     => $showtimeSeats->whereIn('status', ['holding', 'hold'])->count(),
+            'booked'      => $showtimeSeats->where('status', 'booked')->count(),
+            'maintenance' => $showtimeSeats->where('status', 'maintenance')->count(),
         ];
 
         return view('manager.showtimes.seats', compact('showtime', 'seatsGrouped', 'stats'));
+    }
+
+    /**
+     * API: Chuyển đổi trạng thái ghế bảo trì / trống cho riêng một suất chiếu.
+     */
+    public function apiToggleSeatStatus(Request $request, $showtimeId, $seatId, \App\Services\ManagerSeatService $seatService)
+    {
+        $cinemaIds = $this->getCinemaIds();
+        $showtime = Showtime::with('room')->findOrFail($showtimeId);
+
+        if (!in_array($showtime->room->cinema_id, $cinemaIds)) {
+            return response()->json(['success' => false, 'message' => 'Bạn không có quyền quản lý suất chiếu này.'], 403);
+        }
+
+        try {
+            $result = $seatService->toggleShowtimeSeatStatus((int)$showtimeId, (int)$seatId, $showtime->room->cinema_id);
+            return response()->json($result);
+        } catch (\InvalidArgumentException $e) {
+            return response()->json(['success' => false, 'message' => $e->getMessage()], 400);
+        } catch (\Exception $e) {
+            return response()->json(['success' => false, 'message' => 'Có lỗi xảy ra: ' . $e->getMessage()], 500);
+        }
     }
 }

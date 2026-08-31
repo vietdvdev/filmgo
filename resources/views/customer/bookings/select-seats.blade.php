@@ -92,18 +92,28 @@
                                                         // Ghế do CHÍNH user hiện tại đang giữ (holding/locked) từ session trước
                                                         $isHeldByMe = $isSaved && in_array($ss->status, ['holding', 'locked']);
 
-                                                        // Ghế bị chiếm khi: không phải available VÀ không phải do mình giữ
-                                                        $isBooked = ($ss->status !== 'available') && !$isHeldByMe;
+                                                        // Ghế đang bảo trì (tầng suất chiếu hoặc tầng ghế vật lý)
+                                                        $isMaintenance = ($ss->status === 'maintenance') || ($ss->seat->status === 'maintenance');
 
-                                                        // Xác định class CSS
+                                                        // Ghế bị chiếm khi: không phải available VÀ không phải do mình giữ VÀ không phải bảo trì
+                                                        $isBooked = ($ss->status !== 'available') && !$isHeldByMe && !$isMaintenance;
+
+                                                        // Xác định class CSS & title
                                                         $btnClass = 'w-9 h-9 flex-shrink-0 rounded-xl border-2 flex items-center justify-center text-xs font-black transition-all duration-200 ';
+                                                        $seatTitle = "Ghế {$row}{$ss->seat->seat_number} - {$seatType->name}";
 
                                                         if ($isHeldByMe) {
                                                             // Ghế đang do mình giữ → hiển thị màu đỏ selected
                                                             $btnClass .= 'bg-brand-primary border-brand-primary text-white shadow-[0_0_12px_rgba(229,9,20,0.4)] scale-110 z-10 selected-seat';
+                                                            $seatTitle .= ' (Đang chọn)';
+                                                        } elseif ($isMaintenance) {
+                                                            // Ghế đang bảo trì
+                                                            $btnClass .= 'bg-rose-50 border-rose-300 text-rose-500 cursor-not-allowed opacity-80 seat-maintenance';
+                                                            $seatTitle .= ' (Đang bảo trì)';
                                                         } elseif ($isBooked) {
                                                             // Ghế đã có người khác đặt → disabled
                                                             $btnClass .= 'bg-slate-200 border-slate-300 text-slate-400 cursor-not-allowed opacity-70';
+                                                            $seatTitle .= ' (Đã có khách)';
                                                         } else {
                                                             // Ghế trống → màu theo loại ghế
                                                             if ($seatType->name === 'VIP') {
@@ -122,8 +132,13 @@
                                                             data-number="{{ $ss->seat->seat_number }}"
                                                             data-price="{{ $showtime->base_price + ($seatType->surcharge_price ?? 0) }}"
                                                             data-type="{{ $seatType->name }}"
-                                                            @if($isBooked) disabled @endif>
-                                                        {{ $ss->seat->seat_number }}
+                                                            title="{{ $seatTitle }}"
+                                                            @if($isBooked || $isMaintenance) disabled @endif>
+                                                        @if($isMaintenance)
+                                                            <span class="material-symbols-outlined text-[15px]">build</span>
+                                                        @else
+                                                            {{ $ss->seat->seat_number }}
+                                                        @endif
                                                     </button>
                                                 @else
                                                     {{-- Lối đi / Ô trống --}}
@@ -163,6 +178,12 @@
                         <div class="flex items-center gap-2">
                             <span class="w-5 h-5 rounded-md bg-slate-200 border-2 border-slate-300 block opacity-70"></span>
                             <span class="text-xs text-slate-400 font-semibold">Đã Có Khách</span>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <span class="w-5 h-5 rounded-md bg-rose-50 border-2 border-rose-300 flex items-center justify-center text-rose-500 shadow-sm">
+                                <span class="material-symbols-outlined text-[13px]">build</span>
+                            </span>
+                            <span class="text-xs text-slate-600 font-semibold">Ghế Bảo Trì</span>
                         </div>
                     </div>
                 </div>

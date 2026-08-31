@@ -190,12 +190,141 @@ class ManagerSeatService
             if (!in_array($data['status'], ['active', 'maintenance'])) {
                 throw new InvalidArgumentException('Trạng thái ghế không hợp lệ.');
             }
+
+            // Nếu Manager muốn chuyển ghế sang trạng thái bảo trì,
+            // kiểm tra xem ghế này đã có vé được đặt (booked) hoặc đang giữ (holding) trong các suất chiếu chưa bắt đầu của phòng hay không
+            if ($data['status'] === 'maintenance') {
+                $nowStr = now()->toDateTimeString();
+                $activeBooking = DB::table('showtime_seats')
+                    ->join('showtimes', 'showtimes.id', '=', 'showtime_seats.showtime_id')
+                    ->join('movies', 'movies.id', '=', 'showtimes.movie_id')
+                    ->where('showtime_seats.seat_id', $seatId)
+                    ->whereIn('showtime_seats.status', ['booked', 'holding', 'hold'])
+                    ->whereIn('showtimes.status', ['upcoming', 'active'])
+                    ->where(DB::raw("CONCAT(showtimes.show_date, ' ', showtimes.end_time)"), '>', $nowStr)
+                    ->select('movies.title', 'showtimes.start_time', 'showtimes.show_date')
+                    ->first();
+
+                if ($activeBooking) {
+                    $timeFormatted = \Carbon\Carbon::parse($activeBooking->start_time)->format('H:i');
+                    $dateFormatted = \Carbon\Carbon::parse($activeBooking->show_date)->format('d/m/Y');
+                    throw new InvalidArgumentException(
+                        "Không thể chuyển ghế {$seat->seat_row}{$seat->seat_number} sang bảo trì vì đã có khách đặt/giữ vé trong suất chiếu \"{$activeBooking->title}\" ({$timeFormatted} ngày {$dateFormatted})."
+                    );
+                }
+            }
+
             $seat->status = $data['status'];
         }
 
         $seat->save();
 
+        // Đồng bộ trạng thái ghế vào showtime_seats cho các suất chiếu sắp tới của phòng
+        if (isset($data['status'])) {
+            $nowStr = now()->toDateTimeString();
+            $upcomingShowtimeIds = \App\Models\Showtime::where('room_id', $roomId)
+                ->whereIn('status', ['upcoming', 'active'])
+                ->where(DB::raw("CONCAT(show_date, ' ', end_time)"), '>', $nowStr)
+                ->pluck('id');
+
+            if ($upcomingShowtimeIds->isNotEmpty()) {
+                if ($seat->status === 'maintenance') {
+                    \App\Models\ShowtimeSeat::whereIn('showtime_id', $upcomingShowtimeIds)
+                        ->where('seat_id', $seatId)
+                        ->where('status', 'available')
+                        ->update(['status' => 'maintenance']);
+                } else {
+                    \App\Models\ShowtimeSeat::whereIn('showtime_id', $upcomingShowtimeIds)
+                        ->where('seat_id', $seatId)
+                        ->where('status', 'maintenance')
+                        ->update(['status' => 'available']);
+                }
+            }
+        }
+
         return $seat->load('seatType');
+    }
+
+    /**
+     * Chuyển đổi trạng thái ghế bảo trì / khả dụng cho riêng một suất chiếu cụ thể.
+     *
+     * @param int $showtimeId
+     * @param int $showtimeSeatId
+     * @param int $cinemaId
+     * @return array
+     * @throws AuthorizationException|NotFoundHttpException|InvalidArgumentException
+     */
+    public function toggleShowtimeSeatStatus(int $showtimeId, int $showtimeSeatId, int $cinemaId): array
+    {
+        $showtime = \App\Models\Showtime::with(['room', 'movie'])->find($showtimeId);
+        if (!$showtime) {
+            throw new NotFoundHttpException('Suất chiếu không tồn tại.');
+        }
+
+        // Kiểm tra quyền quản lý rạp của suất chiếu
+        if ($showtime->room->cinema_id !== $cinemaId) {
+            throw new AuthorizationException('Bạn không có quyền quản lý suất chiếu của rạp khác.');
+        }
+
+        // Kiểm tra suất chiếu đã bắt đầu hoặc đã kết thúc
+        $nowStr = now()->toDateTimeString();
+        $startDateTimeStr = $showtime->show_date->format('Y-m-d') . ' ' . $showtime->start_time;
+
+        if (in_array($showtime->status, ['showing', 'finished', 'cancelled']) || $startDateTimeStr <= $nowStr) {
+            throw new InvalidArgumentException('Suất chiếu này đã bắt đầu hoặc đã kết thúc. Không thể thay đổi trạng thái ghế.');
+        }
+
+        $showtimeSeat = \App\Models\ShowtimeSeat::with(['seat', 'seat.seatType'])
+            ->where('id', $showtimeSeatId)
+            ->where('showtime_id', $showtimeId)
+            ->first();
+
+        if (!$showtimeSeat) {
+            throw new NotFoundHttpException('Ghế không thuộc suất chiếu này.');
+        }
+
+        $seatLabel = $showtimeSeat->seat->seat_row . $showtimeSeat->seat->seat_number;
+
+        if ($showtimeSeat->status === 'booked') {
+            throw new InvalidArgumentException("Ghế {$seatLabel} đã được bán cho khách hàng. Không thể chuyển sang bảo trì!");
+        }
+
+        if (in_array($showtimeSeat->status, ['holding', 'hold'])) {
+            throw new InvalidArgumentException("Ghế {$seatLabel} đang được khách hàng giữ chỗ. Không thể chuyển sang bảo trì!");
+        }
+
+        // Chuyển đổi trạng thái giữa available <-> maintenance
+        if ($showtimeSeat->status === 'available') {
+            $showtimeSeat->status = 'maintenance';
+            $message = "Đã chuyển ghế {$seatLabel} sang trạng thái Bảo trì cho suất chiếu này.";
+        } else {
+            $showtimeSeat->status = 'available';
+            $message = "Đã mở lại ghế {$seatLabel} sang trạng thái Khả dụng (Trống).";
+        }
+
+        $showtimeSeat->save();
+
+        // Lấy lại thống kê mới nhất của suất chiếu
+        $stats = [
+            'total'       => \App\Models\ShowtimeSeat::where('showtime_id', $showtimeId)->count(),
+            'available'   => \App\Models\ShowtimeSeat::where('showtime_id', $showtimeId)->where('status', 'available')->count(),
+            'holding'     => \App\Models\ShowtimeSeat::where('showtime_id', $showtimeId)->whereIn('status', ['holding', 'hold'])->count(),
+            'booked'      => \App\Models\ShowtimeSeat::where('showtime_id', $showtimeId)->where('status', 'booked')->count(),
+            'maintenance' => \App\Models\ShowtimeSeat::where('showtime_id', $showtimeId)->where('status', 'maintenance')->count(),
+        ];
+
+        return [
+            'success'       => true,
+            'message'       => $message,
+            'showtime_seat' => [
+                'id'          => $showtimeSeat->id,
+                'seat_id'     => $showtimeSeat->seat_id,
+                'seat_label'  => $seatLabel,
+                'status'      => $showtimeSeat->status,
+                'seat_type'   => $showtimeSeat->seat->seatType->name ?? 'Thường',
+            ],
+            'stats'         => $stats,
+        ];
     }
 
     /**
