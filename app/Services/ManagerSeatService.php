@@ -200,7 +200,7 @@ class ManagerSeatService
                     ->join('movies', 'movies.id', '=', 'showtimes.movie_id')
                     ->where('showtime_seats.seat_id', $seatId)
                     ->whereIn('showtime_seats.status', ['booked', 'holding', 'hold'])
-                    ->whereIn('showtimes.status', ['upcoming', 'active'])
+                    ->whereIn('showtimes.status', ['upcoming', 'active', 'showing'])
                     ->where(DB::raw("CONCAT(showtimes.show_date, ' ', showtimes.end_time)"), '>', $nowStr)
                     ->select('movies.title', 'showtimes.start_time', 'showtimes.show_date')
                     ->first();
@@ -223,7 +223,7 @@ class ManagerSeatService
         if (isset($data['status'])) {
             $nowStr = now()->toDateTimeString();
             $upcomingShowtimeIds = \App\Models\Showtime::where('room_id', $roomId)
-                ->whereIn('status', ['upcoming', 'active'])
+                ->whereIn('status', ['upcoming', 'active', 'showing'])
                 ->where(DB::raw("CONCAT(show_date, ' ', end_time)"), '>', $nowStr)
                 ->pluck('id');
 
@@ -266,12 +266,10 @@ class ManagerSeatService
             throw new AuthorizationException('Bạn không có quyền quản lý suất chiếu của rạp khác.');
         }
 
-        // Kiểm tra suất chiếu đã bắt đầu hoặc đã kết thúc
-        $nowStr = now()->toDateTimeString();
-        $startDateTimeStr = $showtime->show_date->format('Y-m-d') . ' ' . $showtime->start_time;
-
-        if (in_array($showtime->status, ['showing', 'finished', 'cancelled']) || $startDateTimeStr <= $nowStr) {
-            throw new InvalidArgumentException('Suất chiếu này đã bắt đầu hoặc đã kết thúc. Không thể thay đổi trạng thái ghế.');
+        // Cho phép quản lý đổi trạng thái ghế trống sang bảo trì kể cả khi suất chiếu ĐANG CHIẾU
+        // Chỉ chặn nếu suất chiếu ĐÃ KẾT THÚC hoặc ĐÃ HỦY
+        if (in_array($showtime->status, ['finished', 'cancelled'])) {
+            throw new InvalidArgumentException('Suất chiếu này đã kết thúc hoặc bị hủy. Không thể thay đổi trạng thái ghế.');
         }
 
         $showtimeSeat = \App\Models\ShowtimeSeat::with(['seat', 'seat.seatType'])
