@@ -111,19 +111,21 @@
             {{ $booking->isComboExpired()
                 ? 'bg-red-50 border border-red-200'
                 : 'bg-orange-50 border border-orange-200' }}">
-            <span class="material-symbols-outlined text-xl mt-0.5 {{ $booking->isComboExpired() ? 'text-red-500' : 'text-orange-500' }}">schedule</span>
+            <span class="material-symbols-outlined text-xl mt-0.5 flex-shrink-0 {{ $booking->isComboExpired() ? 'text-red-500' : 'text-orange-500' }}">{{ $booking->isComboExpired() ? 'error' : 'schedule' }}</span>
             <div>
                 @if($booking->isComboExpired())
                     <p class="text-sm font-black text-red-700 mb-0.5">Đơn Hàng Đã Hết Hạn Sử Dụng</p>
-                    <p class="text-xs text-red-600">Hạn dùng <strong>{{ $booking->combo_expires_at->format('H:i — d/m/Y') }}</strong> đã qua. Đơn hàng không còn hiệu lực.</p>
+                    <p class="text-xs text-red-600">Đơn bắp nước đã hết hạn sử dụng ({{ $booking->combo_expires_at->format('d/m/Y') }}), không thể nhận hàng.</p>
                 @else
-                    <p class="text-sm font-black text-orange-700 mb-0.5">Hạn Sử Dụng Bắp Nước</p>
-                    <p class="text-xs text-orange-600">
-                        Đến quầy F&amp;B trước <strong>{{ $booking->combo_expires_at->format('H:i — d/m/Y') }}</strong>.
+                    <p class="text-sm font-black text-orange-700 mb-0.5">Hạn Sử Dụng Bắp Nước: {{ $booking->combo_expires_at->format('d/m/Y') }}</p>
+                    <p class="text-xs text-orange-600 leading-relaxed mt-1">
+                        Lưu ý: Thời gian nhận F&amp;B tại quầy tối đa sau 3 ngày kể từ lúc đặt hàng. 
+                        Ngày hết hạn để nhận combo: <strong>{{ $booking->combo_expires_at->format('d/m/Y') }}</strong>.
                         @php $days = $booking->comboDaysRemaining(); @endphp
                         @if($days !== null)
-                            Còn <strong>{{ $days }} ngày</strong>.
+                            <span class="font-bold">(Còn {{ $days }} ngày).</span>
                         @endif
+                        Quá thời gian này, đơn hàng sẽ tự động mất hiệu lực.
                     </p>
                 @endif
             </div>
@@ -131,7 +133,7 @@
         @endif
 
         {{-- Ghế đã chọn (Nếu là đơn vé phim) --}}
-        @if($booking->bookingDetails && $booking->bookingDetails->isNotEmpty())
+        @if(!$isComboOnly && $booking->bookingDetails && $booking->bookingDetails->isNotEmpty())
         <div class="bg-white border border-gray-200/80 rounded-2xl p-5 shadow-sm mb-4">
             <h3 class="text-xs font-black text-gray-500 uppercase tracking-widest mb-4 flex items-center gap-2">
                 <span class="material-symbols-outlined text-sm text-brand-primary">event_seat</span>
