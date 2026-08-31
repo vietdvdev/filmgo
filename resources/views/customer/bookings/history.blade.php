@@ -160,7 +160,7 @@
                                         </div>
                                         <p class="text-orange-600 mt-1.5 flex gap-1 items-start leading-snug">
                                             <span class="material-symbols-outlined text-[14px] flex-shrink-0 mt-0.5">warning</span>
-                                            <span>Vui lòng đến <strong>{{ optional($booking->cinema)->name ?? 'rạp' }}</strong> nhận bắp nước trước ngày <strong>{{ $booking->combo_expires_at->format('d/m/Y') }}</strong>. Quá hạn đơn hàng sẽ mất hiệu lực và không được sử dụng.</span>
+                                            <span>Lưu ý: Thời gian nhận F&amp;B tại quầy tối đa sau 3 ngày kể từ lúc đặt hàng. Ngày hết hạn để nhận combo: <strong>{{ $booking->combo_expires_at->format('d/m/Y') }}</strong>. Quá thời gian này, đơn hàng sẽ tự động mất hiệu lực.</span>
                                         </p>
                                     </div>
                                 @endif

@@ -119,11 +119,13 @@
                 @else
                     <p class="text-sm font-black text-orange-700 mb-0.5">Hạn Sử Dụng Bắp Nước: {{ $booking->combo_expires_at->format('d/m/Y') }}</p>
                     <p class="text-xs text-orange-600 leading-relaxed mt-1">
+                        Lưu ý: Thời gian nhận F&amp;B tại quầy tối đa sau 3 ngày kể từ lúc đặt hàng. 
+                        Ngày hết hạn để nhận combo: <strong>{{ $booking->combo_expires_at->format('d/m/Y') }}</strong>.
                         @php $days = $booking->comboDaysRemaining(); @endphp
                         @if($days !== null)
-                            <span class="font-bold">Còn {{ $days }} ngày.</span>
+                            <span class="font-bold">(Còn {{ $days }} ngày).</span>
                         @endif
-                        Vui lòng đến <strong>{{ optional($booking->cinema)->name ?? 'rạp' }}</strong> nhận bắp nước trước ngày <strong>{{ $booking->combo_expires_at->format('d/m/Y') }}</strong>. Quá hạn đơn hàng sẽ mất hiệu lực và không được sử dụng.
+                        Quá thời gian này, đơn hàng sẽ tự động mất hiệu lực.
                     </p>
                 @endif
             </div>
@@ -131,7 +133,7 @@
         @endif
 
         {{-- Ghế đã chọn (Nếu là đơn vé phim) --}}
-        @if($booking->bookingDetails && $booking->bookingDetails->isNotEmpty())
+        @if(!$isComboOnly && $booking->bookingDetails && $booking->bookingDetails->isNotEmpty())
         <div class="bg-white border border-gray-200/80 rounded-2xl p-5 shadow-sm mb-4">
             <h3 class="text-xs font-black text-gray-500 uppercase tracking-widest mb-4 flex items-center gap-2">
                 <span class="material-symbols-outlined text-sm text-brand-primary">event_seat</span>
