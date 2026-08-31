@@ -173,6 +173,7 @@ class ComboOrderService
                 'channel'         => 'counter',
                 'booking_type'    => 'combo_only',
                 'expired_at'      => now()->addMinutes(30),
+                'combo_expires_at'=> now()->addDays(3),  // Hạn sử dụng bắp nước 3 ngày
             ]);
 
             // ── 7. Lưu combos và đồ lẻ ───────────────────────────────────
@@ -202,9 +203,27 @@ class ComboOrderService
         });
     }
 
-    // ─────────────────────────────────────────────────────────────────────────
+    // ────────────────────────────────────────────────────────────────────────────
+    // PUBLIC: Hoàn tất đơn combo online sau khi thanh toán thành công
+    // ────────────────────────────────────────────────────────────────────────────
+
+    /**
+     * Hoàn tất đơn hàng combo online sau khi thanh toán thành công.
+     * Đặt combo_expires_at = now() + 3 ngày.
+     *
+     * @param  Booking $booking
+     * @return void
+     */
+    public function finalizeComboOrder(Booking $booking): void
+    {
+        $booking->update([
+            'combo_expires_at' => now()->addDays(3),
+        ]);
+    }
+
+    // ────────────────────────────────────────────────────────────────────────────
     // PRIVATE HELPERS
-    // ─────────────────────────────────────────────────────────────────────────
+    // ────────────────────────────────────────────────────────────────────────────
 
     /**
      * Đảm bảo đơn hàng có ít nhất 1 sản phẩm.

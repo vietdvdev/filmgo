@@ -95,13 +95,28 @@
             </div>
         </div>
 
+        {{-- Hạn sử dụng --}}
+        @if($booking->combo_expires_at)
+        <div class="p-4 bg-orange-50 border border-orange-300 rounded-2xl mb-4 text-xs">
+            <p class="font-black flex items-center gap-1.5 text-orange-800 mb-1">
+                <span class="material-symbols-outlined text-base">schedule</span>
+                Hạn Sử Dụng Đơn Hàng
+            </p>
+            <p class="text-orange-700 leading-relaxed">
+                Đơn bắp nước của bạn có giá trị sử dụng trong <strong>3 ngày</strong>.
+                Hạn cuối: <strong class="text-orange-900">{{ $booking->combo_expires_at->format('H:i — d/m/Y') }}</strong>
+            </p>
+            <p class="text-[10px] text-orange-500 mt-1">⚠️ Vui lòng đến quầy F&B trước thời hạn trên. Quá hạn sẽ không được đổi trả.</p>
+        </div>
+        @endif
+
         {{-- Hướng dẫn --}}
         <div class="p-4 bg-amber-50 border border-amber-200/80 rounded-2xl mb-6 text-xs text-amber-800 space-y-1">
             <p class="font-bold flex items-center gap-1 text-amber-900">
                 <span class="material-symbols-outlined text-sm">info</span> Hướng dẫn nhận hàng
             </p>
             <p class="leading-relaxed text-[11px]">
-                Đến quầy F&B của rạp FilmGo bất kỳ trong ngày hôm nay và đọc mã <strong>{{ $booking->booking_code }}</strong> để nhận bắp nước nóng hổi lập tức!
+                Đến quầy F&B của rạp FilmGo bất kỳ và đọc mã <strong>{{ $booking->booking_code }}</strong> để nhận bắp nước nóng hổi lập tức!
             </p>
         </div>
 

@@ -49,6 +49,7 @@
                         <th class="py-4 px-5">Khách hàng</th>
                         <th class="py-4 px-5">Sản phẩm</th>
                         <th class="py-4 px-5 text-center">Thanh toán</th>
+                        <th class="py-4 px-5 text-center">Hạn SD</th>
                         <th class="py-4 px-5 text-center">Trạng thái</th>
                         <th class="py-4 px-5 text-center">In/Biên lai</th>
                         <th class="py-4 px-5 text-right">Thao tác</th>
@@ -92,6 +93,31 @@
                                     <span class="inline-flex items-center px-3 py-1 bg-emerald-50 text-emerald-700 font-semibold rounded-full text-xs">Đã thanh toán</span>
                                 @else
                                     <span class="inline-flex items-center px-3 py-1 bg-amber-50 text-amber-700 font-semibold rounded-full text-xs">Chờ thanh toán</span>
+                                @endif
+                            </td>
+
+                            {{-- Cột Hạn sử dụng --}}
+                            <td class="py-4 px-5 text-center">
+                                @if($booking->combo_expires_at)
+                                    @if($booking->isComboExpired())
+                                        <div class="inline-flex flex-col items-center">
+                                            <span class="inline-flex items-center gap-1 px-2.5 py-1 bg-red-50 text-red-700 text-xs font-bold rounded-lg border border-red-200">
+                                                <span class="material-symbols-outlined text-xs">schedule</span>
+                                                Hết hạn
+                                            </span>
+                                            <span class="text-[10px] text-red-400 mt-0.5">{{ $booking->combo_expires_at->format('d/m/Y') }}</span>
+                                        </div>
+                                    @else
+                                        <div class="inline-flex flex-col items-center">
+                                            <span class="inline-flex items-center gap-1 px-2.5 py-1 bg-green-50 text-green-700 text-xs font-bold rounded-lg border border-green-200">
+                                                <span class="material-symbols-outlined text-xs">check_circle</span>
+                                                Còn hạn
+                                            </span>
+                                            <span class="text-[10px] text-gray-400 mt-0.5">{{ $booking->combo_expires_at->format('d/m/Y') }}</span>
+                                        </div>
+                                    @endif
+                                @else
+                                    <span class="text-xs text-gray-300 italic">—</span>
                                 @endif
                             </td>
                             <td class="py-4 px-5 text-center">

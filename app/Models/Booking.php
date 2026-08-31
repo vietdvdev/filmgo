@@ -35,27 +35,69 @@ class Booking extends Model
         'channel',
         'booking_type',
         'expired_at',
+        'combo_expires_at',
         'printed_at',
     ];
 
     protected $casts = [
-        'user_id'         => 'integer',
-        'staff_id'        => 'integer',
-        'showtime_id'     => 'integer',
-        'cinema_id'       => 'integer',
-        'subtotal'        => 'integer',
-        'promotion_id'    => 'integer',
-        'total_amount'    => 'integer',
-        'discount_amount' => 'integer',
-        'final_total'     => 'integer',
-        'payment_status'  => 'string',
-        'booking_status'  => 'string',
-        'channel'         => 'string',
-        'booking_type'    => 'string',
-        'expired_at'      => 'datetime',
-        'printed_at'      => 'datetime',
+        'user_id'           => 'integer',
+        'staff_id'          => 'integer',
+        'showtime_id'       => 'integer',
+        'cinema_id'         => 'integer',
+        'subtotal'          => 'integer',
+        'promotion_id'      => 'integer',
+        'total_amount'      => 'integer',
+        'discount_amount'   => 'integer',
+        'final_total'       => 'integer',
+        'payment_status'    => 'string',
+        'booking_status'    => 'string',
+        'channel'           => 'string',
+        'booking_type'      => 'string',
+        'expired_at'        => 'datetime',
+        'combo_expires_at'  => 'datetime',
+        'printed_at'        => 'datetime',
     ];
 
+
+    // ────────────────────────────────────────────────────────────────
+    // Accessor / Helper Methods
+    // ────────────────────────────────────────────────────────────────
+
+    /**
+     * Kiểm tra đơn bắp nước đã hết hạn sử dụng chưa.
+     * Chỉ áp dụng cho booking_type = 'combo_only'.
+     *
+     * @return bool
+     */
+    public function isComboExpired(): bool
+    {
+        if ($this->booking_type !== 'combo_only') {
+            return false;
+        }
+
+        if (is_null($this->combo_expires_at)) {
+            return false;
+        }
+
+        return now()->gt($this->combo_expires_at);
+    }
+
+    /**
+     * Lấy số ngày còn lại trước khi đơn bắp nước hết hạn.
+     * Trả về null nếu không phải combo_only hoặc không có hạn.
+     * Trả về 0 nếu đã hết hạn.
+     *
+     * @return int|null
+     */
+    public function comboDaysRemaining(): ?int
+    {
+        if ($this->booking_type !== 'combo_only' || is_null($this->combo_expires_at)) {
+            return null;
+        }
+
+        $diff = (int) now()->diffInDays($this->combo_expires_at, false);
+        return max(0, $diff);
+    }
 
     // ────────────────────────────────────────────────────────────────
     // Query Scopes — tái sử dụng điều kiện filter thường gặp

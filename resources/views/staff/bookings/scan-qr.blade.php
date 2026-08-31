@@ -315,7 +315,7 @@
                         <span class="material-symbols-outlined text-[13px]">fastfood</span> ĐƠN COMBO
                     </span>`;
                 }
-                if (b.is_expired && !b.is_combo_only) {
+                if (b.is_expired) {
                     badgesContainer.innerHTML += `<span class="inline-flex items-center gap-1 px-2.5 py-1 bg-red-100 text-red-700 font-extrabold text-[11px] rounded-full border border-red-200">
                         <span class="material-symbols-outlined text-[13px]">timer_off</span> ĐÃ HẾT HẠN
                     </span>`;
@@ -339,12 +339,27 @@
             const bTag = document.getElementById('banner-tag');
 
             if (b.is_combo_only) {
-                // Đơn hàng Combo bắp nước riêng lẻ
-                if (b.is_printed) {
+                // Đơn hàng Combo bắp nước riêng lẻ — kiểm tra hạn sử dụng trước
+                if (b.is_expired) {
+                    // Combo đã hết hạn
+                    banner.className = 'p-4 rounded-xl border bg-red-50 border-red-200 text-red-900 flex items-center justify-between';
+                    bIcon.textContent = 'cancel';
+                    bTitle.textContent = 'ĐƠN BẮP NƯỚC ĐÃ HẾT HẠN Sờ DỤNG';
+                    const expiryInfo = b.combo_expires_at ? ` Hạn dùng đến ngày ${b.combo_expires_at} đã qua.` : '';
+                    bSub.textContent = 'Khách hàng không thể sử dụng đơn hàng này nữa.' + expiryInfo;
+                    bTag.className = 'text-[10px] font-black uppercase tracking-wider px-2.5 py-1 rounded-full bg-red-200 text-red-800';
+                    bTag.textContent = 'HẾT HẠN';
+
+                    btnDoPrint.classList.add('hidden');
+                    reprintNotice.classList.add('hidden');
+                    expiredNotice.classList.remove('hidden');
+                } else if (b.is_printed) {
+                    // Combo đã in biên lai
                     banner.className = 'p-4 rounded-xl border bg-emerald-50 border-emerald-200 text-emerald-900 flex items-center justify-between';
                     bIcon.textContent = 'check_circle';
                     bTitle.textContent = 'ĐÃ IN BIÊN LAI BẮP NƯỚC';
-                    bSub.textContent = 'Đơn bắp nước này đã được in biên lai lúc ' + (b.printed_at || '');
+                    const expiryText = b.combo_expires_at ? ` Hạn dùng: ${b.combo_expires_at}.` : '';
+                    bSub.textContent = 'Đơn bắp nước này đã được in biên lai lúc ' + (b.printed_at || '') + '.' + expiryText;
                     bTag.className = 'text-[10px] font-black uppercase tracking-wider px-2.5 py-1 rounded-full bg-emerald-200 text-emerald-800';
                     bTag.textContent = 'ĐÃ IN';
 
@@ -355,10 +370,13 @@
                     reprintNotice.classList.remove('hidden');
                     expiredNotice.classList.add('hidden');
                 } else {
+                    // Combo chưa in, còn hạn
+                    const daysRemaining = b.combo_days_remaining !== null ? ` Còn ${b.combo_days_remaining} ngày.` : '';
+                    const expiryLine = b.combo_expires_at ? ` Hạn dùng: ${b.combo_expires_at}.` : '';
                     banner.className = 'p-4 rounded-xl border bg-amber-50 border-amber-200 text-amber-900 flex items-center justify-between';
                     bIcon.textContent = 'receipt_long';
                     bTitle.textContent = 'CHƯA IN BIÊN LAI BẮP NƯỚC';
-                    bSub.textContent = 'Sẵn sàng in biên lai bắp nước và trả món cho khách hàng.';
+                    bSub.textContent = 'Sẵn sàng in biên lai bắp nước và trả món cho khách hàng.' + expiryLine + daysRemaining;
                     bTag.className = 'text-[10px] font-black uppercase tracking-wider px-2.5 py-1 rounded-full bg-amber-200 text-amber-800';
                     bTag.textContent = 'CHƯA IN';
 
