@@ -159,6 +159,12 @@
 
     <div class="notice">Vui lòng đưa phiếu này cho nhân viên quầy Concession</div>
 
+    @if($booking->combo_expires_at)
+    <div style="text-align:center;font-size:10px;font-weight:700;border:1px dashed #000;padding:4px;margin-top:5px;">
+        HẠN DÙNG: {{ $booking->combo_expires_at->format('H:i d/m/Y') }}
+    </div>
+    @endif
+
     <div class="footer">
         Cảm ơn quý khách đã mua hàng tại FilmGo!<br>
         ★ Chúc quý khách ngon miệng ★

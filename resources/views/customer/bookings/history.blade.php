@@ -119,6 +119,25 @@
                                     <p class="text-gray-800 font-bold">{{ $booking->created_at->format('d/m/Y') }}</p>
                                 </div>
                             </div>
+
+                            {{-- Badge hạn sử dụng bắp nước --}}
+                            @if($isComboOnly && $booking->combo_expires_at)
+                                @if($booking->isComboExpired())
+                                    <div class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-bold bg-red-50 text-red-600 border border-red-200">
+                                        <span class="material-symbols-outlined text-xs">schedule</span>
+                                        Đã hết hạn sử dụng ({{ $booking->combo_expires_at->format('d/m/Y') }})
+                                    </div>
+                                @else
+                                    <div class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-bold bg-orange-50 text-orange-600 border border-orange-200">
+                                        <span class="material-symbols-outlined text-xs">schedule</span>
+                                        Hạn dùng: {{ $booking->combo_expires_at->format('d/m/Y') }}
+                                        @php $days = $booking->comboDaysRemaining(); @endphp
+                                        @if($days !== null)
+                                            · Còn {{ $days }} ngày
+                                        @endif
+                                    </div>
+                                @endif
+                            @endif
                         </div>
 
                         {{-- Total + Action --}}

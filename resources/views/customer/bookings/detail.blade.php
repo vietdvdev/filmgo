@@ -105,6 +105,31 @@
             </div>
         </div>
 
+        {{-- Hạn sử dụng bắp nước --}}
+        @if($isComboOnly && $booking->combo_expires_at)
+        <div class="rounded-2xl p-4 mb-4 flex items-start gap-3
+            {{ $booking->isComboExpired()
+                ? 'bg-red-50 border border-red-200'
+                : 'bg-orange-50 border border-orange-200' }}">
+            <span class="material-symbols-outlined text-xl mt-0.5 {{ $booking->isComboExpired() ? 'text-red-500' : 'text-orange-500' }}">schedule</span>
+            <div>
+                @if($booking->isComboExpired())
+                    <p class="text-sm font-black text-red-700 mb-0.5">Đơn Hàng Đã Hết Hạn Sử Dụng</p>
+                    <p class="text-xs text-red-600">Hạn dùng <strong>{{ $booking->combo_expires_at->format('H:i — d/m/Y') }}</strong> đã qua. Đơn hàng không còn hiệu lực.</p>
+                @else
+                    <p class="text-sm font-black text-orange-700 mb-0.5">Hạn Sử Dụng Bắp Nước</p>
+                    <p class="text-xs text-orange-600">
+                        Đến quầy F&amp;B trước <strong>{{ $booking->combo_expires_at->format('H:i — d/m/Y') }}</strong>.
+                        @php $days = $booking->comboDaysRemaining(); @endphp
+                        @if($days !== null)
+                            Còn <strong>{{ $days }} ngày</strong>.
+                        @endif
+                    </p>
+                @endif
+            </div>
+        </div>
+        @endif
+
         {{-- Ghế đã chọn (Nếu là đơn vé phim) --}}
         @if($booking->bookingDetails && $booking->bookingDetails->isNotEmpty())
         <div class="bg-white border border-gray-200/80 rounded-2xl p-5 shadow-sm mb-4">

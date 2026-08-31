@@ -262,7 +262,13 @@ class StaffBookingController extends Controller
         }
 
         $isComboOnly = ($booking->booking_type === 'combo_only' || !$booking->showtime_id);
-        $isExpired = $booking->showtime ? $booking->showtime->isExpired() : false;
+
+        // Kiem tra het han theo loai don hang
+        if ($isComboOnly) {
+            $isExpired = $booking->isComboExpired();
+        } else {
+            $isExpired = $booking->showtime ? $booking->showtime->isExpired() : false;
+        }
         $seats = $booking->bookingDetails->map(function($d) {
             $s = $d->showtimeSeat?->seat;
             return $s ? strtoupper($s->seat_row) . $s->seat_number : null;
@@ -275,32 +281,36 @@ class StaffBookingController extends Controller
         return response()->json([
             'status'  => 'success',
             'booking' => [
-                'id'             => $booking->id,
-                'booking_code'   => $booking->booking_code,
-                'booking_type'   => $booking->booking_type,
-                'is_combo_only'  => $isComboOnly,
-                'payment_status' => $booking->payment_status,
-                'booking_status' => $booking->booking_status,
-                'total_amount'   => number_format($booking->final_total ?? $booking->total_amount),
-                'printed_at'     => $booking->printed_at ? $booking->printed_at->format('H:i - d/m/Y') : null,
-                'is_printed'     => !is_null($booking->printed_at),
-                'is_expired'     => $isExpired,
-                'customer_name'  => $booking->user?->full_name ?? 'Khách vãng lai',
-                'customer_phone' => $booking->user?->phone ?? '—',
-                'movie_title'    => $booking->showtime?->movie?->title ?? ($isComboOnly ? 'Đơn Hàng Combo Bắp Nước' : 'Vé Xem Phim'),
-                'show_date'      => $booking->showtime?->show_date?->format('d/m/Y') ?? '—',
-                'show_time'      => $booking->showtime ? \Carbon\Carbon::parse($booking->showtime->start_time)->format('H:i') : '—',
-                'room_name'      => $booking->showtime?->room?->room_name ?? '—',
-                'seats'          => $seats,
-                'combos'         => $booking->combos->map(fn($c) => [
+                'id'                   => $booking->id,
+                'booking_code'         => $booking->booking_code,
+                'booking_type'         => $booking->booking_type,
+                'is_combo_only'        => $isComboOnly,
+                'payment_status'       => $booking->payment_status,
+                'booking_status'       => $booking->booking_status,
+                'total_amount'         => number_format($booking->final_total ?? $booking->total_amount),
+                'printed_at'           => $booking->printed_at ? $booking->printed_at->format('H:i - d/m/Y') : null,
+                'is_printed'           => !is_null($booking->printed_at),
+                'is_expired'           => $isExpired,
+                'combo_expires_at'     => $booking->combo_expires_at
+                    ? $booking->combo_expires_at->format('d/m/Y')
+                    : null,
+                'combo_days_remaining' => $booking->comboDaysRemaining(),
+                'customer_name'        => $booking->user?->full_name ?? 'Khách vãng lai',
+                'customer_phone'       => $booking->user?->phone ?? '—',
+                'movie_title'          => $booking->showtime?->movie?->title ?? ($isComboOnly ? 'Đơn Hàng Combo Bắp Nước' : 'Vé Xem Phim'),
+                'show_date'            => $booking->showtime?->show_date?->format('d/m/Y') ?? '—',
+                'show_time'            => $booking->showtime ? \Carbon\Carbon::parse($booking->showtime->start_time)->format('H:i') : '—',
+                'room_name'            => $booking->showtime?->room?->room_name ?? '—',
+                'seats'                => $seats,
+                'combos'               => $booking->combos->map(fn($c) => [
                     'name' => $c->combo_name,
                     'qty'  => $c->pivot->quantity,
                 ]),
-                'combo_items'    => $booking->comboItems->map(fn($ci) => [
+                'combo_items'          => $booking->comboItems->map(fn($ci) => [
                     'name' => $ci->comboItem?->name ?? 'Món lẻ',
                     'qty'  => $ci->quantity,
                 ]),
-                'print_url'      => $printUrl,
+                'print_url'            => $printUrl,
             ]
         ]);
     }

@@ -406,6 +406,9 @@ class ComboShopController extends Controller
         // Sinh QR code tức thì (đồng bộ CỰC NHANH)
         $this->qrCodeService->generateAndStoreForBooking($booking);
 
+        // Đặt hạn sử dụng bắp nước 3 ngày
+        $this->comboOrderService->finalizeComboOrder($booking);
+
         // Gửi email xác nhận tới khách hàng
         $this->bookingEmailService->sendConfirmationEmail($booking);
 
@@ -450,6 +453,9 @@ class ComboShopController extends Controller
 
             // Sinh QR code tức thì (đồng bộ CỰC NHANH)
             $this->qrCodeService->generateAndStoreForBooking($booking);
+
+            // Đặt hạn sử dụng bắp nước 3 ngày
+            $this->comboOrderService->finalizeComboOrder($booking);
 
             // Gửi email xác nhận tới khách hàng
             $this->bookingEmailService->sendConfirmationEmail($booking);
@@ -509,6 +515,9 @@ class ComboShopController extends Controller
 
             // Sinh QR code tức thì (đồng bộ CỰC NHANH)
             $this->qrCodeService->generateAndStoreForBooking($booking);
+
+            // Đặt hạn sử dụng bắp nước 3 ngày
+            $this->comboOrderService->finalizeComboOrder($booking);
 
             // Gửi email xác nhận tới khách hàng
             $this->bookingEmailService->sendConfirmationEmail($booking);
