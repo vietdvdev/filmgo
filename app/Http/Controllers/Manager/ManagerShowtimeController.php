@@ -53,6 +53,25 @@ class ManagerShowtimeController extends Controller
         });
     }
 
+    private function hasShowtimeOverlap(string $newShowDate, string $newStartTime, string $newEndTime, string $existingShowDate, string $existingStartTime, string $existingEndTime): bool
+    {
+        $newStart = Carbon::createFromFormat('Y-m-d H:i:s', $newShowDate . ' ' . $newStartTime, config('app.timezone'));
+        $newEnd   = Carbon::createFromFormat('Y-m-d H:i:s', $newShowDate . ' ' . $newEndTime, config('app.timezone'));
+
+        if ($newEnd->lt($newStart)) {
+            $newEnd->addDay();
+        }
+
+        $existingStart = Carbon::createFromFormat('Y-m-d H:i:s', $existingShowDate . ' ' . $existingStartTime, config('app.timezone'));
+        $existingEnd   = Carbon::createFromFormat('Y-m-d H:i:s', $existingShowDate . ' ' . $existingEndTime, config('app.timezone'));
+
+        if ($existingEnd->lt($existingStart)) {
+            $existingEnd->addDay();
+        }
+
+        return $newStart->lte($existingEnd) && $existingStart->lte($newEnd);
+    }
+
     public function index(Request $request)
     {
         $cinemaIds = $this->getCinemaIds();
@@ -266,20 +285,27 @@ class ManagerShowtimeController extends Controller
         $endStr      = $endTime->format('H:i:s');
 
         // Bước 3: Kiểm tra trùng lịch (bỏ qua suất đã hủy)
-        $overlapQuery = Showtime::where('room_id', $room->id)
-            ->where('show_date', $showDateStr)
-            ->where('status', '!=', 'cancelled');
+        $candidateDates = [
+            $showDateStr,
+            Carbon::parse($showDateStr)->copy()->subDay()->toDateString(),
+            Carbon::parse($showDateStr)->copy()->addDay()->toDateString(),
+        ];
 
-        if ($endStr <= $startStr) {
-            // Phim chiếu qua nửa đêm
-            $overlapQuery->where('start_time', '>=', $startStr);
-        } else {
-            $overlapQuery->where(function ($q) use ($startStr, $endStr) {
-                $q->where('start_time', '<', $endStr)->where('end_time', '>', $startStr);
+        $overlap = Showtime::where('room_id', $room->id)
+            ->whereIn('show_date', array_values(array_unique($candidateDates)))
+            ->where('status', '!=', 'cancelled')
+            ->with('movie')
+            ->get()
+            ->first(function ($existingShowtime) use ($showDateStr, $startStr, $endStr) {
+                return $this->hasShowtimeOverlap(
+                    $showDateStr,
+                    $startStr,
+                    $endStr,
+                    $existingShowtime->show_date->toDateString(),
+                    $existingShowtime->start_time,
+                    $existingShowtime->end_time
+                );
             });
-        }
-
-        $overlap = $overlapQuery->with('movie')->first();
 
         if ($overlap) {
             return back()->withInput()->withErrors([

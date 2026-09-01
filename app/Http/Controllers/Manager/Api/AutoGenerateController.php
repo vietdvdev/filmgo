@@ -178,8 +178,9 @@ class AutoGenerateController extends Controller
 
                 // Kiểm tra xung đột với toàn bộ suất chiếu hiện có
                 foreach ($existingSlots as $slot) {
-                    // Công thức overlap: (ProposedStart < ExistingEnd) AND (ProposedEnd > ExistingStart)
-                    if ($proposedStart->lt($slot['end']) && $proposedEnd->gt($slot['start'])) {
+                    // Chấp nhận cả trường hợp chạm mép giờ: nếu suất mới bắt đầu bằng thời điểm kết thúc
+                    // của suất cũ hoặc kết thúc bằng thời điểm bắt đầu của suất cũ thì vẫn coi là trùng.
+                    if ($proposedStart->lte($slot['end']) && $proposedEnd->gte($slot['start'])) {
                         $hasOverlap = true;
                         $overlapEndTime = $slot['end']->copy();
                         break;

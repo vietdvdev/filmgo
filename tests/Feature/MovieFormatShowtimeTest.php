@@ -226,6 +226,71 @@ class MovieFormatShowtimeTest extends TestCase
         ]);
     }
 
+    public function test_store_showtime_fails_when_previous_night_showtime_overlaps_next_day_early_showtime(): void
+    {
+        $existingDate = now()->addDays(2)->format('Y-m-d');
+        $nextDayDate  = now()->addDays(3)->format('Y-m-d');
+
+        \App\Models\Showtime::create([
+            'movie_id'   => $this->movie->id,
+            'format_id'  => $this->format3D->id,
+            'room_id'    => $this->room3D->id,
+            'show_date'  => $existingDate,
+            'start_time' => '22:50:00',
+            'end_time'   => '00:30:00',
+            'base_price' => 120000,
+            'status'     => 'active',
+        ]);
+
+        $payload = [
+            'movie_id'   => $this->movie->id,
+            'format_id'  => $this->format3D->id,
+            'cinema_id'  => $this->cinema->id,
+            'room_id'    => $this->room3D->id,
+            'show_date'  => $nextDayDate,
+            'start_time' => '00:10',
+            'base_price' => 120000,
+        ];
+
+        $response = $this->actingAs($this->admin)
+            ->postJson('/manager/showtimes/api/store', $payload);
+
+        $response->assertStatus(422)
+            ->assertJsonValidationErrors(['start_time']);
+    }
+
+    public function test_store_showtime_fails_when_end_time_matches_next_show_start_time(): void
+    {
+        $showDate = now()->addDays(4)->format('Y-m-d');
+
+        \App\Models\Showtime::create([
+            'movie_id'   => $this->movie->id,
+            'format_id'  => $this->format3D->id,
+            'room_id'    => $this->room3D->id,
+            'show_date'  => $showDate,
+            'start_time' => '21:12:00',
+            'end_time'   => '22:52:00',
+            'base_price' => 120000,
+            'status'     => 'active',
+        ]);
+
+        $payload = [
+            'movie_id'   => $this->movie->id,
+            'format_id'  => $this->format3D->id,
+            'cinema_id'  => $this->cinema->id,
+            'room_id'    => $this->room3D->id,
+            'show_date'  => $showDate,
+            'start_time' => '22:52',
+            'base_price' => 120000,
+        ];
+
+        $response = $this->actingAs($this->admin)
+            ->postJson('/manager/showtimes/api/store', $payload);
+
+        $response->assertStatus(422)
+            ->assertJsonValidationErrors(['start_time']);
+    }
+
     public function test_auto_generate_creates_showtimes_with_movie_room_format_and_surcharge(): void
     {
         $showDate = now()->addDays(5)->format('Y-m-d');

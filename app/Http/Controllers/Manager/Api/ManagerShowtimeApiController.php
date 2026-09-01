@@ -241,6 +241,25 @@ class ManagerShowtimeApiController extends Controller
 
 
 
+    private function hasShowtimeOverlap(string $newShowDate, string $newStartTime, string $newEndTime, string $existingShowDate, string $existingStartTime, string $existingEndTime): bool
+    {
+        $newStart = Carbon::createFromFormat('Y-m-d H:i:s', $newShowDate . ' ' . $newStartTime, config('app.timezone'));
+        $newEnd   = Carbon::createFromFormat('Y-m-d H:i:s', $newShowDate . ' ' . $newEndTime, config('app.timezone'));
+
+        if ($newEnd->lt($newStart)) {
+            $newEnd->addDay();
+        }
+
+        $existingStart = Carbon::createFromFormat('Y-m-d H:i:s', $existingShowDate . ' ' . $existingStartTime, config('app.timezone'));
+        $existingEnd   = Carbon::createFromFormat('Y-m-d H:i:s', $existingShowDate . ' ' . $existingEndTime, config('app.timezone'));
+
+        if ($existingEnd->lt($existingStart)) {
+            $existingEnd->addDay();
+        }
+
+        return $newStart->lte($existingEnd) && $existingStart->lte($newEnd);
+    }
+
     /**
      * API kiểm tra trùng lịch chiếu (Overlap Check).
      */
@@ -291,20 +310,27 @@ class ManagerShowtimeApiController extends Controller
         $endTimeStr   = $endTime->format('H:i:s');
         $showDateStr  = $request->input('show_date');
 
-        $overlapQuery = Showtime::where('room_id', $room->id)
-            ->where('show_date', $showDateStr)
-            ->where('status', '!=', 'cancelled');  // Bỏ qua suất đã hủy
+        $candidateDates = [
+            $showDateStr,
+            Carbon::parse($showDateStr)->copy()->subDay()->toDateString(),
+            Carbon::parse($showDateStr)->copy()->addDay()->toDateString(),
+        ];
 
-        if ($endTimeStr <= $startTimeStr) {
-            $overlapQuery->where('start_time', '>=', $startTimeStr);
-        } else {
-            $overlapQuery->where(function ($q) use ($startTimeStr, $endTimeStr) {
-                $q->where('start_time', '<', $endTimeStr)
-                  ->where('end_time', '>', $startTimeStr);
+        $overlap = Showtime::where('room_id', $room->id)
+            ->whereIn('show_date', array_values(array_unique($candidateDates)))
+            ->where('status', '!=', 'cancelled')
+            ->with('movie')
+            ->get()
+            ->first(function ($existingShowtime) use ($showDateStr, $startTimeStr, $endTimeStr) {
+                return $this->hasShowtimeOverlap(
+                    $showDateStr,
+                    $startTimeStr,
+                    $endTimeStr,
+                    $existingShowtime->show_date->toDateString(),
+                    $existingShowtime->start_time,
+                    $existingShowtime->end_time
+                );
             });
-        }
-
-        $overlap = $overlapQuery->with('movie')->first();
 
         if ($overlap) {
             $overlapStart = Carbon::parse($overlap->start_time)->format('H:i');
@@ -414,34 +440,28 @@ class ManagerShowtimeApiController extends Controller
         $startTimeStr = $startTime->format('H:i:s');
         $endTimeStr   = $endTime->format('H:i:s');
         $showDateStr  = $request->input('show_date');
-        // Bug fix: Xử lý trường hợp suất chiếu qua nửa đêm
-        $crossMidnight = $endTime->toDateString() > $startTime->toDateString();
 
-        // Bug fix: Dùng so sánh Carbon datetime tuyệt đối thay vì string để xử lý đúng suất qua nửa đêm
-        $overlapQuery = Showtime::where('room_id', $room->id)
-            ->whereIn('show_date', [
-                $showDateStr,
-                // Nếu qua nửa đêm, cũng kiểm tra ngày hôm sau
-                $crossMidnight ? $endTime->toDateString() : $showDateStr,
-            ])
+        $candidateDates = [
+            $showDateStr,
+            Carbon::parse($showDateStr)->copy()->subDay()->toDateString(),
+            Carbon::parse($showDateStr)->copy()->addDay()->toDateString(),
+        ];
+
+        $overlap = Showtime::where('room_id', $room->id)
+            ->whereIn('show_date', array_values(array_unique($candidateDates)))
             ->where('status', '!=', 'cancelled')
-            ->where(function ($q) use ($startTimeStr, $endTimeStr, $crossMidnight, $showDateStr) {
-                if ($crossMidnight) {
-                    // Suất chiếu mới qua nửa đêm: trùng với bất kỳ suất nào bắt đầu từ start đến 23:59 hoặc 00:00 đến end
-                    $q->where(function ($inner) use ($startTimeStr) {
-                        $inner->where('show_date', '=', request()->input('show_date'))
-                              ->where('start_time', '>=', $startTimeStr);
-                    })->orWhere(function ($inner) use ($endTimeStr) {
-                        $inner->where('end_time', '>', '00:00:00')
-                              ->where('start_time', '<', $endTimeStr);
-                    });
-                } else {
-                    $q->where('start_time', '<', $endTimeStr)
-                      ->where('end_time', '>', $startTimeStr);
-                }
+            ->with('movie')
+            ->get()
+            ->first(function ($existingShowtime) use ($showDateStr, $startTimeStr, $endTimeStr) {
+                return $this->hasShowtimeOverlap(
+                    $showDateStr,
+                    $startTimeStr,
+                    $endTimeStr,
+                    $existingShowtime->show_date->toDateString(),
+                    $existingShowtime->start_time,
+                    $existingShowtime->end_time
+                );
             });
-
-        $overlap = $overlapQuery->with('movie')->first();
 
         if ($overlap) {
             $overlapStart = Carbon::parse($overlap->start_time)->format('H:i');
