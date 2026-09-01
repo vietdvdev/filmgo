@@ -17,6 +17,26 @@ use Carbon\Carbon;
 
 class ManagerRoomController extends Controller
 {
+    private function normalizeRoomName(?string $value): string
+    {
+        if ($value === null) {
+            return '';
+        }
+
+        return trim(preg_replace('/\s+/', ' ', $value));
+    }
+
+    private function hasDuplicateRoomName(int $cinemaId, string $roomName, ?int $ignoreId = null): bool
+    {
+        $normalizedName = mb_strtolower($this->normalizeRoomName($roomName));
+
+        return Room::where('cinema_id', $cinemaId)
+            ->whereNull('deleted_at')
+            ->when($ignoreId !== null, fn($query) => $query->where('id', '!=', $ignoreId))
+            ->get(['room_name'])
+            ->contains(fn($room) => mb_strtolower($this->normalizeRoomName($room->room_name)) === $normalizedName);
+    }
+
     private function getCinemaIds(): array
     {
         return Auth::user()->cinemas()->pluck('cinemas.id')->toArray();
@@ -48,32 +68,34 @@ class ManagerRoomController extends Controller
     public function store(Request $request)
     {
         $cinemaIds = $this->getCinemaIds();
+        $normalizedRoomName = $this->normalizeRoomName($request->input('room_name'));
+        $request->merge(['room_name' => $normalizedRoomName]);
 
         $request->validate([
             'cinema_id' => 'required|integer|in:' . implode(',', $cinemaIds),
-            'room_name' => [
-                'required', 'string', 'max:100',
-                Rule::unique('rooms', 'room_name')
-                    ->where('cinema_id', $request->cinema_id)
-                    ->whereNull('deleted_at'),
-            ],
+            'room_name' => ['required', 'string', 'max:100'],
             'capacity'  => 'required|integer|min:1|max:500',
             'format_id' => 'required|exists:formats,id',
         ], [
             'cinema_id.required' => 'Vui lòng chọn rạp chiếu.',
             'cinema_id.in'       => 'Rạp chiếu không hợp lệ.',
             'room_name.required' => 'Tên phòng chiếu không được để trống.',
-            'room_name.unique'   => 'Tên phòng chiếu này đã tồn tại trong rạp được chọn.',
             'capacity.required'  => 'Sức chứa không được để trống.',
             'format_id.required' => 'Vui lòng chọn định dạng chiếu.',
             'format_id.exists'   => 'Định dạng chiếu không hợp lệ.',
         ]);
 
+        if ($this->hasDuplicateRoomName((int) $request->cinema_id, $normalizedRoomName)) {
+            throw ValidationException::withMessages([
+                'room_name' => ['Tên phòng chiếu này đã tồn tại trong rạp được chọn.'],
+            ]);
+        }
+
         $format = Format::findOrFail($request->format_id);
 
         Room::create([
             'cinema_id' => $request->cinema_id,
-            'room_name' => $request->room_name,
+            'room_name' => $normalizedRoomName,
             'capacity'  => $request->capacity,
             'room_type' => $format->name,
             'format_id' => $format->id,
@@ -97,30 +119,41 @@ class ManagerRoomController extends Controller
     {
         $cinemaIds = $this->getCinemaIds();
         $room = Room::whereIn('cinema_id', $cinemaIds)->findOrFail($id);
+        $normalizedRoomName = $this->normalizeRoomName($request->input('room_name'));
+        $request->merge(['room_name' => $normalizedRoomName]);
 
         $request->validate([
-            'room_name' => [
-                'required', 'string', 'max:100',
-                Rule::unique('rooms', 'room_name')
-                    ->where('cinema_id', $room->cinema_id)
-                    ->whereNull('deleted_at')
-                    ->ignore($room->id),
-            ],
+            'room_name' => ['required', 'string', 'max:100'],
             'capacity'  => 'required|integer|min:1|max:500',
             'format_id' => 'required|exists:formats,id',
             'status'    => 'required|in:active,maintenance,inactive',
         ], [
             'room_name.required' => 'Tên phòng chiếu không được để trống.',
-            'room_name.unique'   => 'Tên phòng chiếu này đã tồn tại trong rạp này.',
             'capacity.required'  => 'Sức chứa không được để trống.',
             'format_id.required' => 'Vui lòng chọn định dạng chiếu.',
             'format_id.exists'   => 'Định dạng chiếu không hợp lệ.',
         ]);
 
+        if ($this->hasDuplicateRoomName((int) $room->cinema_id, $normalizedRoomName, (int) $room->id)) {
+            throw ValidationException::withMessages([
+                'room_name' => ['Tên phòng chiếu này đã tồn tại trong rạp này.'],
+            ]);
+        }
+
+        $hasActiveShowtimes = $room->showtimes()
+            ->whereIn('status', ['upcoming', 'active', 'showing'])
+            ->exists();
+
+        if ($hasActiveShowtimes && $request->status !== $room->status) {
+            throw ValidationException::withMessages([
+                'status' => ['Phòng chiếu đang có suất chiếu, không thể chuyển trạng thái.'],
+            ]);
+        }
+
         $format = Format::findOrFail($request->format_id);
 
         $room->update([
-            'room_name' => $request->room_name,
+            'room_name' => $normalizedRoomName,
             'capacity'  => $request->capacity,
             'format_id' => $format->id,
             'room_type' => $format->name,

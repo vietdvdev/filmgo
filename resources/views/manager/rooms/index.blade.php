@@ -31,7 +31,7 @@
     <!-- Search & Filter -->
     <div class="bg-white border border-slate-200 shadow-sm p-4 rounded-none">
         <form method="GET" action="{{ route('manager.rooms.index') }}" class="flex gap-2">
-            <input type="text" name="search" value="{{ request('search') }}" placeholder="Tìm tên phòng chiếu..." 
+            <input type="text" name="search" value="{{ request('search') }}" placeholder="Tìm tên phòng chiếu..."
                    class="w-64 px-3 py-2 bg-slate-50 border border-slate-300 text-sm text-slate-900 rounded-none focus:outline-none focus:border-blue-600 focus:ring-1 focus:ring-blue-600">
             <button type="submit" class="bg-slate-800 hover:bg-slate-700 text-white text-sm font-semibold px-4 py-2 rounded-none transition-colors">
                 Tìm kiếm
@@ -51,6 +51,7 @@
                 <tr class="bg-slate-50 font-semibold text-xs text-slate-500 uppercase border-b border-slate-200">
                     <th class="py-3 px-6" style="width: 60px;">#</th>
                     <th class="py-3 px-6">Tên Phòng</th>
+                    <th class="py-3 px-6">Rạp Chiếu</th>
                     <th class="py-3 px-6">Sức Chứa (Ghế)</th>
                     <th class="py-3 px-6">Định Dạng Chiếu</th>
                     <th class="py-3 px-6" style="width: 150px;">Trạng Thái</th>
@@ -62,6 +63,7 @@
                     <tr class="hover:bg-slate-50/50">
                         <td class="py-4 px-6 text-slate-500 font-medium">{{ $loop->iteration + ($rooms->currentPage() - 1) * $rooms->perPage() }}</td>
                         <td class="py-4 px-6 font-bold text-slate-900">{{ $room->room_name }}</td>
+                        <td class="py-4 px-6 font-medium text-slate-700">{{ $room->cinema?->name ?? '—' }}</td>
                         <td class="py-4 px-6 font-medium text-slate-700">{{ $room->capacity }} ghế</td>
                         <td class="py-4 px-6">
                             @if($room->format)
@@ -95,7 +97,7 @@
                                     <span class="material-symbols-outlined text-sm">grid_on</span> Sơ đồ ghế
                                 </a>
                                 <!-- Edit Button -->
-                                <a href="{{ route('manager.rooms.edit', $room->id) }}" 
+                                <a href="{{ route('manager.rooms.edit', $room->id) }}"
                                    class="inline-flex items-center gap-1 text-xs font-bold px-3 py-1.5 border border-slate-300 text-slate-700 bg-white hover:bg-slate-50 transition-all rounded-none">
                                     <span class="material-symbols-outlined text-sm">edit</span> Sửa
                                 </a>
@@ -112,7 +114,7 @@
                     </tr>
                 @empty
                     <tr>
-                        <td colspan="7" class="text-center py-10 text-slate-400 italic">Không tìm thấy phòng chiếu nào.</td>
+                        <td colspan="8" class="text-center py-10 text-slate-400 italic">Không tìm thấy phòng chiếu nào.</td>
                     </tr>
                 @endforelse
             </tbody>
