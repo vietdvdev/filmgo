@@ -92,8 +92,8 @@
                                                         // Ghế do CHÍNH user hiện tại đang giữ (holding/locked) từ session trước
                                                         $isHeldByMe = $isSaved && in_array($ss->status, ['holding', 'locked']);
 
-                                                        // Ghế đang bảo trì (tầng suất chiếu hoặc tầng ghế vật lý)
-                                                        $isMaintenance = ($ss->status === 'maintenance') || ($ss->seat->status === 'maintenance');
+                                                        // Ghế đang bảo trì (tầng suất chiếu)
+                                                        $isMaintenance = $ss->status === 'maintenance';
 
                                                         // Ghế bị chiếm khi: không phải available VÀ không phải do mình giữ VÀ không phải bảo trì
                                                         $isBooked = ($ss->status !== 'available') && !$isHeldByMe && !$isMaintenance;
