@@ -317,7 +317,7 @@ function rowLabel(idx) {
 // ─── Khởi tạo / Tái tạo lưới 2 chiều ─────────────────────────────────────────
 function buildGrid(numRows, numCols) {
   return Array.from({ length: numRows }, () =>
-    Array.from({ length: numCols }, () => ({ state: null }))
+    Array.from({ length: numCols }, () => ({ state: null, underlyingType: null }))
   )
 }
 
@@ -410,6 +410,7 @@ function loadInitialSeats() {
       grid.value[rowIdx][colIdx].state = seat.status === 'maintenance'
         ? STATES.MAINTENANCE
         : seatTypeIdToState(seat.seat_type_id)
+      grid.value[rowIdx][colIdx].underlyingType = seat.seat_type_id
     }
   })
 }
@@ -451,11 +452,15 @@ function handleSeatClick(rowIdx, colIdx) {
     } else if (seat.state === STATES.MAINTENANCE && siblingSeat.state === STATES.MAINTENANCE) {
       // Đang là bảo trì -> chuyển cả cặp về Lối đi
       seat.state = null
+      seat.underlyingType = null
       siblingSeat.state = null
+      siblingSeat.underlyingType = null
     } else {
       // Chưa đủ cặp Sweetbox -> tô cả 2 thành cặp Sweetbox dính liền
       seat.state = brushState
+      seat.underlyingType = activeBrush.value.id
       siblingSeat.state = brushState
+      siblingSeat.underlyingType = activeBrush.value.id
     }
     return
   }
@@ -466,7 +471,9 @@ function handleSeatClick(rowIdx, colIdx) {
       if (activeBrush.value === null) {
         // Cọ Lối đi (Null) -> XÓA CẢ CẶP SWEETBOX
         seat.state = null
+        seat.underlyingType = null
         siblingSeat.state = null
+        siblingSeat.underlyingType = null
       } else {
         // Đổi loại ghế / bảo trì khác -> áp dụng đồng thời cho cả cặp
         const brushState = seatTypeToState(activeBrush.value)
@@ -475,10 +482,14 @@ function handleSeatClick(rowIdx, colIdx) {
           siblingSeat.state = STATES.MAINTENANCE
         } else if (seat.state === STATES.MAINTENANCE && siblingSeat.state === STATES.MAINTENANCE) {
           seat.state = null
+          seat.underlyingType = null
           siblingSeat.state = null
+          siblingSeat.underlyingType = null
         } else {
           seat.state = brushState
+          seat.underlyingType = activeBrush.value.id
           siblingSeat.state = brushState
+          siblingSeat.underlyingType = activeBrush.value.id
         }
       }
       return
@@ -488,6 +499,7 @@ function handleSeatClick(rowIdx, colIdx) {
   // Trường hợp 3: Ghế đơn thông thường (Standard, VIP...)
   if (activeBrush.value === null) {
     seat.state = null
+    seat.underlyingType = null
     return
   }
 
@@ -495,12 +507,15 @@ function handleSeatClick(rowIdx, colIdx) {
 
   if (seat.state === null) {
     seat.state = brushState
+    seat.underlyingType = activeBrush.value.id
   } else if (seat.state === brushState) {
     seat.state = STATES.MAINTENANCE
   } else if (seat.state === STATES.MAINTENANCE) {
     seat.state = null
+    seat.underlyingType = null
   } else {
     seat.state = brushState
+    seat.underlyingType = activeBrush.value.id
   }
 }
 
@@ -512,6 +527,7 @@ function handleRowClick(rowIdx) {
     // Chọn cọ "Lối đi" (null) -> Xóa toàn bộ hàng
     rowSeats.forEach(seat => {
       seat.state = null
+      seat.underlyingType = null
     })
     return
   }
@@ -524,11 +540,14 @@ function handleRowClick(rowIdx) {
     for (let c = 0; c < cols.value; c += 2) {
       if (c + 1 < cols.value) {
         rowSeats[c].state = brushState
+        rowSeats[c].underlyingType = activeBrush.value.id
         rowSeats[c + 1].state = brushState
+        rowSeats[c + 1].underlyingType = activeBrush.value.id
       } else {
         // Cột lẻ cuối cùng không ghép được cặp -> giữ nguyên hoặc chuyển về lối đi
         if (rowSeats[c].state === brushState) {
           rowSeats[c].state = null
+          rowSeats[c].underlyingType = null
         }
       }
     }
@@ -545,6 +564,7 @@ function handleRowClick(rowIdx) {
   } else {
     rowSeats.forEach(seat => {
       seat.state = brushState
+      seat.underlyingType = activeBrush.value.id
     })
   }
 }
@@ -673,7 +693,7 @@ async function saveMap() {
       seats.push({
         seat_row:     rowLabel(rowIdx),
         seat_number:  colIdx + 1,
-        seat_type_id: stateToSeatTypeId(seat.state),
+        seat_type_id: seat.underlyingType ?? stateToSeatTypeId(seat.state),
         status:       seat.state === STATES.MAINTENANCE ? 'maintenance' : 'active',
       })
     })

@@ -102,8 +102,8 @@ class SeatValidationService
             $ss = $allSeats->get($id);
             $seatLabel = $ss->seat->seat_row . $ss->seat->seat_number;
 
-            // Ghế đang bảo trì (kiểm tra cả trạng thái suất chiếu lẫn trạng thái vật lý của ghế)
-            if ($ss->status === 'maintenance' || $ss->seat?->status === 'maintenance') {
+            // Ghế đang bảo trì (kiểm tra trạng thái suất chiếu)
+            if ($ss->status === 'maintenance') {
                 return $this->fail("Ghế {$seatLabel} hiện đang bảo trì, vui lòng chọn ghế khác.");
             }
 
@@ -171,7 +171,6 @@ class SeatValidationService
                 $seatNumber = $ss->seat->seat_number;
                 $isSelected = isset($selectedSet[$ss->id]);
                 $isUnavailable = in_array($ss->status, self::UNAVAILABLE_STATUSES)
-                    || $ss->seat?->status === 'maintenance'
                     || ($ss->status === 'locked' && $ss->user_id !== $userId && $ss->expires_at?->isFuture())
                     || ($ss->status === 'holding' && $ss->user_id !== $userId);
 
@@ -315,7 +314,7 @@ class SeatValidationService
                 ->get();
 
             foreach ($seats as $ss) {
-                if ($ss->status === 'maintenance' || $ss->seat?->status === 'maintenance') {
+                if ($ss->status === 'maintenance') {
                     return [
                         'success' => false,
                         'message' => 'Ghế ' . $ss->seat->seat_row . $ss->seat->seat_number . ' hiện đang bảo trì.',

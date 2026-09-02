@@ -377,6 +377,10 @@
             <span class="info-label">Phòng chiếu:</span>
             <span class="info-value">{{ $room?->room_name ?? 'N/A' }} {{ !empty($room?->room_type) ? '('.$room->room_type.')' : '' }}</span>
         </div>
+        <div class="info-row">
+            <span class="info-label">Nhân viên in:</span>
+            <span class="info-value">{{ auth()->user()->full_name ?? auth()->user()->name ?? 'Hệ thống' }}</span>
+        </div>
 
         {{-- 3. KHỐI NỔI BẬT VỊ TRÍ GHẾ (SEAT HIGHLIGHT - CRITICAL FOR USHERS) --}}
         <div class="seat-box">
@@ -483,6 +487,10 @@
             <span class="info-label">Suất chiếu:</span>
             <span class="info-value">{{ $startTime }} ({{ $showDate }})</span>
         </div>
+        <div class="info-row">
+            <span class="info-label">Nhân viên in:</span>
+            <span class="info-value">{{ auth()->user()->full_name ?? auth()->user()->name ?? 'Hệ thống' }}</span>
+        </div>
 
         <div class="divider-solid"></div>
 
@@ -509,6 +517,10 @@
 
         <div style="text-align: center; font-size: 10px; font-weight: 800; border: 2px solid #000000; padding: 6px; margin-top: 6px;">
             Vui lòng đưa phiếu này cho nhân viên quầy Concession
+        </div>
+
+        <div style="text-align: center; font-size: 9.5px; font-weight: 700; margin-top: 6px; text-transform: uppercase;">
+            * Vui lòng bảo quản vé vì không được in lại *
         </div>
 
         <div class="ticket-footer" style="margin-top: 8px;">

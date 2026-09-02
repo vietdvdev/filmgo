@@ -93,6 +93,7 @@
     <div class="meta"><span class="l">Thời gian:</span>    <span class="v">{{ $booking->created_at?->format('H:i d/m/Y') }}</span></div>
     <div class="meta"><span class="l">Khách hàng:</span>   <span class="v">{{ $booking->user?->full_name ?? 'Khách vãng lai' }}</span></div>
     <div class="meta"><span class="l">Thanh toán:</span>   <span class="v">{{ $booking->payment_status === 'paid' ? 'Đã thanh toán' : 'Chờ thanh toán' }}</span></div>
+    <div class="meta"><span class="l">Nhân viên in:</span> <span class="v">{{ auth()->user()->full_name ?? auth()->user()->name ?? 'Hệ thống' }}</span></div>
 
     <div class="d-bold"></div>
 
@@ -164,6 +165,10 @@
         HẠN DÙNG: {{ $booking->combo_expires_at->format('H:i d/m/Y') }}
     </div>
     @endif
+
+    <div style="text-align:center;font-size:9.5px;font-weight:700;margin-top:6px;text-transform:uppercase;">
+        * Vui lòng bảo quản vé vì không được in lại *
+    </div>
 
     <div class="footer">
         Cảm ơn quý khách đã mua hàng tại FilmGo!<br>

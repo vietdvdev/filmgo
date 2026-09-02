@@ -223,22 +223,18 @@ class AutoGenerateController extends Controller
                 ], 400);
             }
 
-            // 3. DATABASE OPTIMIZATION (TRANSACTION & BULK INSERT)
+            // 3. DATABASE OPTIMIZATION (TRANSACTION)
             DB::beginTransaction();
 
-            // Thực hiện Bulk Insert các suất chiếu mới
-            Showtime::insert($validShowtimes);
+            $newShowtimeIds = [];
+            $showtimeBasePrices = [];
 
-            // Lấy danh sách các suất chiếu mới tạo để sinh sơ đồ ghế
-            $startTimeList = array_map(function ($s) {
-                return $s['start_time'];
-            }, $validShowtimes);
-
-            $newShowtimeIds = Showtime::where('room_id', $roomId)
-                ->where('show_date', $showDate)
-                ->whereIn('start_time', $startTimeList)
-                ->pluck('id')
-                ->toArray();
+            // Lưu từng suất chiếu và lấy ID (chính xác và an toàn hơn so với Bulk Insert rồi query lại)
+            foreach ($validShowtimes as $showtimeData) {
+                $showtime = Showtime::create($showtimeData);
+                $newShowtimeIds[] = $showtime->id;
+                $showtimeBasePrices[$showtime->id] = $showtime->base_price;
+            }
 
             // Lấy toàn bộ danh sách ghế của phòng chiếu này
             $seats = Seat::where('room_id', $roomId)
@@ -258,10 +254,6 @@ class AutoGenerateController extends Controller
             // Công thức: showtime_seat.price = showtime.base_price + seat_type.surcharge_price
             $surchargeMap = SeatType::all()->pluck('surcharge_price', 'id'); // Collection: [typeId => surcharge]
 
-            // [v2.0] Lấy map showtime_id → base_price để tránh query lặp lại trong vòng lặp
-            // Ví dụ: [101 => 80000, 102 => 95000, 103 => 80000]
-            $showtimeBasePrices = Showtime::whereIn('id', $newShowtimeIds)
-                ->pluck('base_price', 'id'); // Collection: [id => base_price]
 
             // [v2.0] Tạo danh sách liên kết Ghế-Suất chiếu bằng Collection flatMap (thay thế double foreach)
             // Ưu điểm: mạch lạc, dễ đọc; Collection lazy flatten() thay cho nối mảng thủ công

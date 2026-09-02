@@ -450,6 +450,7 @@
         <tr><td style="color:#555;width:40%;">Ngày chiếu:</td>  <td id="pt-date"  style="font-weight:700;"></td></tr>
         <tr><td style="color:#555;">Giờ chiếu:</td>             <td id="pt-time"  style="font-weight:700;"></td></tr>
         <tr><td style="color:#555;">Phòng:</td>                 <td id="pt-room2"></td></tr>
+        <tr><td style="color:#555;">Nhân viên in:</td>          <td>{{ auth()->user()->full_name ?? auth()->user()->name ?? 'Hệ thống' }}</td></tr>
     </table>
 
     <div id="pt-seats-wrap"></div>
@@ -514,6 +515,7 @@
     <table style="width:100%;font-size:10pt;border-collapse:collapse;">
         <tr><td style="color:#555;width:40%;">POS:</td>         <td id="pf-code"  style="font-weight:900;"></td></tr>
         <tr><td style="color:#555;">Thời gian:</td>             <td id="pf-date"></td></tr>
+        <tr><td style="color:#555;">Nhân viên in:</td>          <td>{{ auth()->user()->full_name ?? auth()->user()->name ?? 'Hệ thống' }}</td></tr>
     </table>
 
     <div style="border-top:2px solid #000;margin:6px 0;"></div>
@@ -539,6 +541,10 @@
     <div style="text-align:center;margin:5px 0 3px;">
         <div style="font-size:8pt;text-transform:uppercase;letter-spacing:1px;color:#555;">Booking Code / Mã đơn hàng</div>
         <div id="pf-booking-code" style="font-size:14pt;font-weight:900;letter-spacing:2px;font-family:monospace;"></div>
+    </div>
+
+    <div style="text-align:center;font-size:9.5px;font-weight:700;margin-top:6px;text-transform:uppercase;color:#000;">
+        * Vui lòng bảo quản vé vì không được in lại *
     </div>
 
     <div style="border-top:2px solid #000;margin-top:8px;padding-top:6px;text-align:center;font-size:9pt;color:#555;">
@@ -1047,7 +1053,7 @@ const POS = (() => {
     // ── Render một ghế đơn lẻ với hệ thống màu Tailwind CSS chuẩn ───────────
     function renderSeatBtn(s) {
         const isSelected = state.selectedSeats.some(sel => sel.showtime_seat_id === s.showtime_seat_id);
-        const isMaintenance = s.seat_status === 'maintenance' || s.status === 'maintenance';
+        const isMaintenance = s.status === 'maintenance';
         const isBooked = s.status === 'booked';
         const isHolding = s.status === 'holding';
         const isUnavailable = isBooked || isHolding || isMaintenance;

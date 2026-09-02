@@ -309,18 +309,32 @@
             if (data.success) {
                 showToast(data.message, 'success');
 
-                // Cập nhật giao diện ghế
-                const newStatus = data.showtime_seat.status;
-                element.setAttribute('data-status', newStatus);
-
-                if (newStatus === 'maintenance') {
-                    element.className = "border text-[10px] font-bold flex items-center justify-center select-none rounded-none transition-all h-8 w-8 flex-shrink-0 bg-rose-50 border-rose-300 text-rose-600 cursor-pointer hover:bg-rose-100 hover:scale-105";
-                    element.title = `Ghế ${seatLabel} - ${data.showtime_seat.seat_type} (Đang bảo trì - Nhấn để mở bán lại)`;
-                    element.innerHTML = '<span class="material-symbols-outlined text-[13px]">build</span>';
-                } else {
-                    element.className = "border text-[10px] font-bold flex items-center justify-center select-none rounded-none transition-all h-8 w-8 flex-shrink-0 bg-slate-100 border-slate-300 text-slate-600 cursor-pointer hover:bg-slate-200 hover:scale-105";
-                    element.title = `Ghế ${seatLabel} - ${data.showtime_seat.seat_type} (Trống - Nhấn để chuyển sang bảo trì)`;
-                    element.innerHTML = seatLabel;
+                // Cập nhật giao diện các ghế (bao gồm cả ghế đôi nếu có)
+                if (data.toggled_seats) {
+                    data.toggled_seats.forEach(seatData => {
+                        const node = document.getElementById('seat-node-' + seatData.id);
+                        if (node) {
+                            node.setAttribute('data-status', seatData.status);
+                            
+                            if (seatData.status === 'maintenance') {
+                                node.className = "border text-[10px] font-bold flex items-center justify-center select-none rounded-none transition-all h-8 w-8 flex-shrink-0 bg-rose-50 border-rose-300 text-rose-600 cursor-pointer hover:bg-rose-100 hover:scale-105";
+                                node.title = `Ghế ${seatData.seat_label} - ${seatData.seat_type} (Đang bảo trì - Nhấn để mở bán lại)`;
+                                node.innerHTML = '<span class="material-symbols-outlined text-[13px]">build</span>';
+                            } else {
+                                let typeClass = "bg-slate-100 border-slate-300 text-slate-600 hover:bg-slate-200";
+                                const seatType = (seatData.seat_type || '').toLowerCase();
+                                if (seatType.includes('vip')) {
+                                    typeClass = "bg-amber-50 border-amber-300 text-amber-800 hover:bg-amber-100";
+                                } else if (seatType.includes('sweetbox') || seatType.includes('đôi') || seatType.includes('couple') || seatType.includes('doi')) {
+                                    typeClass = "bg-pink-50 border-pink-300 text-pink-800 hover:bg-pink-100";
+                                }
+                                
+                                node.className = `border text-[10px] font-bold flex items-center justify-center select-none rounded-none transition-all h-8 w-8 flex-shrink-0 ${typeClass} cursor-pointer hover:scale-105`;
+                                node.title = `Ghế ${seatData.seat_label} - ${seatData.seat_type} (Trống - Nhấn để chuyển sang bảo trì)`;
+                                node.innerHTML = seatData.seat_label;
+                            }
+                        }
+                    });
                 }
 
                 // Cập nhật thẻ thống kê

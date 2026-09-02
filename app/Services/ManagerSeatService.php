@@ -261,13 +261,10 @@ class ManagerSeatService
             throw new NotFoundHttpException('Suất chiếu không tồn tại.');
         }
 
-        // Kiểm tra quyền quản lý rạp của suất chiếu
         if ($showtime->room->cinema_id !== $cinemaId) {
             throw new AuthorizationException('Bạn không có quyền quản lý suất chiếu của rạp khác.');
         }
 
-        // Cho phép quản lý đổi trạng thái ghế trống sang bảo trì kể cả khi suất chiếu ĐANG CHIẾU
-        // Chỉ chặn nếu suất chiếu ĐÃ KẾT THÚC hoặc ĐÃ HỦY
         if (in_array($showtime->status, ['finished', 'cancelled'])) {
             throw new InvalidArgumentException('Suất chiếu này đã kết thúc hoặc bị hủy. Không thể thay đổi trạng thái ghế.');
         }
@@ -291,18 +288,48 @@ class ManagerSeatService
             throw new InvalidArgumentException("Ghế {$seatLabel} đang được khách hàng giữ chỗ. Không thể chuyển sang bảo trì!");
         }
 
-        // Chuyển đổi trạng thái giữa available <-> maintenance
-        if ($showtimeSeat->status === 'available') {
-            $showtimeSeat->status = 'maintenance';
-            $message = "Đã chuyển ghế {$seatLabel} sang trạng thái Bảo trì cho suất chiếu này.";
-        } else {
-            $showtimeSeat->status = 'available';
-            $message = "Đã mở lại ghế {$seatLabel} sang trạng thái Khả dụng (Trống).";
+        $newStatus = $showtimeSeat->status === 'available' ? 'maintenance' : 'available';
+        
+        $seatsToToggle = collect([$showtimeSeat]);
+
+        // Kiểm tra loại ghế Sweetbox / Ghế đôi
+        $typeName = mb_strtolower($showtimeSeat->seat->seatType->name ?? '');
+        $isSweetbox = str_contains($typeName, 'sweetbox') || str_contains($typeName, 'couple') || str_contains($typeName, 'đôi') || str_contains($typeName, 'doi');
+
+        if ($isSweetbox) {
+            $partnerNumber = ($showtimeSeat->seat->seat_number % 2 === 1) ? $showtimeSeat->seat->seat_number + 1 : $showtimeSeat->seat->seat_number - 1;
+            $partnerShowtimeSeat = \App\Models\ShowtimeSeat::with(['seat', 'seat.seatType'])
+                ->where('showtime_id', $showtimeId)
+                ->whereHas('seat', function($q) use ($showtimeSeat, $partnerNumber) {
+                    $q->where('room_id', $showtimeSeat->seat->room_id)
+                      ->where('seat_row', $showtimeSeat->seat->seat_row)
+                      ->where('seat_number', $partnerNumber);
+                })->first();
+
+            if ($partnerShowtimeSeat) {
+                if ($partnerShowtimeSeat->status === 'booked') {
+                    throw new InvalidArgumentException("Cặp ghế của ghế {$seatLabel} đã được bán. Không thể thay đổi trạng thái!");
+                }
+                if (in_array($partnerShowtimeSeat->status, ['holding', 'hold'])) {
+                    throw new InvalidArgumentException("Cặp ghế của ghế {$seatLabel} đang được giữ. Không thể thay đổi trạng thái!");
+                }
+                $seatsToToggle->push($partnerShowtimeSeat);
+            }
         }
 
-        $showtimeSeat->save();
+        DB::transaction(function () use ($seatsToToggle, $newStatus) {
+            foreach ($seatsToToggle as $ss) {
+                $ss->status = $newStatus;
+                $ss->save();
+            }
+        });
 
-        // Lấy lại thống kê mới nhất của suất chiếu
+        if ($newStatus === 'maintenance') {
+            $message = "Đã chuyển " . ($isSweetbox ? "cặp ghế" : "ghế") . " {$seatLabel} sang trạng thái Bảo trì cho suất chiếu này.";
+        } else {
+            $message = "Đã mở lại " . ($isSweetbox ? "cặp ghế" : "ghế") . " {$seatLabel} sang trạng thái Khả dụng (Trống).";
+        }
+
         $stats = [
             'total'       => \App\Models\ShowtimeSeat::where('showtime_id', $showtimeId)->count(),
             'available'   => \App\Models\ShowtimeSeat::where('showtime_id', $showtimeId)->where('status', 'available')->count(),
@@ -311,16 +338,21 @@ class ManagerSeatService
             'maintenance' => \App\Models\ShowtimeSeat::where('showtime_id', $showtimeId)->where('status', 'maintenance')->count(),
         ];
 
+        $toggledSeatsData = [];
+        foreach ($seatsToToggle as $ss) {
+            $toggledSeatsData[] = [
+                'id'          => $ss->id,
+                'seat_id'     => $ss->seat_id,
+                'seat_label'  => $ss->seat->seat_row . $ss->seat->seat_number,
+                'status'      => $ss->status,
+                'seat_type'   => $ss->seat->seatType->name ?? 'Thường',
+            ];
+        }
+
         return [
             'success'       => true,
             'message'       => $message,
-            'showtime_seat' => [
-                'id'          => $showtimeSeat->id,
-                'seat_id'     => $showtimeSeat->seat_id,
-                'seat_label'  => $seatLabel,
-                'status'      => $showtimeSeat->status,
-                'seat_type'   => $showtimeSeat->seat->seatType->name ?? 'Thường',
-            ],
+            'toggled_seats' => $toggledSeatsData,
             'stats'         => $stats,
         ];
     }
