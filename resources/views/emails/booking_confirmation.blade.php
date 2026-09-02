@@ -188,20 +188,31 @@
             @endif
 
             {{-- HẠN SỬ DỤNG BẮP NƯỚC (chỉ hiển thị cho đơn combo_only) --}}
-            @if($isComboOnly && $booking->combo_expires_at)
-            <div style="margin: 0 20px 16px; padding: 14px 16px; background-color: #fff7ed; border: 1px solid #fdba74; border-radius: 8px; border-left: 4px solid #f97316;">
-                <p style="font-size: 13px; font-weight: 800; color: #c2410c; margin: 0 0 6px 0; display: flex; align-items: center; gap: 6px;">
-                    ⏰ Hạn Sử Dụng Đơn Bắp Nước
+            @if($isComboOnly)
+            @php
+                $mailExpiresAt = $booking->combo_expires_at ?? $booking->created_at->copy()->addDays(3);
+                $mailIsExpired = $mailExpiresAt->isPast();
+            @endphp
+            <div style="margin: 0 20px 16px; padding: 14px 16px; background-color: {{ $mailIsExpired ? '#fef2f2' : '#fff7ed' }}; border: 1px solid {{ $mailIsExpired ? '#fca5a5' : '#fdba74' }}; border-radius: 8px; border-left: 4px solid {{ $mailIsExpired ? '#ef4444' : '#f97316' }};">
+                <p style="font-size: 13px; font-weight: 800; color: {{ $mailIsExpired ? '#b91c1c' : '#c2410c' }}; margin: 0 0 6px 0;">
+                    {{ $mailIsExpired ? '❌ Đơn Hàng Đã Hết Hạn' : '⏰ Hạn Sử Dụng Đơn Bắp Nước' }}
                 </p>
-                <p style="font-size: 13px; color: #9a3412; margin: 0 0 4px 0; line-height: 1.5;">
-                    Đơn hàng của bạn có hiệu lực trong <strong>3 ngày</strong> kể từ khi thanh toán.
+                <p style="font-size: 13px; color: #9a3412; margin: 0 0 8px 0; line-height: 1.5;">
+                    @if($mailIsExpired)
+                        Đơn hàng bắp nước đã hết hạn sử dụng và không thể nhận hàng.
+                    @else
+                        Đơn hàng bắp nước có hiệu lực nhận hàng trong vòng <strong>3 ngày</strong> kể từ ngày đặt.
+                    @endif
                 </p>
-                <p style="font-size: 14px; font-weight: 800; color: #7c2d12; margin: 0;">
-                    Hạn cuối: {{ $booking->combo_expires_at->format('H:i — d/m/Y') }}
-                </p>
-                <p style="font-size: 11px; color: #b45309; margin: 6px 0 0 0;">
+                <div style="font-size: 14px; color: #7c2d12; background-color: {{ $mailIsExpired ? '#fee2e2' : '#ffedd5' }}; padding: 10px 14px; border-radius: 6px; margin-bottom: 8px;">
+                    <p style="margin: 0 0 6px 0;"><strong>Ngày đặt:</strong>&nbsp;{{ $booking->created_at->format('H:i — d/m/Y') }}</p>
+                    <p style="margin: 0;"><strong>Ngày hết hạn:</strong>&nbsp;<span style="font-weight: 800; color: #b91c1c;">{{ $mailExpiresAt->format('H:i — d/m/Y') }}</span></p>
+                </div>
+                @if(!$mailIsExpired)
+                <p style="font-size: 11px; color: #b45309; margin: 0;">
                     ⚠️ Vui lòng đến quầy F&amp;B trước thời hạn trên. Quá hạn sẽ không được đổi hoặc hoàn tiền.
                 </p>
+                @endif
             </div>
             @endif
 

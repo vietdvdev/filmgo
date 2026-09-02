@@ -139,29 +139,41 @@
                             @endif
 
                             {{-- Badge hạn sử dụng bắp nước --}}
-                            @if($isComboOnly && $booking->combo_expires_at)
-                                @if($booking->isComboExpired())
-                                    <div class="mt-2 text-[11px] bg-red-50 text-red-700 p-2 rounded-lg border border-red-200">
-                                        <div class="font-bold mb-0.5 flex items-center gap-1">
+                            @if($isComboOnly)
+                                @php
+                                    $expiresAt = $booking->combo_expires_at ?? $booking->created_at->copy()->addDays(3);
+                                    $isExpired = $expiresAt->isPast();
+                                    $daysLeft  = $isExpired ? null : (int) now()->startOfDay()->diffInDays($expiresAt->startOfDay());
+                                @endphp
+                                @if($isExpired)
+                                    <div class="mt-2 text-[11px] bg-red-50 text-red-700 p-2.5 rounded-lg border border-red-200">
+                                        <div class="font-bold mb-1 flex items-center gap-1">
                                             <span class="material-symbols-outlined text-[14px]">error</span>
-                                            Đã hết hạn sử dụng ({{ $booking->combo_expires_at->format('d/m/Y') }})
+                                            Đã hết hạn sử dụng
                                         </div>
+                                        <ul class="text-red-600 space-y-0.5 pl-0 list-none">
+                                            <li><strong>Ngày đặt:</strong> {{ $booking->created_at->format('d/m/Y') }}</li>
+                                            <li><strong>Ngày hết hạn:</strong> {{ $expiresAt->format('d/m/Y') }}</li>
+                                        </ul>
                                         <p class="text-red-600 mt-1">Đơn bắp nước đã hết hạn sử dụng, không thể nhận hàng.</p>
                                     </div>
                                 @else
-                                    <div class="mt-2 text-[11px] bg-orange-50 text-orange-700 p-2 rounded-lg border border-orange-200">
-                                        <div class="font-bold mb-0.5 flex items-center gap-1">
+                                    <div class="mt-2 text-[11px] bg-orange-50 text-orange-700 p-2.5 rounded-lg border border-orange-200">
+                                        <div class="font-bold mb-1 flex items-center gap-1">
                                             <span class="material-symbols-outlined text-[14px]">schedule</span>
-                                            Hạn dùng: {{ $booking->combo_expires_at->format('d/m/Y') }}
-                                            @php $days = $booking->comboDaysRemaining(); @endphp
-                                            @if($days !== null)
-                                                <span class="text-brand-primary ml-1">(Còn {{ $days }} ngày)</span>
+                                            Hạn nhận bắp nước
+                                            @if($daysLeft !== null)
+                                                &mdash; <span class="text-brand-primary">(Còn {{ $daysLeft }} ngày)</span>
                                             @endif
                                         </div>
-                                        <p class="text-orange-600 mt-1.5 flex gap-1 items-start leading-snug">
-                                            <span class="material-symbols-outlined text-[14px] flex-shrink-0 mt-0.5">warning</span>
-                                            <span>Lưu ý: Thời gian nhận F&amp;B tại quầy tối đa sau 3 ngày kể từ lúc đặt hàng. Ngày hết hạn để nhận combo: <strong>{{ $booking->combo_expires_at->format('d/m/Y') }}</strong>. Quá thời gian này, đơn hàng sẽ tự động mất hiệu lực.</span>
-                                        </p>
+                                        <ul class="text-orange-700 font-semibold space-y-0.5 list-none pl-0 mb-1">
+                                            <li><strong>Ngày đặt:</strong> {{ $booking->created_at->format('d/m/Y') }}</li>
+                                            <li><strong>Ngày hết hạn:</strong> <span class="text-red-600 font-bold">{{ $expiresAt->format('d/m/Y') }}</span></li>
+                                        </ul>
+                                        <div class="text-orange-600 flex gap-1 items-start leading-snug">
+                                            <span class="material-symbols-outlined text-[13px] flex-shrink-0 mt-0.5">warning</span>
+                                            <span>Lưu ý: Bạn cần đến quầy F&amp;B nhận hàng trước ngày hết hạn. Quá thời gian, đơn hàng sẽ mất hiệu lực.</span>
+                                        </div>
                                     </div>
                                 @endif
                             @endif
