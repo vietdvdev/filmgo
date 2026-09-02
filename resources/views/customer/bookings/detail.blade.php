@@ -106,32 +106,37 @@
         </div>
 
         {{-- Hạn sử dụng bắp nước --}}
-        @if($isComboOnly && $booking->combo_expires_at)
+        @if($isComboOnly)
+        @php
+            $expiresAt = $booking->combo_expires_at ?? $booking->created_at->copy()->addDays(3);
+            $isExpired = $expiresAt->isPast();
+            $daysLeft  = $isExpired ? null : (int) now()->startOfDay()->diffInDays($expiresAt->startOfDay());
+        @endphp
         <div class="rounded-2xl p-4 mb-4 flex items-start gap-3
-            {{ $booking->isComboExpired()
-                ? 'bg-red-50 border border-red-200'
-                : 'bg-orange-50 border border-orange-200' }}">
-            <span class="material-symbols-outlined text-xl mt-0.5 flex-shrink-0 {{ $booking->isComboExpired() ? 'text-red-500' : 'text-orange-500' }}">{{ $booking->isComboExpired() ? 'error' : 'schedule' }}</span>
-            <div>
-                @if($booking->isComboExpired())
-                    <p class="text-sm font-black text-red-700 mb-0.5">Đơn Hàng Đã Hết Hạn Sử Dụng</p>
-                    <p class="text-xs text-red-600">Đơn bắp nước đã hết hạn sử dụng ({{ $booking->combo_expires_at->format('d/m/Y') }}), không thể nhận hàng.</p>
+            {{ $isExpired ? 'bg-red-50 border border-red-200' : 'bg-orange-50 border border-orange-200' }}">
+            <span class="material-symbols-outlined text-xl mt-0.5 flex-shrink-0 {{ $isExpired ? 'text-red-500' : 'text-orange-500' }}">{{ $isExpired ? 'error' : 'schedule' }}</span>
+            <div class="flex-1">
+                @if($isExpired)
+                    <p class="text-sm font-black text-red-700 mb-1">Đơn Hàng Đã Hết Hạn Sử Dụng</p>
+                    <ul class="text-xs text-red-600 space-y-0.5 list-none pl-0 mb-1">
+                        <li><strong>Ngày đặt:</strong> {{ $booking->created_at->format('d/m/Y') }}</li>
+                        <li><strong>Ngày hết hạn:</strong> {{ $expiresAt->format('d/m/Y') }}</li>
+                    </ul>
+                    <p class="text-xs text-red-600">Đơn bắp nước đã hết hạn sử dụng, không thể nhận hàng.</p>
                 @else
-                    <p class="text-sm font-black text-orange-700 mb-0.5">Hạn Sử Dụng Bắp Nước: {{ $booking->combo_expires_at->format('d/m/Y') }}</p>
-                    <div class="text-xs text-orange-600 leading-relaxed mt-1">
-                        Lưu ý: Bạn cần nhận F&amp;B tại quầy trong vòng tối đa 3 ngày kể từ ngày đặt.
-                        <ul class="list-disc pl-4 mt-1 space-y-0.5">
-                            <li><strong>Ngày đặt:</strong> {{ $booking->created_at->format('d/m/Y') }}</li>
-                            <li><strong>Ngày hết hạn:</strong> {{ $booking->combo_expires_at->format('d/m/Y') }}</li>
-                        </ul>
-                        <span class="block mt-1">
-                            @php $days = $booking->comboDaysRemaining(); @endphp
-                            @if($days !== null)
-                                <span class="font-bold text-brand-primary">(Còn {{ $days }} ngày).</span>
-                            @endif
-                            Quá thời gian này, đơn hàng sẽ tự động mất hiệu lực.
-                        </span>
-                    </div>
+                    <p class="text-sm font-black text-orange-700 mb-1">Hạn Nhận Bắp Nước
+                        @if($daysLeft !== null)
+                            <span class="font-normal text-xs text-brand-primary ml-1">(Còn {{ $daysLeft }} ngày)</span>
+                        @endif
+                    </p>
+                    <ul class="text-xs text-orange-700 font-semibold space-y-0.5 list-none pl-0 mb-2">
+                        <li><strong>Ngày đặt:</strong> {{ $booking->created_at->format('d/m/Y') }}</li>
+                        <li><strong>Ngày hết hạn:</strong> <span class="text-red-600 font-bold">{{ $expiresAt->format('d/m/Y') }}</span></li>
+                    </ul>
+                    <p class="text-xs text-orange-600 leading-relaxed flex gap-1 items-start">
+                        <span class="material-symbols-outlined text-[13px] flex-shrink-0 mt-0.5">warning</span>
+                        <span>Lưu ý: Bạn cần đến quầy F&amp;B nhận hàng trước ngày hết hạn. Quá thời gian, đơn hàng sẽ mất hiệu lực và không được đổi hoặc hoàn tiền.</span>
+                    </p>
                 @endif
             </div>
         </div>
