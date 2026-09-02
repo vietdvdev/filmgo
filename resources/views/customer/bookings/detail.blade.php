@@ -118,15 +118,20 @@
                     <p class="text-xs text-red-600">Đơn bắp nước đã hết hạn sử dụng ({{ $booking->combo_expires_at->format('d/m/Y') }}), không thể nhận hàng.</p>
                 @else
                     <p class="text-sm font-black text-orange-700 mb-0.5">Hạn Sử Dụng Bắp Nước: {{ $booking->combo_expires_at->format('d/m/Y') }}</p>
-                    <p class="text-xs text-orange-600 leading-relaxed mt-1">
-                        Lưu ý: Thời gian nhận F&amp;B tại quầy tối đa sau 3 ngày kể từ lúc đặt hàng. 
-                        Ngày hết hạn để nhận combo: <strong>{{ $booking->combo_expires_at->format('d/m/Y') }}</strong>.
-                        @php $days = $booking->comboDaysRemaining(); @endphp
-                        @if($days !== null)
-                            <span class="font-bold">(Còn {{ $days }} ngày).</span>
-                        @endif
-                        Quá thời gian này, đơn hàng sẽ tự động mất hiệu lực.
-                    </p>
+                    <div class="text-xs text-orange-600 leading-relaxed mt-1">
+                        Lưu ý: Bạn cần nhận F&amp;B tại quầy trong vòng tối đa 3 ngày kể từ ngày đặt.
+                        <ul class="list-disc pl-4 mt-1 space-y-0.5">
+                            <li><strong>Ngày đặt:</strong> {{ $booking->created_at->format('d/m/Y') }}</li>
+                            <li><strong>Ngày hết hạn:</strong> {{ $booking->combo_expires_at->format('d/m/Y') }}</li>
+                        </ul>
+                        <span class="block mt-1">
+                            @php $days = $booking->comboDaysRemaining(); @endphp
+                            @if($days !== null)
+                                <span class="font-bold text-brand-primary">(Còn {{ $days }} ngày).</span>
+                            @endif
+                            Quá thời gian này, đơn hàng sẽ tự động mất hiệu lực.
+                        </span>
+                    </div>
                 @endif
             </div>
         </div>

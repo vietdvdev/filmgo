@@ -194,11 +194,12 @@
                     ⏰ Hạn Sử Dụng Đơn Bắp Nước
                 </p>
                 <p style="font-size: 13px; color: #9a3412; margin: 0 0 4px 0; line-height: 1.5;">
-                    Đơn hàng của bạn có hiệu lực trong <strong>3 ngày</strong> kể từ khi thanh toán.
+                    Đơn hàng bắp nước của bạn có hiệu lực nhận hàng trong vòng <strong>3 ngày</strong> kể từ ngày đặt.
                 </p>
-                <p style="font-size: 14px; font-weight: 800; color: #7c2d12; margin: 0;">
-                    Hạn cuối: {{ $booking->combo_expires_at->format('H:i — d/m/Y') }}
-                </p>
+                <div style="font-size: 14px; color: #7c2d12; margin: 8px 0; background-color: #ffedd5; padding: 8px 12px; border-radius: 6px;">
+                    <p style="margin: 0 0 4px 0;"><strong>Ngày đặt:</strong> {{ $booking->created_at->format('H:i — d/m/Y') }}</p>
+                    <p style="margin: 0;"><strong>Hạn cuối:</strong> <span style="font-weight: 800; color: #b91c1c;">{{ $booking->combo_expires_at->format('H:i — d/m/Y') }}</span></p>
+                </div>
                 <p style="font-size: 11px; color: #b45309; margin: 6px 0 0 0;">
                     ⚠️ Vui lòng đến quầy F&amp;B trước thời hạn trên. Quá hạn sẽ không được đổi hoặc hoàn tiền.
                 </p>
