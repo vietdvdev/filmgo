@@ -233,6 +233,11 @@
                                 </div>
                             </div>
                             @error('status')<p class="text-error font-body-md text-xs mt-1">{{ $message }}</p>@enderror
+                            {{-- Cảnh báo client-side --}}
+                            <div id="status_warning" class="hidden mt-2 flex items-start gap-2 p-2.5 bg-amber-50 border border-amber-300 rounded-lg text-xs text-amber-800">
+                                <span class="material-symbols-outlined text-base flex-shrink-0 text-amber-600">warning</span>
+                                <span id="status_warning_text"></span>
+                            </div>
                         </div>
 
                         <!-- Thời lượng phim -->
@@ -484,5 +489,51 @@
             });
         });
     });
+    // Logic kiểm tra trạng thái phìm phải khớp với ngày khởi chiếu
+    (() => {
+        const releaseDateInput = document.querySelector('input[name="release_date"]');
+        const statusRadios     = document.querySelectorAll('input[name="status"]');
+        const warningBox       = document.getElementById('status_warning');
+        const warningText      = document.getElementById('status_warning_text');
+
+        function getToday() {
+            const d = new Date();
+            d.setHours(0, 0, 0, 0);
+            return d;
+        }
+
+        function validateStatusVsDate(releaseDateStr) {
+            if (!releaseDateStr || !warningBox || !warningText) return;
+            const release = new Date(releaseDateStr);
+            release.setHours(0, 0, 0, 0);
+            const today = getToday();
+            const checkedRadio = document.querySelector('input[name="status"]:checked');
+            if (!checkedRadio) return;
+            const status = checkedRadio.value;
+            let msg = '';
+            if (release > today && (status === 'showing' || status === 'stopped')) {
+                const label = status === 'showing' ? 'Đang chiếu' : 'Ngừng chiếu';
+                msg = `Phìm chưa đến ngày khởi chiếu, không thể đặt trạng thái «${label}». Hệ thống sẽ báo lỗi khi lưu.`;
+            } else if (release < today && status === 'upcoming') {
+                msg = 'Ngày khởi chiếu đã qua, không thể đặt trạng thái Sắp chiếu. Hệ thống sẽ báo lỗi khi lưu.';
+            }
+            if (msg) {
+                warningText.textContent = msg;
+                warningBox.classList.remove('hidden');
+            } else {
+                warningBox.classList.add('hidden');
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            if (releaseDateInput) {
+                releaseDateInput.addEventListener('change', () => validateStatusVsDate(releaseDateInput.value));
+                if (releaseDateInput.value) validateStatusVsDate(releaseDateInput.value);
+            }
+            statusRadios.forEach(radio => {
+                radio.addEventListener('change', () => validateStatusVsDate(releaseDateInput?.value));
+            });
+        });
+    })();
 </script>
 @endsection

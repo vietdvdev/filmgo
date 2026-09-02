@@ -210,6 +210,11 @@
                                 </div>
                             </div>
                             @error('status')<p class="text-error font-body-md text-xs mt-1">{{ $message }}</p>@enderror
+                            {{-- Cảnh báo client-side --}}
+                            <div id="status_warning" class="hidden mt-2 flex items-start gap-2 p-2.5 bg-amber-50 border border-amber-300 rounded-lg text-xs text-amber-800">
+                                <span class="material-symbols-outlined text-base flex-shrink-0 text-amber-600">warning</span>
+                                <span id="status_warning_text"></span>
+                            </div>
                         </div>
 
                         <!-- Thời lượng phim -->
@@ -233,6 +238,10 @@
                                     class="w-full pl-10 pr-4 py-2 bg-surface-container-lowest border border-outline-variant rounded-lg font-body-md text-body-md text-on-surface focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-colors @error('release_date') border-error @enderror">
                             </div>
                             @error('release_date')<p class="text-error font-body-md text-xs mt-1">{{ $message }}</p>@enderror
+                            <p class="text-xs text-on-surface-variant mt-1">
+                                <span class="material-symbols-outlined text-xs align-middle">info</span>
+                                Trạng thái phìm sẽ được gợi ý tự động theo ngày khởi chiếu.
+                            </p>
                         </div>
                     </div>
 
@@ -440,6 +449,81 @@
                     label.classList.add('border-outline-variant', 'text-on-surface-variant', 'hover:bg-surface-container-low');
                 }
             });
+        });
+    });
+    // Logic kiểm tra trạng thái phìm phải khớp với ngày khởi chiếu
+    document.addEventListener('DOMContentLoaded', () => {
+        const releaseDateInput = document.querySelector('input[name="release_date"]');
+        const statusRadios     = document.querySelectorAll('input[name="status"]');
+        const warningBox       = document.getElementById('status_warning');
+        const warningText      = document.getElementById('status_warning_text');
+
+        function getToday() {
+            const d = new Date();
+            d.setHours(0, 0, 0, 0);
+            return d;
+        }
+
+        function suggestStatus(releaseDateStr) {
+            if (!releaseDateStr) return;
+            const release = new Date(releaseDateStr);
+            release.setHours(0, 0, 0, 0);
+            const today = getToday();
+
+            let suggested;
+            if (release > today) {
+                suggested = 'upcoming';
+            } else if (release.getTime() === today.getTime()) {
+                suggested = 'upcoming'; // ngày khởi chiếu là hôm nay, cho phép sắp chiếu hoặc đang chiếu
+            } else {
+                suggested = 'showing';
+            }
+
+            // Tự động chọn radio gợi ý
+            const radio = document.getElementById('status_' + suggested);
+            if (radio) radio.checked = true;
+
+            validateStatusVsDate(releaseDateStr);
+        }
+
+        function validateStatusVsDate(releaseDateStr) {
+            if (!releaseDateStr || !warningBox || !warningText) return;
+
+            const release = new Date(releaseDateStr);
+            release.setHours(0, 0, 0, 0);
+            const today = getToday();
+
+            const checkedRadio = document.querySelector('input[name="status"]:checked');
+            if (!checkedRadio) return;
+
+            const status = checkedRadio.value;
+            let msg = '';
+
+            if (release > today && (status === 'showing' || status === 'stopped')) {
+                const label = status === 'showing' ? 'Đang chiếu' : 'Ngừng chiếu';
+                msg = `Phìm chưa đến ngày khởi chiếu, không thể đặt trạng thái «${label}». Hệ thống sẽ báo lỗi khi lưu.`;
+            } else if (release < today && status === 'upcoming') {
+                msg = 'Ngày khởi chiếu đã qua, không thể đặt trạng thái Sắp chiếu. Hệ thống sẽ báo lỗi khi lưu.';
+            }
+
+            if (msg) {
+                warningText.textContent = msg;
+                warningBox.classList.remove('hidden');
+            } else {
+                warningBox.classList.add('hidden');
+            }
+        }
+
+        // Khi thay đổi ngày: gợi ý trạng thái
+        if (releaseDateInput) {
+            releaseDateInput.addEventListener('change', () => suggestStatus(releaseDateInput.value));
+            // Chạy ngay khi load trang nếu đã có giá trị (old value sau lỗi)
+            if (releaseDateInput.value) validateStatusVsDate(releaseDateInput.value);
+        }
+
+        // Khi thay đổi trạng thái: kiểm tra lại
+        statusRadios.forEach(radio => {
+            radio.addEventListener('change', () => validateStatusVsDate(releaseDateInput?.value));
         });
     });
 </script>

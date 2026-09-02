@@ -83,6 +83,23 @@ class MovieController extends Controller
             'format_ids.min'        => 'Vui lòng chọn ít nhất một định dạng chiếu.',
         ]);
 
+        // Kiểm tra trạng thái phải khớp với ngày khởi chiếu
+        $releaseDate = \Carbon\Carbon::parse($request->release_date)->startOfDay();
+        $today       = now()->startOfDay();
+
+        if ($releaseDate->gt($today) && in_array($request->status, ['showing', 'stopped'])) {
+            $label = $request->status === 'showing' ? 'Đang chiếu' : 'Ngừng chiếu';
+            return back()
+                ->withInput()
+                ->withErrors(['status' => "Đặt trạng thái «{$label}» không hợp lệ: phìm chưa đến ngày khởi chiếu ({$releaseDate->format('d/m/Y')}). Vui lòng chọn Sắp chiếu."]);
+        }
+
+        if ($releaseDate->lt($today) && $request->status === 'upcoming') {
+            return back()
+                ->withInput()
+                ->withErrors(['status' => "Ngày khởi chiếu ({$releaseDate->format('d/m/Y')}) đã qua. Vui lòng chọn trạng thái Đang chiếu hoặc Ngừng chiếu."]);
+        }
+
         $posterPath = null;
         if ($request->hasFile('poster')) {
             $posterPath = 'storage/' . $request->file('poster')->store('posters', 'public');
@@ -176,6 +193,23 @@ class MovieController extends Controller
                     ->withErrors(['status' => $errorMessage])
                     ->withInput();
             }
+        }
+
+        // Kiểm tra trạng thái phải khớp với ngày khởi chiếu
+        $releaseDate = \Carbon\Carbon::parse($request->release_date)->startOfDay();
+        $today       = now()->startOfDay();
+
+        if ($releaseDate->gt($today) && in_array($request->status, ['showing', 'stopped'])) {
+            $label = $request->status === 'showing' ? 'Đang chiếu' : 'Ngừng chiếu';
+            return back()
+                ->withInput()
+                ->withErrors(['status' => "Đặt trạng thái «{$label}» không hợp lệ: phìm chưa đến ngày khởi chiếu ({$releaseDate->format('d/m/Y')}). Vui lòng chọn Sắp chiếu."]);
+        }
+
+        if ($releaseDate->lt($today) && $request->status === 'upcoming') {
+            return back()
+                ->withInput()
+                ->withErrors(['status' => "Ngày khởi chiếu ({$releaseDate->format('d/m/Y')}) đã qua. Vui lòng chọn trạng thái Đang chiếu hoặc Ngừng chiếu."]);
         }
 
         $posterPath = $movie->poster;
